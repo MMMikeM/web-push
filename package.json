@@ -1,0 +1,53 @@
+{
+  "name": "@mmmike/web-push",
+  "version": "0.1.0",
+  "description": "Zero-dependency Web Push library (RFC 8291) for Node.js, Edge, and browsers",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs"
+    },
+    "./vapid": {
+      "types": "./dist/vapid.d.ts",
+      "import": "./dist/vapid.mjs"
+    },
+    "./send": {
+      "types": "./dist/send.d.ts",
+      "import": "./dist/send.mjs"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.mjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "unbuild",
+    "lint:types": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "web-push",
+    "push-notifications",
+    "vapid",
+    "rfc8291",
+    "edge-runtime"
+  ],
+  "license": "MIT",
+  "author": "Mike <mikem.tba@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MMMikeM/web-push.git"
+  },
+  "homepage": "https://github.com/MMMikeM/web-push#readme",
+  "bugs": {
+    "url": "https://github.com/MMMikeM/web-push/issues"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "unbuild": "^3.6.0"
+  }
+}
