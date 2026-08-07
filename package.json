@@ -5,29 +5,48 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs"
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
     },
     "./vapid": {
-      "types": "./dist/vapid.d.ts",
-      "import": "./dist/vapid.mjs"
+      "types": "./dist/vapid.d.mts",
+      "default": "./dist/vapid.mjs"
     },
     "./send": {
-      "types": "./dist/send.d.ts",
-      "import": "./dist/send.mjs"
+      "types": "./dist/send.d.mts",
+      "default": "./dist/send.mjs"
     },
     "./client": {
-      "types": "./dist/client.d.ts",
-      "import": "./dist/client.mjs"
+      "types": "./dist/client.d.mts",
+      "default": "./dist/client.mjs"
     }
   },
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "sideEffects": false,
   "files": [
     "dist"
   ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "packageManager": "pnpm@11.17.0",
   "scripts": {
-    "build": "unbuild",
-    "lint:types": "tsc --noEmit",
-    "prepublishOnly": "npm run build"
+    "build": "tsdown",
+    "lint": "oxlint --config oxlint.config.ts src test scripts examples",
+    "lint:types": "tsc -p tsconfig.check.json && tsc -p tsconfig.tools.json",
+    "format": "oxfmt --write -c oxfmt.config.ts 'src/**/*.ts' 'test/**/*.ts' 'scripts/**/*.ts' 'examples/**/*.ts' '*.config.ts'",
+    "format:check": "oxfmt --check -c oxfmt.config.ts 'src/**/*.ts' 'test/**/*.ts' 'scripts/**/*.ts' 'examples/**/*.ts' '*.config.ts'",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "audit": "pnpm audit --audit-level high --ignore-registry-errors",
+    "check": "pnpm run format:check && pnpm run lint && pnpm run lint:types && pnpm run test && pnpm run audit",
+    "check:exports": "attw --pack . --profile esm-only",
+    "check:publint": "publint --strict",
+    "check:package": "pnpm run build && pnpm run check:publint && pnpm run check:exports",
+    "prepublishOnly": "pnpm run check && pnpm run check:package",
+    "release": "git tag -a \"v$npm_package_version\" -m \"v$npm_package_version\" && git push --follow-tags"
   },
   "keywords": [
     "web-push",
@@ -47,7 +66,14 @@
     "url": "https://github.com/MMMikeM/web-push/issues"
   },
   "devDependencies": {
-    "typescript": "^5.7.0",
-    "unbuild": "^3.6.0"
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@types/node": "^26.1.1",
+    "@vitest/coverage-v8": "^4.1.10",
+    "oxfmt": ">=0.59.0 <0.61.0",
+    "oxlint": "^1.74.0",
+    "publint": "^0.3.21",
+    "tsdown": "^0.22.9",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
   }
 }

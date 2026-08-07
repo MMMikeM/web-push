@@ -1,0 +1,21 @@
+// Typechecks the release scripts. Split from tsconfig.check.json so
+// `types: ["node"]` applies here and nowhere near `src`.
+//
+// These run as `node scripts/foo.ts` via type stripping, so `erasableSyntaxOnly`
+// rejects enums, namespaces, and parameter properties at check time.
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"declaration": false,
+		"declarationMap": false,
+		"rootDir": ".",
+		"module": "nodenext",
+		"moduleResolution": "nodenext",
+		"verbatimModuleSyntax": true,
+		"erasableSyntaxOnly": true,
+		"types": ["node"]
+	},
+	"include": ["scripts/**/*.ts"],
+	"exclude": ["node_modules", "dist"]
+}

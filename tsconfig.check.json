@@ -1,0 +1,18 @@
+// Typechecks the library and its tests; tsconfig.json covers `src` alone and
+// drives the declaration build.
+//
+// `types: []` keeps Node globals out of `src` and `test`, so reaching for
+// `process` or `Buffer` fails here instead of at runtime on Workers and Deno.
+// Node-only tooling lives in tsconfig.tools.json.
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"declaration": false,
+		"declarationMap": false,
+		"rootDir": ".",
+		"types": []
+	},
+	"include": ["src/**/*.ts", "test/**/*.ts", "*.config.ts"],
+	"exclude": ["node_modules", "dist"]
+}
