@@ -1,12 +1,10 @@
 /**
- * Client-side push notification utilities.
- *
- * These functions run in the browser and handle the subscription flow
- * for push notifications.
+ * Browser-only. These reach for `window`, `navigator`, and `Notification`, so
+ * they throw anywhere else — server code wants `./send`.
  */
 
 import type { PushSubscriptionData } from "./types";
-import { urlBase64ToUint8Array } from "./vapid";
+import { uint8ArrayToUrlBase64, urlBase64ToUint8Array } from "./vapid";
 
 export type { PushSubscriptionData };
 
@@ -49,19 +47,15 @@ export const subscribeToPush = async (vapidPublicKey: string): Promise<PushSubsc
 
 	const registration = await navigator.serviceWorker.ready;
 
-	// Check for existing subscription
 	const existingSubscription = await registration.pushManager.getSubscription();
 	if (existingSubscription) {
 		return existingSubscription;
 	}
 
-	// Create new subscription
-	const subscription = await registration.pushManager.subscribe({
+	return registration.pushManager.subscribe({
 		userVisibleOnly: true,
 		applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
 	});
-
-	return subscription;
 };
 
 /**
@@ -90,16 +84,35 @@ export const getCurrentSubscription = async (): Promise<PushSubscription | null>
 	return registration.pushManager.getSubscription();
 };
 
+const requireKey = (subscription: PushSubscription, name: "p256dh" | "auth"): ArrayBuffer => {
+	const key = subscription.getKey(name);
+	if (!key) {
+		throw new Error(`Subscription is missing its ${name} key`);
+	}
+	return key;
+};
+
 /**
  * Convert a PushSubscription to serializable data for sending to the server.
+ *
+ * @throws {Error} if the subscription is missing its `p256dh` or `auth` key.
  */
 export const serializeSubscription = (subscription: PushSubscription): PushSubscriptionData => ({
 	endpoint: subscription.endpoint,
 	keys: {
-		p256dh: arrayBufferToUrlBase64(subscription.getKey("p256dh")!),
-		auth: arrayBufferToUrlBase64(subscription.getKey("auth")!),
+		p256dh: arrayBufferToUrlBase64(requireKey(subscription, "p256dh")),
+		auth: arrayBufferToUrlBase64(requireKey(subscription, "auth")),
 	},
 });
+
+const sendJson = async (endpoint: string, method: string, body: unknown): Promise<boolean> => {
+	const response = await fetch(endpoint, {
+		method,
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(body),
+	});
+	return response.ok;
+};
 
 /**
  * Send a push subscription to a server endpoint.
@@ -107,20 +120,10 @@ export const serializeSubscription = (subscription: PushSubscription): PushSubsc
  * @param subscription - The browser's push subscription
  * @param endpoint - The server endpoint URL (default: /api/push/subscribe)
  */
-export const sendSubscriptionToServer = async (
+export const sendSubscriptionToServer = (
 	subscription: PushSubscription,
 	endpoint = "/api/push/subscribe",
-): Promise<boolean> => {
-	const response = await fetch(endpoint, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify(serializeSubscription(subscription)),
-	});
-
-	return response.ok;
-};
+): Promise<boolean> => sendJson(endpoint, "POST", serializeSubscription(subscription));
 
 /**
  * Remove a push subscription from a server endpoint.
@@ -128,26 +131,13 @@ export const sendSubscriptionToServer = async (
  * @param subscriptionEndpoint - The subscription endpoint to remove
  * @param serverEndpoint - The server API endpoint URL (default: /api/push/subscribe)
  */
-export const removeSubscriptionFromServer = async (
+export const removeSubscriptionFromServer = (
 	subscriptionEndpoint: string,
 	serverEndpoint = "/api/push/subscribe",
-): Promise<boolean> => {
-	const response = await fetch(serverEndpoint, {
-		method: "DELETE",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({ endpoint: subscriptionEndpoint }),
-	});
-
-	return response.ok;
-};
+): Promise<boolean> => sendJson(serverEndpoint, "DELETE", { endpoint: subscriptionEndpoint });
 
 /**
  * Convert an ArrayBuffer to URL-safe base64.
  */
-const arrayBufferToUrlBase64 = (buffer: ArrayBuffer): string => {
-	const bytes = new Uint8Array(buffer);
-	const binary = String.fromCharCode(...bytes);
-	return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-};
+const arrayBufferToUrlBase64 = (buffer: ArrayBuffer): string =>
+	uint8ArrayToUrlBase64(new Uint8Array(buffer));
