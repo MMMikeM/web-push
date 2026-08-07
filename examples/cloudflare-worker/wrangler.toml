@@ -1,0 +1,12 @@
+name = "web-push-worker-example"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+
+# No nodejs_compat flag needed — this library uses only the Web Crypto API.
+
+# Set VAPID keys as secrets, not plaintext vars:
+#   npx wrangler secret put VAPID_PUBLIC_KEY
+#   npx wrangler secret put VAPID_PRIVATE_KEY
+#   npx wrangler secret put VAPID_SUBJECT      # e.g. mailto:you@example.com
+#
+# Generate a key pair first with:  npm run keys

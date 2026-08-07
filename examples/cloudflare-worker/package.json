@@ -1,0 +1,16 @@
+{
+  "name": "web-push-worker-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "keys": "node scripts/generate-keys.ts",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@mmmike/web-push": "^1.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.78.0"
+  }
+}
