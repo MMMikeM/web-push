@@ -1,8 +1,4 @@
 /**
- * Shared types for Web Push library.
- */
-
-/**
  * A push subscription from the browser's PushManager.
  */
 export type PushSubscriptionData = {
@@ -61,4 +57,17 @@ export type SendPushOptions = {
 	logger?: Logger;
 	/** TTL in seconds (default: 86400 = 24 hours) */
 	ttl?: number;
+	/**
+	 * VAPID JWT expiration in seconds from now (default: 43200 = 12 hours).
+	 * Must stay within 24h — push services reject longer-lived tokens (401).
+	 * Kept separate from `ttl`, which controls only message retention.
+	 */
+	vapidExpiration?: number;
+	/** Delivery priority (RFC 8030 §5.3). Omit to let the push service decide. */
+	urgency?: "very-low" | "low" | "normal" | "high";
+	/**
+	 * Collapse key (RFC 8030 §5.4): a later push with the same topic replaces
+	 * this one while it is still undelivered. Max 32 URL-safe base64 characters.
+	 */
+	topic?: string;
 };

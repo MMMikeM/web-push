@@ -1,11 +1,3 @@
-/**
- * Web Push notification library.
- *
- * Server-side: VAPID authentication and RFC 8291 encryption
- * Client-side: Push subscription management
- */
-
-// Client-side exports
 export {
 	getCurrentSubscription,
 	getNotificationPermission,
@@ -17,9 +9,7 @@ export {
 	subscribeToPush,
 	unsubscribeFromPush,
 } from "./client";
-// Server-side exports
-export { sendPushNotification } from "./send";
-// Types
+export { sendPushNotification, WebPushError } from "./send";
 export type {
 	Logger,
 	PushPayload,
