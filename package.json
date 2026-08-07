@@ -1,7 +1,7 @@
 {
   "name": "@mmmike/web-push",
-  "version": "0.1.0",
-  "description": "Zero-dependency Web Push library (RFC 8291) for Node.js, Edge, and browsers",
+  "version": "1.0.0",
+  "description": "Zero-dependency Web Push (RFC 8291) for Cloudflare Workers, Deno, Bun, Vercel Edge, Node.js, and browsers \u2014 client subscribe + server send + VAPID.",
   "type": "module",
   "exports": {
     ".": {
@@ -50,10 +50,18 @@
   },
   "keywords": [
     "web-push",
+    "webpush",
     "push-notifications",
+    "notifications",
     "vapid",
     "rfc8291",
-    "edge-runtime"
+    "web-crypto",
+    "service-worker",
+    "edge-runtime",
+    "cloudflare-workers",
+    "deno",
+    "bun",
+    "vercel-edge"
   ],
   "license": "MIT",
   "author": "Mike <mikem.tba@gmail.com>",
