@@ -29,27 +29,26 @@ const EXPECTED_BODY =
 	"mlMoZIIgDll6e3vCYLocInmYWAmS6TlzAC8wEqKK6PBru3jl7A_yl95bQpu6cVPT" +
 	"pK4Mqgkf1CXztLVBSt2Ks3oZwbuwXPXLWyouBWLVWGNWQexSgSxsj_Qulcy4a-fN";
 
-/** The RFC's fixed AS key pair, rebuilt via JWK — WebCrypto has no raw ECDH private import. */
+/** The RFC's fixed AS key pair — the private half via JWK, since WebCrypto has no raw ECDH private import. */
 const importAsKeyPair = async (): Promise<CryptoKeyPair> => {
 	const publicBytes = urlBase64ToUint8Array(AS_PUBLIC);
-	// Raw P-256 public key is 0x04 || x (32) || y (32).
-	const jwk: JsonWebKey = {
-		kty: "EC",
-		crv: "P-256",
-		x: uint8ArrayToUrlBase64(publicBytes.slice(1, 33)),
-		y: uint8ArrayToUrlBase64(publicBytes.slice(33, 65)),
-		ext: true,
-	};
 	const publicKey = await crypto.subtle.importKey(
-		"jwk",
-		jwk,
+		"raw",
+		publicBytes,
 		{ name: "ECDH", namedCurve: "P-256" },
 		true,
 		[],
 	);
+	// Raw P-256 public key is 0x04 || x (32) || y (32).
 	const privateKey = await crypto.subtle.importKey(
 		"jwk",
-		{ ...jwk, d: AS_PRIVATE, key_ops: ["deriveBits"] },
+		{
+			kty: "EC",
+			crv: "P-256",
+			x: uint8ArrayToUrlBase64(publicBytes.slice(1, 33)),
+			y: uint8ArrayToUrlBase64(publicBytes.slice(33, 65)),
+			d: AS_PRIVATE,
+		},
 		{ name: "ECDH", namedCurve: "P-256" },
 		false,
 		["deriveBits"],
@@ -65,9 +64,6 @@ describe("RFC 8291 Appendix A vector", () => {
 
 		const body = await encryptRecord(payload, UA_PUBLIC, AUTH_SECRET, keyPair, salt);
 
-		// 86-byte header (salt 16 + rs 4 + idlen 1 + keyid 65) + 42 plaintext
-		// + 1 delimiter + 16 GCM tag = 144 bytes.
-		expect(body.length).toBe(144);
 		expect(uint8ArrayToUrlBase64(body)).toBe(EXPECTED_BODY);
 	});
 });
