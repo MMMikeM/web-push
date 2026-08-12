@@ -22,7 +22,7 @@ export const urlBase64ToUint8Array = (base64String: string): Uint8Array<ArrayBuf
 		outputArray[i] = rawData.charCodeAt(i);
 	}
 
-	return outputArray as Uint8Array<ArrayBuffer>;
+	return outputArray;
 };
 
 /**

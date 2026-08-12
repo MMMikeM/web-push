@@ -78,7 +78,9 @@ describe("generateVapidKeys", () => {
 			.mockImplementation(async (format: KeyFormat, key: CryptoKey) =>
 				format === "jwk" ? {} : realExport(format as "raw", key),
 			);
-		await expect(generateVapidKeys()).rejects.toThrow(/private scalar/);
+		await expect(generateVapidKeys()).rejects.toThrow(
+			"Generated P-256 key exported without a private scalar",
+		);
 		spy.mockRestore();
 	});
 
@@ -175,7 +177,7 @@ describe("createVapidJwt", () => {
 				privateKey,
 				expiration: 86401,
 			}),
-		).rejects.toThrow(/24 hours/);
+		).rejects.toThrow("VAPID JWT expiration must be between 1 and 86400 seconds (24 hours)");
 	});
 
 	it("rejects a subject that is not a mailto:/https: URI", async () => {
@@ -187,7 +189,7 @@ describe("createVapidJwt", () => {
 				publicKey,
 				privateKey,
 			}),
-		).rejects.toThrow(/subject/i);
+		).rejects.toThrow("VAPID subject must be a 'mailto:' or 'https://' URI");
 	});
 
 	it("rejects a malformed public key", async () => {
@@ -199,7 +201,7 @@ describe("createVapidJwt", () => {
 				publicKey: uint8ArrayToUrlBase64(new Uint8Array(10)),
 				privateKey,
 			}),
-		).rejects.toThrow(/public key/i);
+		).rejects.toThrow("VAPID public key must be a 65-byte uncompressed P-256 point");
 	});
 
 	it("rejects a malformed private key", async () => {
@@ -211,7 +213,7 @@ describe("createVapidJwt", () => {
 				publicKey,
 				privateKey: uint8ArrayToUrlBase64(new Uint8Array(10)),
 			}),
-		).rejects.toThrow(/private key/i);
+		).rejects.toThrow("VAPID private key must be a 32-byte P-256 scalar");
 	});
 
 	it("fails verification against a different public key", async () => {

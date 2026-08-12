@@ -70,7 +70,7 @@ Write comments only for what the code genuinely cannot carry:
 
 - **Spec citations.** `// RFC 8188 §2.1: salt | rs | idlen | keyid` — the magic numbers are meaningless without it.
 - **Why, when the why is surprising.** `test/helpers.ts` re-implements the receiver side instead of calling `src/` — without that note someone "deduplicates" it and destroys the cross-check.
-- **Toolchain and protocol landmines** that look like mistakes and get "fixed" back: the `Uint8Array<ArrayBuffer>` annotation on `concat`, the unused `_input`/`_init` params that give mocks a non-empty call tuple.
+- **Toolchain and protocol landmines** that look like mistakes and get "fixed" back: the `Uint8Array<ArrayBuffer>` annotation on `concat`, the explicit `vi.fn<...>()` type parameters that give mocks a non-empty call tuple.
 - **Security-relevant invariants** — why a bound exists, what breaks without it.
 
 Keep them to a sentence or two. If a comment needs a paragraph, that's usually a signal the design needs the work, not the prose. Config files (`pnpm-workspace.yaml`, workflows) earn slightly more latitude, since YAML has nowhere else to record intent — but the same ceiling applies.

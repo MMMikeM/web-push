@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, describe, expect, it, Mock, vi } from "vite-plus/test";
 import {
 	getCurrentSubscription,
 	getNotificationPermission,
@@ -12,10 +12,10 @@ import {
 } from "../src/client";
 import { uint8ArrayToUrlBase64, urlBase64ToUint8Array } from "../src/vapid";
 
-type FakeSubscription = {
-	endpoint: string;
-	unsubscribe: ReturnType<typeof vi.fn>;
-	getKey: (name: string) => ArrayBuffer;
+// A real PushSubscription, so fakes pass into client.ts without casts; the
+// intersection keeps `unsubscribe` a typed mock the tests can assert on.
+type FakeSubscription = PushSubscription & {
+	unsubscribe: Mock<() => Promise<boolean>>;
 };
 
 const makeSubscription = (
@@ -24,8 +24,12 @@ const makeSubscription = (
 	auth = new Uint8Array([9, 8, 7]),
 ): FakeSubscription => ({
 	endpoint,
-	unsubscribe: vi.fn(async () => true),
-	getKey: (name: string) => (name === "p256dh" ? p256dh.buffer : auth.buffer) as ArrayBuffer,
+	expirationTime: null,
+	options: { applicationServerKey: null, userVisibleOnly: true },
+	unsubscribe: vi.fn<() => Promise<boolean>>(async () => true),
+	getKey: (name: PushEncryptionKeyName) =>
+		(name === "p256dh" ? p256dh.buffer : auth.buffer),
+	toJSON: () => ({ endpoint, expirationTime: null, keys: {} }),
 });
 
 type EnvOptions = {
@@ -35,27 +39,31 @@ type EnvOptions = {
 	created?: FakeSubscription;
 };
 
+function PushManager() { }
+
 /** Stub the browser push globals client.ts reaches for. */
 const setupPushEnv = (opts: EnvOptions = {}) => {
 	const { supported = true, permission = "granted", existing = null } = opts;
 	const created = opts.created ?? makeSubscription("https://push.example.com/sub/new");
 
 	const pushManager = {
-		getSubscription: vi.fn(async () => existing),
-		subscribe: vi.fn(async (_options?: PushSubscriptionOptionsInit) => created),
+		getSubscription: vi.fn<() => Promise<FakeSubscription | null>>(async () => existing),
+		subscribe: vi.fn<(options?: PushSubscriptionOptionsInit) => Promise<FakeSubscription>>(
+			async () => created,
+		),
 	};
 	const registration = { pushManager };
 
 	const NotificationStub = {
 		permission,
-		requestPermission: vi.fn(async () => permission),
+		requestPermission: vi.fn<() => Promise<NotificationPermission>>(async () => permission),
 	};
 
 	// `in window` / `in navigator` checks drive isPushSupported.
 	const windowStub: Record<string, unknown> = { Notification: NotificationStub };
 	const navigatorStub: Record<string, unknown> = {};
 	if (supported) {
-		windowStub.PushManager = function PushManager() {};
+		windowStub.PushManager = PushManager;
 		navigatorStub.serviceWorker = { ready: Promise.resolve(registration) };
 	}
 
@@ -97,14 +105,14 @@ describe("feature detection & permission", () => {
 describe("subscribeToPush", () => {
 	it("returns null and warns when push is unsupported", async () => {
 		setupPushEnv({ supported: false });
-		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => { });
 		expect(await subscribeToPush("BPk")).toBeNull();
 		expect(warn).toHaveBeenCalledWith("Push notifications not supported");
 	});
 
 	it("returns null and warns when permission is denied", async () => {
 		setupPushEnv({ permission: "denied" });
-		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => { });
 		expect(await subscribeToPush("BPk")).toBeNull();
 		expect(warn).toHaveBeenCalledWith("Notification permission denied");
 	});
@@ -124,12 +132,10 @@ describe("subscribeToPush", () => {
 
 		expect(result).toBe(created);
 		expect(pushManager.subscribe).toHaveBeenCalledOnce();
-		const arg = pushManager.subscribe.mock.calls[0][0] as {
-			userVisibleOnly: boolean;
-			applicationServerKey: Uint8Array;
-		};
-		expect(arg.userVisibleOnly).toBe(true);
-		expect(new Uint8Array(arg.applicationServerKey)).toEqual(urlBase64ToUint8Array(vapidPublicKey));
+		expect(pushManager.subscribe).toHaveBeenCalledWith({
+			userVisibleOnly: true,
+			applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+		});
 	});
 });
 
@@ -164,45 +170,47 @@ describe("serializeSubscription", () => {
 		const auth = new Uint8Array([250, 251, 252]);
 		const sub = makeSubscription("https://push.example.com/x", p256dh, auth);
 
-		const out = serializeSubscription(sub as unknown as PushSubscription);
+		const out = serializeSubscription(sub);
 		expect(out.endpoint).toBe("https://push.example.com/x");
 		expect(out.keys.p256dh).toBe(uint8ArrayToUrlBase64(p256dh));
 		expect(out.keys.auth).toBe(uint8ArrayToUrlBase64(auth));
 	});
 
 	it.each(["p256dh", "auth"])("throws a named error when %s is missing", (missing) => {
-		const sub = {
-			endpoint: "https://push.example.com/x",
-			getKey: (name: string) => (name === missing ? null : new Uint8Array([1, 2]).buffer),
+		const sub: PushSubscription = {
+			...makeSubscription("https://push.example.com/x"),
+			getKey: (name) => (name === missing ? null : (new Uint8Array([1, 2]).buffer)),
 		};
-		expect(() => serializeSubscription(sub as unknown as PushSubscription)).toThrow(
-			new RegExp(`missing its ${missing} key`),
+		expect(() => serializeSubscription(sub)).toThrow(
+			`Subscription is missing its ${missing} key`,
 		);
 	});
 });
 
+const stubFetch = (status = 200) => {
+	// The explicit type parameter keeps `mock.calls[0]` a two-element tuple; see
+	// the same note in send.test.ts.
+	const mock = vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(
+		async () => new Response("", { status }),
+	);
+	vi.stubGlobal("fetch", mock);
+	return mock;
+};
+
 describe("server sync helpers", () => {
-	const stubFetch = (status = 200) => {
-		// Params declared so `mock.calls[0]` is a two-element tuple; see the same
-		// note in send.test.ts.
-		const mock = vi.fn(
-			async (_input: string | URL | Request, _init?: RequestInit) => new Response("", { status }),
-		);
-		vi.stubGlobal("fetch", mock);
-		return mock;
-	};
 
 	it("sendSubscriptionToServer POSTs the serialized subscription", async () => {
 		const mock = stubFetch(200);
 		const sub = makeSubscription("https://push.example.com/y");
-		const ok = await sendSubscriptionToServer(sub as unknown as PushSubscription);
+		const ok = await sendSubscriptionToServer(sub);
 		expect(ok).toBe(true);
 
-		const [url, init] = mock.mock.calls[0] as [string, RequestInit];
+		const [url, init] = mock.mock.calls[0]
 		expect(url).toBe("/api/push/subscribe");
-		expect(init.method).toBe("POST");
-		expect((init.headers as Record<string, string>)["Content-Type"]).toBe("application/json");
-		const body = JSON.parse(init.body as string);
+		expect(init?.method).toBe("POST");
+		const headers = init?.headers as Record<string, string> | undefined;
+		expect(headers?.["Content-Type"]).toBe("application/json");
+		const body = JSON.parse(init?.body as string);
 		expect(body.endpoint).toBe("https://push.example.com/y");
 		expect(body.keys).toHaveProperty("p256dh");
 	});
@@ -210,7 +218,7 @@ describe("server sync helpers", () => {
 	it("sendSubscriptionToServer honors a custom endpoint and returns response.ok", async () => {
 		const mock = stubFetch(500);
 		const sub = makeSubscription();
-		const ok = await sendSubscriptionToServer(sub as unknown as PushSubscription, "/custom");
+		const ok = await sendSubscriptionToServer(sub, "/custom");
 		expect(ok).toBe(false);
 		expect(mock.mock.calls[0][0]).toBe("/custom");
 	});
@@ -220,10 +228,10 @@ describe("server sync helpers", () => {
 		const ok = await removeSubscriptionFromServer("https://push.example.com/z");
 		expect(ok).toBe(true);
 
-		const [url, init] = mock.mock.calls[0] as [string, RequestInit];
+		const [url, init] = mock.mock.calls[0];
 		expect(url).toBe("/api/push/subscribe");
-		expect(init.method).toBe("DELETE");
-		expect(JSON.parse(init.body as string)).toEqual({
+		expect(init?.method).toBe("DELETE");
+		expect(JSON.parse(init?.body as string)).toEqual({
 			endpoint: "https://push.example.com/z",
 		});
 	});

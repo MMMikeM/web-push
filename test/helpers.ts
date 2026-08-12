@@ -66,9 +66,9 @@ type Aes128gcmBody = {
 const parseAes128gcmBody = (body: Uint8Array): Aes128gcmBody => {
 	const idlen = body[20];
 	return {
-		salt: body.slice(0, 16) as Uint8Array<ArrayBuffer>,
-		serverPublicKey: body.slice(21, 21 + idlen) as Uint8Array<ArrayBuffer>,
-		ciphertext: body.slice(21 + idlen) as Uint8Array<ArrayBuffer>,
+		salt: body.slice(0, 16),
+		serverPublicKey: body.slice(21, 21 + idlen),
+		ciphertext: body.slice(21 + idlen),
 	};
 };
 

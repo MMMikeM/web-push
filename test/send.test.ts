@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, beforeAll, describe, expect, it, Mock, vi } from "vite-plus/test";
 import { sendPushNotification, WebPushError } from "../src/send";
 import type { PushSubscriptionData, VapidConfig } from "../src/types";
 import { generateVapidKeys, uint8ArrayToUrlBase64 } from "../src/vapid";
@@ -21,14 +21,13 @@ const subscription = (): PushSubscriptionData => ({
 	keys: { p256dh: client.p256dh, auth: client.auth },
 });
 
-const stubFetch = (status = 201, statusText = "", headers?: Record<string, string>) => {
+const stubFetch = (status = 201, statusText = "", headers?: Record<string, string>): Mock<(_input: string | URL | Request, _init?: RequestInit) => Promise<Response>> => {
 	// 204/304/1xx must be constructed with a null body or Response throws.
 	const noBody = status === 204 || status === 304 || (status >= 100 && status < 200);
-	// Params are declared but unused: without them `mock.calls` types as an empty
-	// tuple and every `calls[0][1]` below fails to compile.
-	const mock = vi.fn(
-		async (_input: string | URL | Request, _init?: RequestInit) =>
-			new Response(noBody ? null : "err-body", { status, statusText, headers }),
+	// The explicit type parameter keeps `mock.calls` a two-element tuple; without
+	// it the tuple types as empty and every `calls[0][1]` below fails to compile.
+	const mock = vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(
+		async () => new Response(noBody ? null : "err-body", { status, statusText, headers }),
 	);
 	vi.stubGlobal("fetch", mock);
 	return mock;
@@ -54,9 +53,9 @@ describe("sendPushNotification — request shape & encryption", () => {
 		expect(ok).toBe(true);
 		expect(mock).toHaveBeenCalledOnce();
 
-		const [url, init] = mock.mock.calls[0] as [string, RequestInit];
+		const [url, init] = mock.mock.calls[0];
 		expect(url).toBe(ENDPOINT);
-		expect(init.method).toBe("POST");
+		expect(init?.method).toBe("POST");
 
 		const h = headersOf(mock);
 		expect(h["Content-Encoding"]).toBe("aes128gcm");
@@ -142,7 +141,7 @@ describe("sendPushNotification — options", () => {
 
 	it("logs the response via logger.debug", async () => {
 		stubFetch(201);
-		const debug = vi.fn();
+		const debug = vi.fn<(message: string, data?: Record<string, unknown>) => void>();
 		await sendPushNotification(subscription(), payload, vapid, { logger: { debug } });
 		expect(debug).toHaveBeenCalledWith("Push response", expect.objectContaining({ status: 201 }));
 	});
@@ -171,7 +170,7 @@ describe("sendPushNotification — options", () => {
 		stubFetch(201);
 		await expect(
 			sendPushNotification(subscription(), payload, vapid, { vapidExpiration: 90000 }),
-		).rejects.toThrow(/24 hours/);
+		).rejects.toThrow("VAPID JWT expiration must be between 1 and 86400 seconds (24 hours)");
 	});
 
 	it("sets Urgency and Topic headers when provided", async () => {
@@ -197,7 +196,7 @@ describe("sendPushNotification — options", () => {
 		stubFetch(201);
 		await expect(
 			sendPushNotification(subscription(), payload, vapid, { topic: "a".repeat(33) }),
-		).rejects.toThrow(/Topic/);
+		).rejects.toThrow("Topic must be 1-32 URL-safe base64 characters");
 	});
 });
 
@@ -217,7 +216,7 @@ describe("sendPushNotification — payload size & validation", () => {
 		stubFetch(201);
 		const body = "a".repeat(3994 - OVERHEAD);
 		await expect(sendPushNotification(subscription(), { title: "", body }, vapid)).rejects.toThrow(
-			/too large|payload/i,
+			/^Payload too large: \d+ bytes exceeds the 3993-byte single-record limit$/,
 		);
 	});
 
@@ -227,7 +226,7 @@ describe("sendPushNotification — payload size & validation", () => {
 			endpoint: "not a url",
 			keys: { p256dh: client.p256dh, auth: client.auth },
 		};
-		await expect(sendPushNotification(bad, payload, vapid)).rejects.toThrow();
+		await expect(sendPushNotification(bad, payload, vapid)).rejects.toThrow("Invalid URL");
 	});
 
 	it("rejects an invalid p256dh key with a clear error", async () => {
@@ -236,7 +235,9 @@ describe("sendPushNotification — payload size & validation", () => {
 			endpoint: ENDPOINT,
 			keys: { p256dh: uint8ArrayToUrlBase64(new Uint8Array(10)), auth: client.auth },
 		};
-		await expect(sendPushNotification(bad, payload, vapid)).rejects.toThrow(/p256dh/);
+		await expect(sendPushNotification(bad, payload, vapid)).rejects.toThrow(
+			"Invalid subscription p256dh key: expected a 65-byte uncompressed P-256 public key",
+		);
 	});
 
 	it("rejects a too-short auth secret with a clear error", async () => {
@@ -245,6 +246,8 @@ describe("sendPushNotification — payload size & validation", () => {
 			endpoint: ENDPOINT,
 			keys: { p256dh: client.p256dh, auth: uint8ArrayToUrlBase64(new Uint8Array(8)) },
 		};
-		await expect(sendPushNotification(bad, payload, vapid)).rejects.toThrow(/auth/);
+		await expect(sendPushNotification(bad, payload, vapid)).rejects.toThrow(
+			"Invalid subscription auth secret: expected at least 16 bytes",
+		);
 	});
 });
