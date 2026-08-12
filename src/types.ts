@@ -50,6 +50,33 @@ export type Logger = {
 };
 
 /**
+ * Options for sending one notification to many subscriptions: everything in
+ * {@link SendPushOptions}, plus the concurrency bound.
+ */
+export type SendPushBatchOptions = SendPushOptions & {
+	/** Maximum sends in flight at once (default: 100) */
+	concurrency?: number;
+};
+
+/**
+ * The outcome of a batch send, sorted by what to do next: log `delivered`,
+ * delete `gone` from your store, inspect `failed`.
+ */
+export type SendPushBatchResult = {
+	/** How many sends the push service accepted */
+	delivered: number;
+	/** Endpoints the push service reported gone (404/410) — delete these */
+	gone: string[];
+	/**
+	 * Sends that did not deliver, each with its error: a `WebPushError` for a
+	 * push-service rejection (carrying `statusCode` and `retryAfter`), a
+	 * `TypeError` when `fetch` never reached the service, any other `Error`
+	 * for a malformed subscription.
+	 */
+	failed: { endpoint: string; error: unknown }[];
+};
+
+/**
  * Options for sending a push notification.
  */
 export type SendPushOptions = {

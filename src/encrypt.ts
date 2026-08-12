@@ -36,6 +36,20 @@ const MAX_PAYLOAD_BYTES = RECORD_SIZE - HEADER_LENGTH - 1 - GCM_TAG_LENGTH;
 
 const encoder = new TextEncoder();
 
+/**
+ * Split from {@link validatePushInputs} so a batch send can reject an
+ * oversized payload once, up front, rather than once per subscription.
+ *
+ * @throws {Error} if the payload exceeds the single-record limit.
+ */
+export const assertPayloadWithinLimit = (payload: Uint8Array): void => {
+	if (payload.length > MAX_PAYLOAD_BYTES) {
+		throw new Error(
+			`Payload too large: ${payload.length} bytes exceeds the ${MAX_PAYLOAD_BYTES}-byte single-record limit`,
+		);
+	}
+};
+
 const concat = (...parts: Uint8Array[]): Uint8Array<ArrayBuffer> => {
 	const out = new Uint8Array(parts.reduce((total, part) => total + part.length, 0));
 	let offset = 0;
@@ -60,11 +74,7 @@ export const validatePushInputs = (
 	p256dhKey: string,
 	authSecret: string,
 ): { clientPublicKeyBytes: Uint8Array<ArrayBuffer>; authSecretBytes: Uint8Array<ArrayBuffer> } => {
-	if (payload.length > MAX_PAYLOAD_BYTES) {
-		throw new Error(
-			`Payload too large: ${payload.length} bytes exceeds the ${MAX_PAYLOAD_BYTES}-byte single-record limit`,
-		);
-	}
+	assertPayloadWithinLimit(payload);
 
 	const clientPublicKeyBytes = urlBase64ToUint8Array(p256dhKey);
 	if (

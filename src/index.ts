@@ -10,11 +10,13 @@ export {
 	unsubscribeFromPush,
 } from "./client";
 export type { SubscribeResult } from "./client";
-export { sendPushNotification, WebPushError } from "./send";
+export { sendPushBatch, sendPushNotification, WebPushError } from "./send";
 export type {
 	Logger,
 	PushPayload,
 	PushSubscriptionData,
+	SendPushBatchOptions,
+	SendPushBatchResult,
 	SendPushOptions,
 	VapidConfig,
 } from "./types";
