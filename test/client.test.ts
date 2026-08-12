@@ -27,8 +27,7 @@ const makeSubscription = (
 	expirationTime: null,
 	options: { applicationServerKey: null, userVisibleOnly: true },
 	unsubscribe: vi.fn<() => Promise<boolean>>(async () => true),
-	getKey: (name: PushEncryptionKeyName) =>
-		(name === "p256dh" ? p256dh.buffer : auth.buffer),
+	getKey: (name: PushEncryptionKeyName) => (name === "p256dh" ? p256dh.buffer : auth.buffer),
 	toJSON: () => ({ endpoint, expirationTime: null, keys: {} }),
 });
 
@@ -39,7 +38,7 @@ type EnvOptions = {
 	created?: FakeSubscription;
 };
 
-function PushManager() { }
+function PushManager() {}
 
 /** Stub the browser push globals client.ts reaches for. */
 const setupPushEnv = (opts: EnvOptions = {}) => {
@@ -105,14 +104,14 @@ describe("feature detection & permission", () => {
 describe("subscribeToPush", () => {
 	it("returns null and warns when push is unsupported", async () => {
 		setupPushEnv({ supported: false });
-		const warn = vi.spyOn(console, "warn").mockImplementation(() => { });
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 		expect(await subscribeToPush("BPk")).toBeNull();
 		expect(warn).toHaveBeenCalledWith("Push notifications not supported");
 	});
 
 	it("returns null and warns when permission is denied", async () => {
 		setupPushEnv({ permission: "denied" });
-		const warn = vi.spyOn(console, "warn").mockImplementation(() => { });
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 		expect(await subscribeToPush("BPk")).toBeNull();
 		expect(warn).toHaveBeenCalledWith("Notification permission denied");
 	});
@@ -179,11 +178,9 @@ describe("serializeSubscription", () => {
 	it.each(["p256dh", "auth"])("throws a named error when %s is missing", (missing) => {
 		const sub: PushSubscription = {
 			...makeSubscription("https://push.example.com/x"),
-			getKey: (name) => (name === missing ? null : (new Uint8Array([1, 2]).buffer)),
+			getKey: (name) => (name === missing ? null : new Uint8Array([1, 2]).buffer),
 		};
-		expect(() => serializeSubscription(sub)).toThrow(
-			`Subscription is missing its ${missing} key`,
-		);
+		expect(() => serializeSubscription(sub)).toThrow(`Subscription is missing its ${missing} key`);
 	});
 });
 
@@ -198,14 +195,13 @@ const stubFetch = (status = 200) => {
 };
 
 describe("server sync helpers", () => {
-
 	it("sendSubscriptionToServer POSTs the serialized subscription", async () => {
 		const mock = stubFetch(200);
 		const sub = makeSubscription("https://push.example.com/y");
 		const ok = await sendSubscriptionToServer(sub);
 		expect(ok).toBe(true);
 
-		const [url, init] = mock.mock.calls[0]
+		const [url, init] = mock.mock.calls[0];
 		expect(url).toBe("/api/push/subscribe");
 		expect(init?.method).toBe("POST");
 		const headers = init?.headers as Record<string, string> | undefined;

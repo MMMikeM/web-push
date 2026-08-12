@@ -10,8 +10,8 @@ export default defineConfig({
 		plugins: ["typescript", "unicorn", "oxc", "node", "promise", "vitest", "import", "eslint"],
 		categories: {
 			correctness: "error",
-			"perf": "error",
-			"suspicious": "error"
+			perf: "error",
+			suspicious: "error",
 		},
 		rules: {
 			eqeqeq: "error",
@@ -36,8 +36,8 @@ export default defineConfig({
 		dts: true,
 		clean: true,
 		attw: {
-			profile: "esm-only"
+			profile: "esm-only",
 		},
-		publint: true
+		publint: true,
 	},
 });

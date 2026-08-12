@@ -21,7 +21,11 @@ const subscription = (): PushSubscriptionData => ({
 	keys: { p256dh: client.p256dh, auth: client.auth },
 });
 
-const stubFetch = (status = 201, statusText = "", headers?: Record<string, string>): Mock<(_input: string | URL | Request, _init?: RequestInit) => Promise<Response>> => {
+const stubFetch = (
+	status = 201,
+	statusText = "",
+	headers?: Record<string, string>,
+): Mock<(_input: string | URL | Request, _init?: RequestInit) => Promise<Response>> => {
 	// 204/304/1xx must be constructed with a null body or Response throws.
 	const noBody = status === 204 || status === 304 || (status >= 100 && status < 200);
 	// The explicit type parameter keeps `mock.calls` a two-element tuple; without
