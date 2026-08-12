@@ -92,7 +92,6 @@ const assertValidTimeout = (timeoutMs: number): void => {
 	}
 };
 
-/** Every request gets the timeout; the caller's signal, when present, joins it. */
 const requestSignal = (signal: AbortSignal | undefined, timeoutMs: number): AbortSignal =>
 	signal
 		? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)])
@@ -181,6 +180,11 @@ const postToPushService = async (
  * @returns true if successful, false if subscription is invalid (should be deleted)
  * @throws {WebPushError} on rate limits (429) and other push service errors
  * @throws {Error} on invalid input: VAPID config, payload size, `topic`, `timeoutMs`
+ * @example
+ * ```ts
+ * const delivered = await sendPushNotification(subscription, payload, vapid);
+ * if (!delivered) await removeFromStore(subscription.endpoint);
+ * ```
  */
 export const sendPushNotification = async (
 	subscription: PushSubscriptionData,

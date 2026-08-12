@@ -50,6 +50,8 @@ export const assertPayloadWithinLimit = (payload: Uint8Array): void => {
 	}
 };
 
+// Return type is not bare `Uint8Array`: that widens to `ArrayBufferLike`, which
+// WebCrypto's `BufferSource` rejects.
 const concat = (...parts: Uint8Array[]): Uint8Array<ArrayBuffer> => {
 	const out = new Uint8Array(parts.reduce((total, part) => total + part.length, 0));
 	let offset = 0;

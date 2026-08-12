@@ -21,8 +21,8 @@ describe("urlBase64ToUint8Array", () => {
 	});
 
 	it("adds padding for lengths that are 2 or 3 mod 4", () => {
-		expect(new TextDecoder().decode(urlBase64ToUint8Array("TWE"))).toBe("Ma"); // len 3
-		expect(new TextDecoder().decode(urlBase64ToUint8Array("TQ"))).toBe("M"); // len 2
+		expect(new TextDecoder().decode(urlBase64ToUint8Array("TWE"))).toBe("Ma");
+		expect(new TextDecoder().decode(urlBase64ToUint8Array("TQ"))).toBe("M");
 	});
 
 	it("maps URL-safe chars '-' and '_' back to '+' and '/'", () => {

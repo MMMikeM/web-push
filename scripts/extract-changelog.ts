@@ -1,7 +1,5 @@
 // Extract one version's section from CHANGELOG.md, for use as GitHub Release notes.
 //
-//   node scripts/extract-changelog.ts <version> [changelogPath]
-//
 // Runs directly under Node's type stripping (unflagged since 22.18 / 23.6), so
 // this file sticks to erasable syntax — tsconfig.tools.json enforces that.
 import { readFileSync } from "node:fs";
@@ -14,7 +12,6 @@ if (!version) {
 	process.exit(2);
 }
 
-/** Body under the `## [<target>]` heading, up to the next `## [`. `null` if absent. */
 const versionSection = (lines: string[], target: string): string | null => {
 	const escaped = target.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 	const heading = new RegExp(`^##\\s+\\[${escaped}\\]`);

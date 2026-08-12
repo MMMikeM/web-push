@@ -20,7 +20,7 @@ const subscription = (endpoint: string): PushSubscriptionData => ({
 	keys: { p256dh: client.p256dh, auth: client.auth },
 });
 
-/** Stub `fetch` to answer each endpoint with its own status; returns the mock. */
+/** Stub `fetch` per endpoint; endpoints missing from the map answer 201. */
 const stubFetchByEndpoint = (
 	statusByEndpoint: Record<string, number>,
 ): ReturnType<typeof stubFetch> => {

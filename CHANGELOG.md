@@ -29,7 +29,7 @@ than hiding under a pre-1.0 minor.
   connection and never responds releases its pool slot instead of holding it for
   the platform's limit. Aborting `signal` also stops a batch from starting new
   sends.
-- **Test suite (Vitest).** 133 tests across the codec, VAPID key generation and JWT
+- **Test suite (Vitest).** 134 tests across the codec, VAPID key generation and JWT
   signing, aes128gcm encryption, and the browser client flow, including an
   independent round-trip decrypt, the RFC 8291 Appendix A known-answer vector,
   ES256 verification of the actual `Authorization` JWT, and random-input sweeps

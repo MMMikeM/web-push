@@ -21,7 +21,7 @@ JSDoc says what the caller needs and nothing more:
 - Lead with what it does, in one line.
 - `@param` only when the name and type don't already say it — skip `@param subscription The subscription`.
 - `@throws` whenever it can throw. Callers can't see that from the signature.
-- `@example` on primary entry points only (`sendPushNotification`, `subscribeToPush`, `generateVapidKeys`).
+- `@example` on primary entry points only (`sendPushNotification`, `sendPushBatch`, `subscribeToPush`, `generateVapidKeys`).
 - Never restate the type signature in prose. TypeScript already published it.
 
 ## Comments

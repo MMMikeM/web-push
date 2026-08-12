@@ -59,7 +59,11 @@ describe("sendPushNotification — request shape & encryption", () => {
 		expect(h.Authorization).toMatch(/^vapid t=.+, k=.+$/);
 		expect(h.Authorization).toContain(`k=${vapid.publicKey}`);
 		expect(await verifyJwtSignature(vapidJwtOf(mock), vapid.publicKey)).toBe(true);
-		// The aud claim must be the push service origin, not the full endpoint.
+	});
+
+	it("signs the VAPID aud claim as the push service origin, not the full endpoint", async () => {
+		const mock = stubFetch(201);
+		await sendPushNotification(subscription(), payload, vapid);
 		expect(vapidClaimsOf(mock).aud).toBe("https://fcm.googleapis.com");
 	});
 
@@ -71,7 +75,7 @@ describe("sendPushNotification — request shape & encryption", () => {
 		expect(body.length).toBeGreaterThan(21 + 65);
 		const rs = new DataView(body.buffer, body.byteOffset, body.byteLength).getUint32(16, false);
 		expect(rs).toBe(4096);
-		expect(body[20]).toBe(65); // keyid length
+		expect(body[20]).toBe(65);
 	});
 
 	it("round-trips the payload: the browser could decrypt it (RFC 8291)", async () => {

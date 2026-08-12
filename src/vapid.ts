@@ -43,6 +43,12 @@ export const uint8ArrayToUrlBase64 = (array: Uint8Array): string => {
 /**
  * Generate a new VAPID key pair using ECDSA P-256.
  * Returns keys as URL-safe base64 strings.
+ *
+ * @example
+ * ```ts
+ * const { publicKey, privateKey } = await generateVapidKeys();
+ * console.log({ publicKey, privateKey });
+ * ```
  */
 export const generateVapidKeys = async (): Promise<{
 	publicKey: string;

@@ -17,9 +17,7 @@ export type PushSubscriptionData = {
  * Payload to send in a push notification.
  */
 export type PushPayload = {
-	/** Notification title */
 	title: string;
-	/** Notification body text */
 	body: string;
 	/** URL to open when notification is clicked */
 	url?: string;
@@ -80,7 +78,6 @@ export type SendPushBatchResult = {
  * Options for sending a push notification.
  */
 export type SendPushOptions = {
-	/** Optional logger for debugging */
 	logger?: Logger;
 	/** TTL in seconds (default: 86400 = 24 hours) */
 	ttl?: number;

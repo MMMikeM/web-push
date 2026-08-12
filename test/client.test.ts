@@ -44,7 +44,6 @@ type EnvOptions = {
 
 function PushManager() {}
 
-/** Stub the browser push globals client.ts reaches for. */
 const setupPushEnv = (opts: EnvOptions = {}) => {
 	const {
 		serviceWorker = true,

@@ -21,8 +21,6 @@ export const getNotificationPermission = (): NotificationPermission => Notificat
 
 /**
  * Request permission to show notifications.
- *
- * @returns The permission result
  */
 export const requestNotificationPermission = (): Promise<NotificationPermission> =>
 	Notification.requestPermission();
@@ -163,9 +161,6 @@ const sendJson = async (endpoint: string, method: string, body: unknown): Promis
 
 /**
  * Send a push subscription to a server endpoint.
- *
- * @param subscription - The browser's push subscription
- * @param endpoint - The server endpoint URL (default: /api/push/subscribe)
  */
 export const sendSubscriptionToServer = async (
 	subscription: PushSubscription,
@@ -174,17 +169,11 @@ export const sendSubscriptionToServer = async (
 
 /**
  * Remove a push subscription from a server endpoint.
- *
- * @param subscriptionEndpoint - The subscription endpoint to remove
- * @param serverEndpoint - The server API endpoint URL (default: /api/push/subscribe)
  */
 export const removeSubscriptionFromServer = (
 	subscriptionEndpoint: string,
 	serverEndpoint = "/api/push/subscribe",
 ): Promise<boolean> => sendJson(serverEndpoint, "DELETE", { endpoint: subscriptionEndpoint });
 
-/**
- * Convert an ArrayBuffer to URL-safe base64.
- */
 const arrayBufferToUrlBase64 = (buffer: ArrayBuffer): string =>
 	uint8ArrayToUrlBase64(new Uint8Array(buffer));
