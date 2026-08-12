@@ -1,29 +1,15 @@
-import { describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import {
 	createVapidJwt,
 	generateVapidKeys,
 	uint8ArrayToUrlBase64,
 	urlBase64ToUint8Array,
 } from "../src/vapid";
-import { decodeJwtSegment } from "./helpers";
+import { decodeJwtSegment, verifyJwtSignature } from "./helpers";
 
-/** Verify a JWT's ES256 signature against a URL-safe base64 P-256 public key. */
-const verifyJwtSignature = async (jwt: string, publicKey: string): Promise<boolean> => {
-	const [header, claims, signature] = jwt.split(".");
-	const verifyKey = await crypto.subtle.importKey(
-		"raw",
-		urlBase64ToUint8Array(publicKey),
-		{ name: "ECDSA", namedCurve: "P-256" },
-		false,
-		["verify"],
-	);
-	return crypto.subtle.verify(
-		{ name: "ECDSA", hash: "SHA-256" },
-		verifyKey,
-		urlBase64ToUint8Array(signature),
-		new TextEncoder().encode(`${header}.${claims}`),
-	);
-};
+afterEach(() => {
+	vi.restoreAllMocks();
+});
 
 describe("urlBase64ToUint8Array", () => {
 	it("returns an empty array for an empty string", () => {
@@ -44,6 +30,14 @@ describe("urlBase64ToUint8Array", () => {
 		const bytes = urlBase64ToUint8Array("-_-_");
 		expect(Array.from(bytes)).toEqual([0xfb, 0xff, 0xbf]);
 	});
+
+	it("throws on characters outside the base64url alphabet", () => {
+		expect(() => urlBase64ToUint8Array("@@@@")).toThrow("Invalid character");
+	});
+
+	it("throws on a length that no base64 encoding can produce (1 mod 4)", () => {
+		expect(() => urlBase64ToUint8Array("AQIDA")).toThrow("Invalid character");
+	});
 });
 
 describe("uint8ArrayToUrlBase64", () => {
@@ -55,9 +49,25 @@ describe("uint8ArrayToUrlBase64", () => {
 		expect(out).not.toContain("/");
 	});
 
+	it("strips the padding std base64 adds for 1- and 2-mod-3 lengths", () => {
+		expect(uint8ArrayToUrlBase64(new Uint8Array([0x01]))).toBe("AQ"); // std: "AQ=="
+		expect(uint8ArrayToUrlBase64(new Uint8Array([0x01, 0x02]))).toBe("AQI"); // std: "AQI="
+	});
+
 	it("round-trips arbitrary bytes", () => {
 		const original = crypto.getRandomValues(new Uint8Array(200));
 		expect(urlBase64ToUint8Array(uint8ArrayToUrlBase64(original))).toEqual(original);
+	});
+
+	it("round-trips random bytes at every length 0-66", () => {
+		// Covers every length mod 3 / mod 4 class — the fixed vectors cluster on
+		// lengths that never pad, which is how the padding-strip mutant survived.
+		for (let length = 0; length <= 66; length++) {
+			const bytes = crypto.getRandomValues(new Uint8Array(length));
+			const encoded = uint8ArrayToUrlBase64(bytes);
+			expect(encoded).toMatch(/^[A-Za-z0-9_-]*$/);
+			expect(urlBase64ToUint8Array(encoded)).toEqual(bytes);
+		}
 	});
 
 	it("encodes a large array without a stack overflow", () => {
@@ -66,22 +76,22 @@ describe("uint8ArrayToUrlBase64", () => {
 		const big = new Uint8Array(200_000);
 		for (let i = 0; i < big.length; i++) big[i] = i % 256;
 		const encoded = uint8ArrayToUrlBase64(big);
-		expect(urlBase64ToUint8Array(encoded)).toEqual(big);
+		// A string round-trip, not a 200k-element toEqual — the deep compare costs
+		// ~270ms of assertion overhead for identical coverage.
+		expect(uint8ArrayToUrlBase64(urlBase64ToUint8Array(encoded))).toBe(encoded);
 	});
 });
 
 describe("generateVapidKeys", () => {
 	it("throws if the runtime exports a private key without its scalar", async () => {
 		const realExport = crypto.subtle.exportKey.bind(crypto.subtle);
-		const spy = vi
-			.spyOn(crypto.subtle, "exportKey")
-			.mockImplementation(async (format: KeyFormat, key: CryptoKey) =>
+		vi.spyOn(crypto.subtle, "exportKey").mockImplementation(
+			async (format: KeyFormat, key: CryptoKey) =>
 				format === "jwk" ? {} : realExport(format as "raw", key),
-			);
+		);
 		await expect(generateVapidKeys()).rejects.toThrow(
 			"Generated P-256 key exported without a private scalar",
 		);
-		spy.mockRestore();
 	});
 
 	it("returns a 65-byte uncompressed public key and 32-byte private scalar", async () => {
@@ -129,8 +139,8 @@ describe("createVapidJwt", () => {
 		});
 		const after = Math.floor(Date.now() / 1000);
 
-		const [h, p, s] = jwt.split(".");
-		expect(h && p && s).toBeTruthy();
+		expect(jwt.split(".")).toHaveLength(3);
+		const [h, p] = jwt.split(".");
 
 		expect(decodeJwtSegment(h)).toEqual({ typ: "JWT", alg: "ES256" });
 
@@ -150,9 +160,10 @@ describe("createVapidJwt", () => {
 			publicKey,
 			privateKey,
 		});
+		const after = Math.floor(Date.now() / 1000);
 		const claims = decodeJwtSegment(jwt.split(".")[1]) as { exp: number };
 		expect(claims.exp).toBeGreaterThanOrEqual(before + 43200);
-		expect(claims.exp).toBeLessThanOrEqual(before + 43200 + 5);
+		expect(claims.exp).toBeLessThanOrEqual(after + 43200);
 	});
 
 	it("produces a signature verifiable with the VAPID public key", async () => {
@@ -180,6 +191,42 @@ describe("createVapidJwt", () => {
 		).rejects.toThrow("VAPID JWT expiration must be between 1 and 86400 seconds (24 hours)");
 	});
 
+	it.each([0, -3600])("rejects a non-positive expiration (%i)", async (expiration) => {
+		const { publicKey, privateKey } = await generateVapidKeys();
+		await expect(
+			createVapidJwt({
+				audience: "https://example.com",
+				subject: "mailto:a@b.com",
+				publicKey,
+				privateKey,
+				expiration,
+			}),
+		).rejects.toThrow("VAPID JWT expiration must be between 1 and 86400 seconds (24 hours)");
+	});
+
+	it("accepts an expiration of exactly 24 hours (86400s)", async () => {
+		const { publicKey, privateKey } = await generateVapidKeys();
+		const jwt = await createVapidJwt({
+			audience: "https://example.com",
+			subject: "mailto:a@b.com",
+			publicKey,
+			privateKey,
+			expiration: 86400,
+		});
+		expect(jwt.split(".")).toHaveLength(3);
+	});
+
+	it("accepts an https:// subject", async () => {
+		const { publicKey, privateKey } = await generateVapidKeys();
+		const jwt = await createVapidJwt({
+			audience: "https://example.com",
+			subject: "https://example.com/contact",
+			publicKey,
+			privateKey,
+		});
+		expect(decodeJwtSegment(jwt.split(".")[1]).sub).toBe("https://example.com/contact");
+	});
+
 	it("rejects a subject that is not a mailto:/https: URI", async () => {
 		const { publicKey, privateKey } = await generateVapidKeys();
 		await expect(
@@ -199,6 +246,20 @@ describe("createVapidJwt", () => {
 				audience: "https://example.com",
 				subject: "mailto:a@b.com",
 				publicKey: uint8ArrayToUrlBase64(new Uint8Array(10)),
+				privateKey,
+			}),
+		).rejects.toThrow("VAPID public key must be a 65-byte uncompressed P-256 point");
+	});
+
+	it("rejects a 65-byte public key without the 0x04 uncompressed prefix", async () => {
+		const { privateKey } = await generateVapidKeys();
+		const compressedPrefix = new Uint8Array(65);
+		compressedPrefix[0] = 0x02;
+		await expect(
+			createVapidJwt({
+				audience: "https://example.com",
+				subject: "mailto:a@b.com",
+				publicKey: uint8ArrayToUrlBase64(compressedPrefix),
 				privateKey,
 			}),
 		).rejects.toThrow("VAPID public key must be a 65-byte uncompressed P-256 point");
