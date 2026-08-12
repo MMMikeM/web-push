@@ -5,25 +5,40 @@ All notable changes to `@mmmike/web-push` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2026-08-12
+## [1.0.1] - 2026-08-12
 
 First stable release, and the first with a test suite. The library gained validation,
 structured errors, and standards-compliance tests; a few real bugs surfaced and were
 fixed along the way. Breaking changes are called out under **Changed**; with the API
-now settled and tested, this ships as `1.0.0` so those breaks cost a major bump rather
+now settled and tested, this ships as stable so those breaks cost a major bump rather
 than hiding under a pre-1.0 minor.
 
 ### Added
 
-- **Test suite (Vitest).** 106 tests across the codec, VAPID key generation and JWT
+- **`sendPushBatch`** — send one notification to many subscriptions through a worker
+  pool with bounded concurrency (default 100). Resolves to
+  `{ delivered, gone, failed }` instead of throwing mid-batch: `delivered` counts
+  accepted sends, `gone` lists the endpoints to delete (404/410), `failed` carries
+  each undelivered send with its error. Caller-input mistakes (bad VAPID config,
+  oversized payload, invalid topic) still throw, before anything is sent. Signs one
+  VAPID JWT per push-service origin rather than one per message — the token is
+  origin-scoped, so a batch of ten thousand costs a handful of ES256 signatures
+  instead of ten thousand.
+- **`SendPushOptions.signal` and `SendPushOptions.timeoutMs`** (default 30s) —
+  every request carries an abort signal, so a push service that accepts the
+  connection and never responds releases its pool slot instead of holding it for
+  the platform's limit. Aborting `signal` also stops a batch from starting new
+  sends.
+- **Test suite (Vitest).** 133 tests across the codec, VAPID key generation and JWT
   signing, aes128gcm encryption, and the browser client flow, including an
   independent round-trip decrypt, the RFC 8291 Appendix A known-answer vector,
   ES256 verification of the actual `Authorization` JWT, and random-input sweeps
   over the codec lengths and payload-size boundaries. 100% line/branch/function
   coverage. New scripts: `test`, `test:watch`, `coverage`.
-- **`WebPushError`** (exported) carrying `statusCode`, `body`, `endpoint`, and
-  `retryAfter`, thrown on rate limits and other push-service errors so callers can
-  back off and log.
+- **`WebPushError`** (exported) carrying `statusCode`, `body`, `endpoint`,
+  `retryAfter` (the header verbatim), and `retryAfterMs` (parsed to milliseconds
+  from now, whether the service sent delta-seconds or an HTTP-date), thrown on
+  rate limits and other push-service errors so callers can back off and log.
 - **`SendPushOptions.vapidExpiration`** (default `43200` / 12h) controls the VAPID
   JWT lifetime independently of the message `ttl`.
 - **`SendPushOptions.urgency`** (`very-low` | `low` | `normal` | `high`) and
@@ -41,6 +56,18 @@ than hiding under a pre-1.0 minor.
 
 ### Changed
 
+- **`subscribeToPush` now resolves to a `SubscribeResult`** (breaking) — the exported
+  discriminated union `{ status: "subscribed", subscription, isNew }`,
+  `{ status: "unsupported" }`, or `{ status: "denied" }` — instead of
+  `PushSubscription | null`. The `null` return conflated "this browser can't do push"
+  with "the user said no", and nothing told the caller whether the subscription still
+  needed uploading; `isNew` now carries that. The `console.warn` calls on the failure
+  paths are gone with it.
+- **`subscribeToPush` rotates a subscription bound to a different VAPID key**
+  (breaking) instead of returning it. A subscription created under a retired key is
+  rejected by the push service on every send, so the old one is unsubscribed and
+  replaced, and the result is flagged `isNew: true`. Browsers that don't report
+  `options.applicationServerKey` keep their existing subscription.
 - **The package is now ESM-only.** Shipping both formats meant two copies of
   `WebPushError` could coexist in one dependency tree, silently breaking
   `instanceof` against it, the only way to tell a push-service rejection from a

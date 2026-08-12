@@ -1,6 +1,6 @@
 {
 	"name": "@mmmike/web-push",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "Zero-dependency Web Push (RFC 8291) for Cloudflare Workers, Deno, Bun, Vercel Edge, Node.js, and browsers — client subscribe + server send + VAPID.",
 	"keywords": [
 		"bun",
