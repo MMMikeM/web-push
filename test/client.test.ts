@@ -23,10 +23,11 @@ const makeSubscription = (
 	endpoint = "https://push.example.com/sub/1",
 	p256dh = new Uint8Array([1, 2, 3, 4]),
 	auth = new Uint8Array([9, 8, 7]),
+	applicationServerKey: ArrayBuffer | null = null,
 ): FakeSubscription => ({
 	endpoint,
 	expirationTime: null,
-	options: { applicationServerKey: null, userVisibleOnly: true },
+	options: { applicationServerKey, userVisibleOnly: true },
 	unsubscribe: vi.fn<() => Promise<boolean>>(async () => true),
 	getKey: (name: PushEncryptionKeyName) => (name === "p256dh" ? p256dh.buffer : auth.buffer),
 	toJSON: () => ({ endpoint, expirationTime: null, keys: {} }),
@@ -138,19 +139,24 @@ describe("feature detection & permission", () => {
 	});
 });
 
+const randomVapidKey = () => uint8ArrayToUrlBase64(crypto.getRandomValues(new Uint8Array(65)));
+const subscriptionBoundTo = (vapidPublicKey: string) =>
+	makeSubscription(
+		"https://push.example.com/existing",
+		undefined,
+		undefined,
+		urlBase64ToUint8Array(vapidPublicKey).buffer,
+	);
+
 describe("subscribeToPush", () => {
-	it("returns null and warns when push is unsupported", async () => {
+	it("reports unsupported when push APIs are missing", async () => {
 		setupPushEnv({ serviceWorker: false });
-		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-		expect(await subscribeToPush("BPk")).toBeNull();
-		expect(warn).toHaveBeenCalledWith("Push notifications not supported");
+		expect(await subscribeToPush("BPk")).toEqual({ status: "unsupported" });
 	});
 
-	it("returns null and warns when the permission prompt is denied", async () => {
+	it("reports denied when the permission prompt is declined", async () => {
 		setupPushEnv({ permission: "default", promptResult: "denied" });
-		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-		expect(await subscribeToPush("BPk")).toBeNull();
-		expect(warn).toHaveBeenCalledWith("Notification permission denied");
+		expect(await subscribeToPush("BPk")).toEqual({ status: "denied" });
 	});
 
 	it("prompts for permission and subscribes once granted", async () => {
@@ -158,24 +164,56 @@ describe("subscribeToPush", () => {
 			permission: "default",
 			promptResult: "granted",
 		});
-		expect(await subscribeToPush("BPk")).toBe(created);
+		expect(await subscribeToPush("BPk")).toEqual({
+			status: "subscribed",
+			subscription: created,
+			isNew: true,
+		});
 		expect(NotificationStub.requestPermission).toHaveBeenCalledOnce();
 	});
 
-	it("reuses an existing subscription without subscribing again", async () => {
-		const existing = makeSubscription("https://push.example.com/existing");
+	it("reuses an existing subscription bound to the same VAPID key, with isNew false", async () => {
+		const vapidPublicKey = randomVapidKey();
+		const existing = subscriptionBoundTo(vapidPublicKey);
 		const { pushManager } = setupPushEnv({ existing });
-		const result = await subscribeToPush("BPk");
-		expect(result).toBe(existing);
+		expect(await subscribeToPush(vapidPublicKey)).toEqual({
+			status: "subscribed",
+			subscription: existing,
+			isNew: false,
+		});
 		expect(pushManager.subscribe).not.toHaveBeenCalled();
 	});
 
+	it("keeps an existing subscription whose applicationServerKey the browser does not report", async () => {
+		const existing = makeSubscription("https://push.example.com/existing");
+		const { pushManager } = setupPushEnv({ existing });
+		expect(await subscribeToPush(randomVapidKey())).toEqual({
+			status: "subscribed",
+			subscription: existing,
+			isNew: false,
+		});
+		expect(existing.unsubscribe).not.toHaveBeenCalled();
+		expect(pushManager.subscribe).not.toHaveBeenCalled();
+	});
+
+	it("rotates a subscription bound to a different VAPID key and flags it as new", async () => {
+		const existing = subscriptionBoundTo(randomVapidKey());
+		const { pushManager, created } = setupPushEnv({ existing });
+		expect(await subscribeToPush(randomVapidKey())).toEqual({
+			status: "subscribed",
+			subscription: created,
+			isNew: true,
+		});
+		expect(existing.unsubscribe).toHaveBeenCalledOnce();
+		expect(pushManager.subscribe).toHaveBeenCalledOnce();
+	});
+
 	it("subscribes with the decoded applicationServerKey when none exists", async () => {
-		const vapidPublicKey = uint8ArrayToUrlBase64(crypto.getRandomValues(new Uint8Array(65)));
+		const vapidPublicKey = randomVapidKey();
 		const { pushManager, created } = setupPushEnv({ existing: null });
 		const result = await subscribeToPush(vapidPublicKey);
 
-		expect(result).toBe(created);
+		expect(result).toEqual({ status: "subscribed", subscription: created, isNew: true });
 		expect(pushManager.subscribe).toHaveBeenCalledOnce();
 		expect(pushManager.subscribe).toHaveBeenCalledWith({
 			userVisibleOnly: true,
@@ -223,7 +261,11 @@ describe("unsubscribeFromPush & getCurrentSubscription", () => {
 	it("supports the full lifecycle: subscribe, read back, unsubscribe, gone", async () => {
 		const { created } = setupPushEnv();
 		expect(await getCurrentSubscription()).toBeNull();
-		expect(await subscribeToPush("BPk")).toBe(created);
+		expect(await subscribeToPush("BPk")).toEqual({
+			status: "subscribed",
+			subscription: created,
+			isNew: true,
+		});
 		expect(await getCurrentSubscription()).toBe(created);
 		expect(await unsubscribeFromPush()).toBe(true);
 		expect(await getCurrentSubscription()).toBeNull();

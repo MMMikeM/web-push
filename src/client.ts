@@ -28,34 +28,74 @@ export const requestNotificationPermission = (): Promise<NotificationPermission>
 	Notification.requestPermission();
 
 /**
- * Subscribe to push notifications.
+ * The outcome of {@link subscribeToPush}: a subscription, or why there is none.
+ */
+export type SubscribeResult =
+	| {
+			status: "subscribed";
+			subscription: PushSubscription;
+			/** Whether this call created the subscription: first subscribe, or key rotation */
+			isNew: boolean;
+	  }
+	| { status: "unsupported" }
+	| { status: "denied" };
+
+// Browsers that predate `options.applicationServerKey` report null; treat that
+// as a match — discarding a working subscription is worse than keeping it.
+const isBoundToKey = (subscription: PushSubscription, key: Uint8Array): boolean => {
+	const bound = subscription.options.applicationServerKey;
+	if (!bound) {
+		return true;
+	}
+	const boundBytes = new Uint8Array(bound);
+	return boundBytes.length === key.length && boundBytes.every((byte, i) => byte === key[i]);
+};
+
+/**
+ * Subscribe to push notifications, prompting for permission if needed.
+ *
+ * Reuses an existing subscription when it was created with the same VAPID key.
+ * If the key has changed, the stale subscription is unsubscribed and replaced,
+ * since the push service would reject it anyway. `isNew` reports whether this
+ * call created the subscription (first subscribe or key rotation). Send the
+ * subscription to your server either way: gating the upload on `isNew` means
+ * one failed request strands a subscription your server never hears about.
  *
  * @param vapidPublicKey - The server's VAPID public key (URL-safe base64)
- * @returns The push subscription to send to the server
+ * @example
+ * ```ts
+ * const result = await subscribeToPush(vapidPublicKey);
+ * if (result.status === "subscribed") {
+ *   await sendSubscriptionToServer(result.subscription);
+ * }
+ * ```
  */
-export const subscribeToPush = async (vapidPublicKey: string): Promise<PushSubscription | null> => {
+export const subscribeToPush = async (vapidPublicKey: string): Promise<SubscribeResult> => {
 	if (!isPushSupported()) {
-		console.warn("Push notifications not supported");
-		return null;
+		return { status: "unsupported" };
 	}
 
 	const permission = await requestNotificationPermission();
 	if (permission !== "granted") {
-		console.warn("Notification permission denied");
-		return null;
+		return { status: "denied" };
 	}
 
 	const registration = await navigator.serviceWorker.ready;
+	const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
 
 	const existingSubscription = await registration.pushManager.getSubscription();
 	if (existingSubscription) {
-		return existingSubscription;
+		if (isBoundToKey(existingSubscription, applicationServerKey)) {
+			return { status: "subscribed", subscription: existingSubscription, isNew: false };
+		}
+		await existingSubscription.unsubscribe();
 	}
 
-	return registration.pushManager.subscribe({
+	const subscription = await registration.pushManager.subscribe({
 		userVisibleOnly: true,
-		applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+		applicationServerKey,
 	});
+	return { status: "subscribed", subscription, isNew: true };
 };
 
 /**

@@ -9,6 +9,7 @@ export {
 	subscribeToPush,
 	unsubscribeFromPush,
 } from "./client";
+export type { SubscribeResult } from "./client";
 export { sendPushNotification, WebPushError } from "./send";
 export type {
 	Logger,
