@@ -24,6 +24,9 @@ export default defineConfig({
 	test: {
 		environment: "node",
 		include: ["test/**/*.test.ts"],
+		// No `reporters` on purpose: with it unset, vitest auto-adds the
+		// github-actions reporter in CI, which annotates failures in PR diffs.
+		// Setting a custom list here would silently drop those annotations.
 		coverage: {
 			provider: "v8",
 			include: ["src/**"],
