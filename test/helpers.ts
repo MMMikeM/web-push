@@ -8,7 +8,29 @@
  * the library codec, which is verified on its own in `vapid.test.ts`.
  */
 
+import { Mock, vi } from "vite-plus/test";
 import { uint8ArrayToUrlBase64, urlBase64ToUint8Array } from "../src/vapid";
+
+/** Stub global `fetch` to resolve with the given response; returns the mock. */
+export const stubFetch = (
+	status = 201,
+	statusText = "",
+	headers?: Record<string, string>,
+): Mock<(_input: string | URL | Request, _init?: RequestInit) => Promise<Response>> => {
+	// 204/304/1xx must be constructed with a null body or Response throws.
+	const noBody = status === 204 || status === 304 || (status >= 100 && status < 200);
+	// The explicit type parameter keeps `mock.calls` a two-element tuple; without
+	// it the tuple types as empty and every `calls[0][1]` fails to compile.
+	const mock = vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(
+		async () => new Response(noBody ? null : "err-body", { status, statusText, headers }),
+	);
+	vi.stubGlobal("fetch", mock);
+	return mock;
+};
+
+/** The headers of the first `fetch` call, as the plain record the library passes. */
+export const headersOf = (mock: ReturnType<typeof stubFetch>): Record<string, string> =>
+	(mock.mock.calls[0][1] as RequestInit).headers as Record<string, string>;
 
 /**
  * A simulated browser subscription: the public `p256dh`/`auth` a server sees,
@@ -188,4 +210,22 @@ export const decryptAes128gcm = async (
 export const decodeJwtSegment = (segment: string): Record<string, unknown> => {
 	const bytes = urlBase64ToUint8Array(segment);
 	return JSON.parse(new TextDecoder().decode(bytes));
+};
+
+/** Verify a JWT's ES256 signature against a URL-safe base64 P-256 public key. */
+export const verifyJwtSignature = async (jwt: string, publicKey: string): Promise<boolean> => {
+	const [header, claims, signature] = jwt.split(".");
+	const verifyKey = await crypto.subtle.importKey(
+		"raw",
+		urlBase64ToUint8Array(publicKey),
+		{ name: "ECDSA", namedCurve: "P-256" },
+		false,
+		["verify"],
+	);
+	return crypto.subtle.verify(
+		{ name: "ECDSA", hash: "SHA-256" },
+		verifyKey,
+		urlBase64ToUint8Array(signature),
+		new TextEncoder().encode(`${header}.${claims}`),
+	);
 };
