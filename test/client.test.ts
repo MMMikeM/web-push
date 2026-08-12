@@ -11,6 +11,7 @@ import {
 	unsubscribeFromPush,
 } from "../src/client";
 import { uint8ArrayToUrlBase64, urlBase64ToUint8Array } from "../src/vapid";
+import { headersOf, stubFetch } from "./helpers";
 
 // A real PushSubscription, so fakes pass into client.ts without casts; the
 // intersection keeps `unsubscribe` a typed mock the tests can assert on.
@@ -32,37 +33,69 @@ const makeSubscription = (
 });
 
 type EnvOptions = {
-	supported?: boolean;
+	serviceWorker?: boolean;
+	pushManager?: boolean;
+	notification?: boolean;
 	permission?: NotificationPermission;
+	promptResult?: NotificationPermission;
 	existing?: FakeSubscription | null;
-	created?: FakeSubscription;
 };
 
 function PushManager() {}
 
 /** Stub the browser push globals client.ts reaches for. */
 const setupPushEnv = (opts: EnvOptions = {}) => {
-	const { supported = true, permission = "granted", existing = null } = opts;
-	const created = opts.created ?? makeSubscription("https://push.example.com/sub/new");
+	const {
+		serviceWorker = true,
+		pushManager: hasPushManager = true,
+		notification = true,
+		permission = "granted",
+		promptResult = permission,
+		existing = null,
+	} = opts;
+	const created = makeSubscription("https://push.example.com/sub/new");
+
+	// Stateful fake: subscribe/unsubscribe move `current`, so tests can exercise
+	// the whole lifecycle instead of one pre-arranged state per call.
+	let current = existing;
+	const clearOnUnsubscribe = (sub: FakeSubscription) => {
+		sub.unsubscribe.mockImplementation(async () => {
+			current = null;
+			return true;
+		});
+	};
+	if (existing) {
+		clearOnUnsubscribe(existing);
+	}
+	clearOnUnsubscribe(created);
 
 	const pushManager = {
-		getSubscription: vi.fn<() => Promise<FakeSubscription | null>>(async () => existing),
+		getSubscription: vi.fn<() => Promise<FakeSubscription | null>>(async () => current),
 		subscribe: vi.fn<(options?: PushSubscriptionOptionsInit) => Promise<FakeSubscription>>(
-			async () => created,
+			async () => {
+				current = created;
+				return created;
+			},
 		),
 	};
 	const registration = { pushManager };
 
 	const NotificationStub = {
 		permission,
-		requestPermission: vi.fn<() => Promise<NotificationPermission>>(async () => permission),
+		requestPermission: vi.fn<() => Promise<NotificationPermission>>(async () => promptResult),
 	};
 
-	// `in window` / `in navigator` checks drive isPushSupported.
-	const windowStub: Record<string, unknown> = { Notification: NotificationStub };
+	// `in window` / `in navigator` checks drive isPushSupported; each flag
+	// removes exactly one of its three clauses.
+	const windowStub: Record<string, unknown> = {};
 	const navigatorStub: Record<string, unknown> = {};
-	if (supported) {
+	if (notification) {
+		windowStub.Notification = NotificationStub;
+	}
+	if (hasPushManager) {
 		windowStub.PushManager = PushManager;
+	}
+	if (serviceWorker) {
 		navigatorStub.serviceWorker = { ready: Promise.resolve(registration) };
 	}
 
@@ -70,7 +103,7 @@ const setupPushEnv = (opts: EnvOptions = {}) => {
 	vi.stubGlobal("navigator", navigatorStub);
 	vi.stubGlobal("Notification", NotificationStub);
 
-	return { pushManager, registration, created, NotificationStub };
+	return { pushManager, created, NotificationStub };
 };
 
 afterEach(() => {
@@ -80,12 +113,16 @@ afterEach(() => {
 
 describe("feature detection & permission", () => {
 	it("isPushSupported is true when all APIs are present", () => {
-		setupPushEnv({ supported: true });
+		setupPushEnv();
 		expect(isPushSupported()).toBe(true);
 	});
 
-	it("isPushSupported is false when serviceWorker/PushManager are missing", () => {
-		setupPushEnv({ supported: false });
+	it.each([
+		{ missing: "serviceWorker", opts: { serviceWorker: false } },
+		{ missing: "PushManager", opts: { pushManager: false } },
+		{ missing: "Notification", opts: { notification: false } },
+	])("isPushSupported is false when only $missing is missing", ({ opts }) => {
+		setupPushEnv(opts);
 		expect(isPushSupported()).toBe(false);
 	});
 
@@ -103,17 +140,26 @@ describe("feature detection & permission", () => {
 
 describe("subscribeToPush", () => {
 	it("returns null and warns when push is unsupported", async () => {
-		setupPushEnv({ supported: false });
+		setupPushEnv({ serviceWorker: false });
 		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 		expect(await subscribeToPush("BPk")).toBeNull();
 		expect(warn).toHaveBeenCalledWith("Push notifications not supported");
 	});
 
-	it("returns null and warns when permission is denied", async () => {
-		setupPushEnv({ permission: "denied" });
+	it("returns null and warns when the permission prompt is denied", async () => {
+		setupPushEnv({ permission: "default", promptResult: "denied" });
 		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 		expect(await subscribeToPush("BPk")).toBeNull();
 		expect(warn).toHaveBeenCalledWith("Notification permission denied");
+	});
+
+	it("prompts for permission and subscribes once granted", async () => {
+		const { NotificationStub, created } = setupPushEnv({
+			permission: "default",
+			promptResult: "granted",
+		});
+		expect(await subscribeToPush("BPk")).toBe(created);
+		expect(NotificationStub.requestPermission).toHaveBeenCalledOnce();
 	});
 
 	it("reuses an existing subscription without subscribing again", async () => {
@@ -139,6 +185,11 @@ describe("subscribeToPush", () => {
 });
 
 describe("unsubscribeFromPush & getCurrentSubscription", () => {
+	it("unsubscribe returns true when push is unsupported", async () => {
+		setupPushEnv({ serviceWorker: false });
+		expect(await unsubscribeFromPush()).toBe(true);
+	});
+
 	it("unsubscribe returns true when there is no subscription", async () => {
 		setupPushEnv({ existing: null });
 		expect(await unsubscribeFromPush()).toBe(true);
@@ -151,8 +202,15 @@ describe("unsubscribeFromPush & getCurrentSubscription", () => {
 		expect(existing.unsubscribe).toHaveBeenCalledOnce();
 	});
 
+	it("unsubscribe returns false when the browser fails to unsubscribe", async () => {
+		const existing = makeSubscription();
+		existing.unsubscribe.mockResolvedValueOnce(false);
+		setupPushEnv({ existing });
+		expect(await unsubscribeFromPush()).toBe(false);
+	});
+
 	it("getCurrentSubscription returns null when unsupported", async () => {
-		setupPushEnv({ supported: false });
+		setupPushEnv({ serviceWorker: false });
 		expect(await getCurrentSubscription()).toBeNull();
 	});
 
@@ -160,6 +218,15 @@ describe("unsubscribeFromPush & getCurrentSubscription", () => {
 		const existing = makeSubscription();
 		setupPushEnv({ existing });
 		expect(await getCurrentSubscription()).toBe(existing);
+	});
+
+	it("supports the full lifecycle: subscribe, read back, unsubscribe, gone", async () => {
+		const { created } = setupPushEnv();
+		expect(await getCurrentSubscription()).toBeNull();
+		expect(await subscribeToPush("BPk")).toBe(created);
+		expect(await getCurrentSubscription()).toBe(created);
+		expect(await unsubscribeFromPush()).toBe(true);
+		expect(await getCurrentSubscription()).toBeNull();
 	});
 });
 
@@ -184,31 +251,36 @@ describe("serializeSubscription", () => {
 	});
 });
 
-const stubFetch = (status = 200) => {
-	// The explicit type parameter keeps `mock.calls[0]` a two-element tuple; see
-	// the same note in send.test.ts.
-	const mock = vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(
-		async () => new Response("", { status }),
-	);
-	vi.stubGlobal("fetch", mock);
-	return mock;
-};
-
 describe("server sync helpers", () => {
 	it("sendSubscriptionToServer POSTs the serialized subscription", async () => {
 		const mock = stubFetch(200);
 		const sub = makeSubscription("https://push.example.com/y");
 		const ok = await sendSubscriptionToServer(sub);
 		expect(ok).toBe(true);
+		expect(mock).toHaveBeenCalledOnce();
 
 		const [url, init] = mock.mock.calls[0];
 		expect(url).toBe("/api/push/subscribe");
 		expect(init?.method).toBe("POST");
-		const headers = init?.headers as Record<string, string> | undefined;
-		expect(headers?.["Content-Type"]).toBe("application/json");
-		const body = JSON.parse(init?.body as string);
-		expect(body.endpoint).toBe("https://push.example.com/y");
-		expect(body.keys).toHaveProperty("p256dh");
+		expect(headersOf(mock)["Content-Type"]).toBe("application/json");
+		expect(JSON.parse(init?.body as string)).toEqual(serializeSubscription(sub));
+	});
+
+	it("sendSubscriptionToServer rejects when the subscription is missing a key", async () => {
+		stubFetch(200);
+		const sub: PushSubscription = {
+			...makeSubscription(),
+			getKey: () => null,
+		};
+		await expect(sendSubscriptionToServer(sub)).rejects.toThrow(
+			"Subscription is missing its p256dh key",
+		);
+	});
+
+	it("sendSubscriptionToServer propagates a network failure as a rejection", async () => {
+		const mock = stubFetch(200);
+		mock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+		await expect(sendSubscriptionToServer(makeSubscription())).rejects.toThrow("Failed to fetch");
 	});
 
 	it("sendSubscriptionToServer honors a custom endpoint and returns response.ok", async () => {
@@ -216,6 +288,7 @@ describe("server sync helpers", () => {
 		const sub = makeSubscription();
 		const ok = await sendSubscriptionToServer(sub, "/custom");
 		expect(ok).toBe(false);
+		expect(mock).toHaveBeenCalledOnce();
 		expect(mock.mock.calls[0][0]).toBe("/custom");
 	});
 
@@ -223,6 +296,7 @@ describe("server sync helpers", () => {
 		const mock = stubFetch(200);
 		const ok = await removeSubscriptionFromServer("https://push.example.com/z");
 		expect(ok).toBe(true);
+		expect(mock).toHaveBeenCalledOnce();
 
 		const [url, init] = mock.mock.calls[0];
 		expect(url).toBe("/api/push/subscribe");
