@@ -37,33 +37,33 @@ export default {
 		}
 
 		if (request.method === "POST" && url.pathname === "/send") {
-			let body: SendBody;
 			try {
-				body = (await request.json()) as SendBody;
+				const body = (await request.json()) as SendBody;
+
+				try {
+					const delivered = await sendPushNotification(body.subscription, body.payload, {
+						publicKey: env.VAPID_PUBLIC_KEY,
+						privateKey: env.VAPID_PRIVATE_KEY,
+						subject: env.VAPID_SUBJECT,
+					});
+
+					// `false` means the subscription is gone (404/410) — delete it from your store.
+					return json({ delivered });
+				} catch (err) {
+					// Forward the push service's status; its 5xx becomes 502 — the fault is upstream.
+					if (err instanceof WebPushError) {
+						const status = err.statusCode >= 500 ? 502 : err.statusCode;
+						return json({ error: err.message }, status);
+					}
+					// Anything else — invalid VAPID subject/keys, oversized payload, bad
+					// topic — means this request was malformed, not the push service.
+					return json({ error: (err as Error).message ?? "Unknown error" }, 400);
+				}
 			} catch {
 				return json({ error: "Invalid JSON body" }, 400);
 			}
-
-			try {
-				const delivered = await sendPushNotification(body.subscription, body.payload, {
-					publicKey: env.VAPID_PUBLIC_KEY,
-					privateKey: env.VAPID_PRIVATE_KEY,
-					subject: env.VAPID_SUBJECT,
-				});
-
-				// `false` means the subscription is gone (404/410) — delete it from your store.
-				return json({ delivered });
-			} catch (err) {
-				// Forward the push service's status; its 5xx becomes 502 — the fault is upstream.
-				if (err instanceof WebPushError) {
-					const status = err.statusCode >= 500 ? 502 : err.statusCode;
-					return json({ error: err.message }, status);
-				}
-				// Anything else — invalid VAPID subject/keys, oversized payload, bad
-				// topic — means this request was malformed, not the push service.
-				return json({ error: (err as Error).message }, 400);
-			}
 		}
+
 
 		return json({ error: "Not found" }, 404);
 	},
