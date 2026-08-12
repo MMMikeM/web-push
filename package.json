@@ -1,7 +1,7 @@
 {
   "name": "@mmmike/web-push",
   "version": "1.0.0",
-  "description": "Zero-dependency Web Push (RFC 8291) for Cloudflare Workers, Deno, Bun, Vercel Edge, Node.js, and browsers \u2014 client subscribe + server send + VAPID.",
+  "description": "Zero-dependency Web Push (RFC 8291) for Cloudflare Workers, Deno, Bun, Vercel Edge, Node.js, and browsers — client subscribe + server send + VAPID.",
   "type": "module",
   "exports": {
     ".": {
@@ -32,14 +32,14 @@
   },
   "packageManager": "pnpm@11.17.0",
   "scripts": {
-    "build": "tsdown",
-    "lint": "oxlint --config oxlint.config.ts src test scripts examples",
+    "build": "vp pack",
+    "lint": "vp lint src test scripts examples",
     "lint:types": "tsc -p tsconfig.check.json && tsc -p tsconfig.tools.json",
-    "format": "oxfmt --write -c oxfmt.config.ts 'src/**/*.ts' 'test/**/*.ts' 'scripts/**/*.ts' 'examples/**/*.ts' '*.config.ts'",
-    "format:check": "oxfmt --check -c oxfmt.config.ts 'src/**/*.ts' 'test/**/*.ts' 'scripts/**/*.ts' 'examples/**/*.ts' '*.config.ts'",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "coverage": "vitest run --coverage",
+    "format": "vp fmt --write 'src/**/*.ts' 'test/**/*.ts' 'scripts/**/*.ts' 'examples/**/*.ts' '*.config.ts'",
+    "format:check": "vp fmt --check 'src/**/*.ts' 'test/**/*.ts' 'scripts/**/*.ts' 'examples/**/*.ts' '*.config.ts'",
+    "test": "vp test run",
+    "test:watch": "vp test",
+    "coverage": "vp test run --coverage",
     "audit": "pnpm audit --audit-level high --ignore-registry-errors",
     "check": "pnpm run format:check && pnpm run lint && pnpm run lint:types && pnpm run test && pnpm run audit",
     "check:exports": "attw --pack . --profile esm-only",
@@ -67,7 +67,7 @@
   "author": "Mike <mikem.tba@gmail.com>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MMMikeM/web-push.git"
+    "url": "git+https://github.com/MMMikeM/web-push.git"
   },
   "homepage": "https://github.com/MMMikeM/web-push#readme",
   "bugs": {
@@ -75,13 +75,11 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
+    "@arethetypeswrong/core": "^0.18.5",
     "@types/node": "^26.1.1",
     "@vitest/coverage-v8": "^4.1.10",
-    "oxfmt": ">=0.59.0 <0.61.0",
-    "oxlint": "^1.74.0",
     "publint": "^0.3.21",
-    "tsdown": "^0.22.9",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vite-plus": "^0.2.8"
   }
 }

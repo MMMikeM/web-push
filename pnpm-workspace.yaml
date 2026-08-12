@@ -1,42 +1,5 @@
-# Only esbuild (pulled in by vitest/tsdown) may run install scripts.
 allowBuilds:
   esbuild: true
 
-# Supply-chain: don't resolve a dependency version until it has been public for
-# 7 days (default is 1440 = 24h). Blocks freshly-compromised releases from
-# entering the tree before advisories catch up.
+# 7 days
 minimumReleaseAge: 10080
-
-# Exception: TypeScript 7.0.2 forces a dts toolchain whose yuku packages are all
-# younger than 7 days. Drop this block once the toolchain settles.
-#
-# Pinned to exact versions, not bare names: a bare name would exempt every future
-# release forever. Pinned, the next bump fails the install and gets reviewed.
-# (pnpm rejects patterns combined with versions, hence the listed-out bindings.)
-minimumReleaseAgeExclude:
-  - yuku-parser@0.6.12
-  - yuku-codegen@0.6.12
-  - yuku-ast@0.1.7 || 0.6.11
-  - '@yuku-toolchain/types@0.5.43 || 0.6.8 || 0.6.11'
-  - '@yuku-parser/binding-darwin-arm64@0.6.12'
-  - '@yuku-parser/binding-darwin-x64@0.6.12'
-  - '@yuku-parser/binding-freebsd-x64@0.6.12'
-  - '@yuku-parser/binding-linux-arm-gnu@0.6.12'
-  - '@yuku-parser/binding-linux-arm-musl@0.6.12'
-  - '@yuku-parser/binding-linux-arm64-gnu@0.6.12'
-  - '@yuku-parser/binding-linux-arm64-musl@0.6.12'
-  - '@yuku-parser/binding-linux-x64-gnu@0.6.12'
-  - '@yuku-parser/binding-linux-x64-musl@0.6.12'
-  - '@yuku-parser/binding-win32-arm64@0.6.12'
-  - '@yuku-parser/binding-win32-x64@0.6.12'
-  - '@yuku-codegen/binding-darwin-arm64@0.6.12'
-  - '@yuku-codegen/binding-darwin-x64@0.6.12'
-  - '@yuku-codegen/binding-freebsd-x64@0.6.12'
-  - '@yuku-codegen/binding-linux-arm-gnu@0.6.12'
-  - '@yuku-codegen/binding-linux-arm-musl@0.6.12'
-  - '@yuku-codegen/binding-linux-arm64-gnu@0.6.12'
-  - '@yuku-codegen/binding-linux-arm64-musl@0.6.12'
-  - '@yuku-codegen/binding-linux-x64-gnu@0.6.12'
-  - '@yuku-codegen/binding-linux-x64-musl@0.6.12'
-  - '@yuku-codegen/binding-win32-arm64@0.6.12'
-  - '@yuku-codegen/binding-win32-x64@0.6.12'
