@@ -1,8 +1,17 @@
-import { afterEach, beforeAll, describe, expect, it, Mock, vi } from "vite-plus/test";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vite-plus/test";
+import { encryptPayload } from "../src/encrypt";
 import { sendPushNotification, WebPushError } from "../src/send";
 import type { PushSubscriptionData, VapidConfig } from "../src/types";
 import { generateVapidKeys, uint8ArrayToUrlBase64 } from "../src/vapid";
-import { type ClientKeys, decodeJwtSegment, decryptAes128gcm, makeClientKeys } from "./helpers";
+import {
+	type ClientKeys,
+	decodeJwtSegment,
+	decryptAes128gcm,
+	headersOf,
+	makeClientKeys,
+	stubFetch,
+	verifyJwtSignature,
+} from "./helpers";
 
 const ENDPOINT = "https://fcm.googleapis.com/fcm/send/abc123";
 const payload = { title: "Hi", body: "There", url: "https://example.com/open" };
@@ -21,30 +30,12 @@ const subscription = (): PushSubscriptionData => ({
 	keys: { p256dh: client.p256dh, auth: client.auth },
 });
 
-const stubFetch = (
-	status = 201,
-	statusText = "",
-	headers?: Record<string, string>,
-): Mock<(_input: string | URL | Request, _init?: RequestInit) => Promise<Response>> => {
-	// 204/304/1xx must be constructed with a null body or Response throws.
-	const noBody = status === 204 || status === 304 || (status >= 100 && status < 200);
-	// The explicit type parameter keeps `mock.calls` a two-element tuple; without
-	// it the tuple types as empty and every `calls[0][1]` below fails to compile.
-	const mock = vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(
-		async () => new Response(noBody ? null : "err-body", { status, statusText, headers }),
-	);
-	vi.stubGlobal("fetch", mock);
-	return mock;
-};
+/** The `t=` JWT of the `vapid t=…, k=…` Authorization header. */
+const vapidJwtOf = (mock: ReturnType<typeof stubFetch>): string =>
+	headersOf(mock).Authorization.slice("vapid t=".length).split(", k=")[0];
 
-const headersOf = (mock: ReturnType<typeof stubFetch>): Record<string, string> =>
-	(mock.mock.calls[0][1] as RequestInit).headers as Record<string, string>;
-
-/** Decode the claims of the `t=` JWT in the `vapid t=…, k=…` Authorization header. */
-const vapidClaimsOf = (mock: ReturnType<typeof stubFetch>): { exp: number } =>
-	decodeJwtSegment(
-		headersOf(mock).Authorization.slice("vapid t=".length).split(", k=")[0].split(".")[1],
-	) as { exp: number };
+const vapidClaimsOf = (mock: ReturnType<typeof stubFetch>): { aud: string; exp: number } =>
+	decodeJwtSegment(vapidJwtOf(mock).split(".")[1]) as { aud: string; exp: number };
 
 afterEach(() => {
 	vi.unstubAllGlobals();
@@ -67,6 +58,9 @@ describe("sendPushNotification — request shape & encryption", () => {
 		expect(h.TTL).toBe("86400");
 		expect(h.Authorization).toMatch(/^vapid t=.+, k=.+$/);
 		expect(h.Authorization).toContain(`k=${vapid.publicKey}`);
+		expect(await verifyJwtSignature(vapidJwtOf(mock), vapid.publicKey)).toBe(true);
+		// The aud claim must be the push service origin, not the full endpoint.
+		expect(vapidClaimsOf(mock).aud).toBe("https://fcm.googleapis.com");
 	});
 
 	it("builds the RFC 8188 header (salt | rs=4096 | idlen=65 | keyid)", async () => {
@@ -134,6 +128,13 @@ describe("sendPushNotification — status handling", () => {
 		expect(err.retryAfter).toBeNull();
 		expect(err.message).toMatch(/Push service error: 500/);
 	});
+
+	it("carries Retry-After through on non-429 errors too", async () => {
+		stubFetch(503, "Service Unavailable", { "Retry-After": "30" });
+		const err = await sendPushNotification(subscription(), payload, vapid).catch((e) => e);
+		expect(err).toBeInstanceOf(WebPushError);
+		expect(err).toMatchObject({ statusCode: 503, retryAfter: "30" });
+	});
 });
 
 describe("sendPushNotification — options", () => {
@@ -141,6 +142,12 @@ describe("sendPushNotification — options", () => {
 		const mock = stubFetch(201);
 		await sendPushNotification(subscription(), payload, vapid, { ttl: 3600 });
 		expect(headersOf(mock).TTL).toBe("3600");
+	});
+
+	it("passes ttl 0 (deliver-now-or-drop, RFC 8030 §5.2) through as TTL: 0", async () => {
+		const mock = stubFetch(201);
+		await sendPushNotification(subscription(), payload, vapid, { ttl: 0 });
+		expect(headersOf(mock).TTL).toBe("0");
 	});
 
 	it("logs the response via logger.debug", async () => {
@@ -163,11 +170,12 @@ describe("sendPushNotification — options", () => {
 
 	it("honors a custom vapidExpiration", async () => {
 		const mock = stubFetch(201);
-		const now = Math.floor(Date.now() / 1000);
+		const before = Math.floor(Date.now() / 1000);
 		await sendPushNotification(subscription(), payload, vapid, { vapidExpiration: 3600 });
+		const after = Math.floor(Date.now() / 1000);
 		const claims = vapidClaimsOf(mock);
-		expect(claims.exp).toBeGreaterThanOrEqual(now + 3600);
-		expect(claims.exp).toBeLessThanOrEqual(now + 3600 + 5);
+		expect(claims.exp).toBeGreaterThanOrEqual(before + 3600);
+		expect(claims.exp).toBeLessThanOrEqual(after + 3600);
 	});
 
 	it("rejects a vapidExpiration over 24 hours", async () => {
@@ -202,6 +210,20 @@ describe("sendPushNotification — options", () => {
 			sendPushNotification(subscription(), payload, vapid, { topic: "a".repeat(33) }),
 		).rejects.toThrow("Topic must be 1-32 URL-safe base64 characters");
 	});
+
+	it("accepts a topic at the 32-character limit", async () => {
+		const mock = stubFetch(201);
+		const topic = "a".repeat(32);
+		await sendPushNotification(subscription(), payload, vapid, { topic });
+		expect(headersOf(mock).Topic).toBe(topic);
+	});
+
+	it("rejects a topic with characters outside URL-safe base64", async () => {
+		stubFetch(201);
+		await expect(
+			sendPushNotification(subscription(), payload, vapid, { topic: "a+b" }),
+		).rejects.toThrow("Topic must be 1-32 URL-safe base64 characters");
+	});
 });
 
 describe("sendPushNotification — payload size & validation", () => {
@@ -214,6 +236,19 @@ describe("sendPushNotification — payload size & validation", () => {
 		await expect(sendPushNotification(subscription(), { title: "", body }, vapid)).resolves.toBe(
 			true,
 		);
+	});
+
+	it("measures the limit in UTF-8 bytes, not characters", async () => {
+		stubFetch(201);
+		const emoji = "🍉".repeat(100); // 100 characters, 400 UTF-8 bytes
+		const room = 3993 - OVERHEAD - new TextEncoder().encode(emoji).length;
+		const body = emoji + "a".repeat(room);
+		await expect(sendPushNotification(subscription(), { title: "", body }, vapid)).resolves.toBe(
+			true,
+		);
+		await expect(
+			sendPushNotification(subscription(), { title: "", body: `${body}a` }, vapid),
+		).rejects.toThrow(/^Payload too large/);
 	});
 
 	it("rejects a payload past the single-record limit", async () => {
@@ -253,5 +288,15 @@ describe("sendPushNotification — payload size & validation", () => {
 		await expect(sendPushNotification(bad, payload, vapid)).rejects.toThrow(
 			"Invalid subscription auth secret: expected at least 16 bytes",
 		);
+	});
+});
+
+describe("encryptPayload — round-trip across payload sizes", () => {
+	// 0 and 1 pin the padding delimiter, 3992/3993 the single-record boundary;
+	// random binary bytes rule out any ASCII/JSON assumption in the record path.
+	it.each([0, 1, 1337, 3992, 3993])("round-trips a %i-byte random payload", async (size) => {
+		const plaintext = crypto.getRandomValues(new Uint8Array(size));
+		const body = await encryptPayload(plaintext, client.p256dh, client.auth);
+		expect(await decryptAes128gcm(body, client)).toEqual(plaintext);
 	});
 });
