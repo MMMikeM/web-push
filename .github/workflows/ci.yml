@@ -1,13 +1,10 @@
 name: ci
 
-# Everyday verification. release.yml only fires on a version tag, which is the
-# worst moment to discover a broken test — this runs the same gate continuously.
 on:
   push:
     branches: [main]
   pull_request:
 
-# Superseded runs on the same branch/PR are cancelled rather than left to finish.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -19,24 +16,20 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      # Actions pinned to commit SHAs (supply-chain: a tag can be moved to
-      # point at malicious code; a SHA can't). Comments track the version.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      # Actions pinned to SHAs, not tags: a tag can be moved to point at malicious code.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # No version pinned here — pnpm/action-setup reads it from the
-      # "packageManager" field in package.json (single source of truth).
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      # Unpinned on purpose: pnpm/action-setup reads the version from
+      # package.json's "packageManager" field.
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
           cache: pnpm
 
       - run: pnpm ci
 
-      # The audit covers devDependencies on purpose: with zero runtime deps, a
-      # compromised dev dependency is the whole threat — it runs here and on
-      # maintainer machines.
       - run: pnpm run check
 
       - run: pnpm run check:package
