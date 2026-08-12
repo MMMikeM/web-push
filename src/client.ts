@@ -60,8 +60,15 @@ export const subscribeToPush = async (vapidPublicKey: string): Promise<PushSubsc
 
 /**
  * Unsubscribe from push notifications.
+ *
+ * Resolves `true` when there is nothing to unsubscribe from — no current
+ * subscription, or push not supported in this browser.
  */
 export const unsubscribeFromPush = async (): Promise<boolean> => {
+	if (!isPushSupported()) {
+		return true;
+	}
+
 	const registration = await navigator.serviceWorker.ready;
 	const subscription = await registration.pushManager.getSubscription();
 
@@ -120,7 +127,7 @@ const sendJson = async (endpoint: string, method: string, body: unknown): Promis
  * @param subscription - The browser's push subscription
  * @param endpoint - The server endpoint URL (default: /api/push/subscribe)
  */
-export const sendSubscriptionToServer = (
+export const sendSubscriptionToServer = async (
 	subscription: PushSubscription,
 	endpoint = "/api/push/subscribe",
 ): Promise<boolean> => sendJson(endpoint, "POST", serializeSubscription(subscription));
