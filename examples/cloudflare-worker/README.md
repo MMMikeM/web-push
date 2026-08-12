@@ -29,10 +29,10 @@ npm run deploy
 
 ## Routes
 
-| Method | Path                 | Purpose                                            |
-| ------ | -------------------- | -------------------------------------------------- |
-| `GET`  | `/vapid-public-key`  | Returns the public key the browser needs to subscribe |
-| `POST` | `/send`              | Body `{ subscription, payload }` — sends one push  |
+| Method | Path                | Purpose                                               |
+| ------ | ------------------- | ----------------------------------------------------- |
+| `GET`  | `/vapid-public-key` | Returns the public key the browser needs to subscribe |
+| `POST` | `/send`             | Body `{ subscription, payload }` — sends one push     |
 
 ## Send a test push
 
