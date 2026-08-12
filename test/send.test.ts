@@ -164,6 +164,42 @@ describe("sendPushNotification — status handling", () => {
 	});
 });
 
+describe("sendPushNotification — abort & timeout", () => {
+	it("attaches an abort signal with the default timeout to every request", async () => {
+		const mock = stubFetch(201);
+		await sendPushNotification(subscription(), payload, vapid);
+		const init = mock.mock.calls[0][1] as RequestInit;
+		expect(init.signal).toBeInstanceOf(AbortSignal);
+		expect(init.signal?.aborted).toBe(false);
+	});
+
+	it("rejects when the caller's signal is already aborted", async () => {
+		const mock = vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(
+			async (_input, init) => {
+				if (init?.signal?.aborted) {
+					throw new DOMException("This operation was aborted", "AbortError");
+				}
+				return new Response("", { status: 201 });
+			},
+		);
+		vi.stubGlobal("fetch", mock);
+
+		const controller = new AbortController();
+		controller.abort();
+		await expect(
+			sendPushNotification(subscription(), payload, vapid, { signal: controller.signal }),
+		).rejects.toThrow(/aborted/i);
+	});
+
+	it("rejects a non-positive timeoutMs before sending", async () => {
+		const mock = stubFetch(201);
+		await expect(
+			sendPushNotification(subscription(), payload, vapid, { timeoutMs: 0 }),
+		).rejects.toThrow("timeoutMs must be a positive number of milliseconds");
+		expect(mock).not.toHaveBeenCalled();
+	});
+});
+
 describe("sendPushNotification — options", () => {
 	it("passes a custom ttl to the TTL header", async () => {
 		const mock = stubFetch(201);

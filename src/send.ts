@@ -84,6 +84,20 @@ const pushServiceOrigin = (endpoint: string): string => {
 /** 404 Not Found and 410 Gone both mean the subscription should be deleted. */
 const isSubscriptionGone = (status: number): boolean => status === 404 || status === 410;
 
+const DEFAULT_TIMEOUT_MS = 30000;
+
+const assertValidTimeout = (timeoutMs: number): void => {
+	if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+		throw new Error("timeoutMs must be a positive number of milliseconds");
+	}
+};
+
+/** Every request gets the timeout; the caller's signal, when present, joins it. */
+const requestSignal = (signal: AbortSignal | undefined, timeoutMs: number): AbortSignal =>
+	signal
+		? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)])
+		: AbortSignal.timeout(timeoutMs);
+
 const buildPushHeaders = ({
 	jwt,
 	vapidPublicKey,
@@ -115,7 +129,7 @@ const postToPushService = async (
 	vapidPublicKey: string,
 	options: SendPushOptions,
 ): Promise<boolean> => {
-	const { logger, ttl = 86400, urgency, topic } = options;
+	const { logger, ttl = 86400, urgency, topic, signal, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
 
 	const encryptedPayload = await encryptPayload(
 		payloadBytes,
@@ -127,6 +141,7 @@ const postToPushService = async (
 		method: "POST",
 		headers: buildPushHeaders({ jwt, vapidPublicKey, ttl, urgency, topic }),
 		body: encryptedPayload,
+		signal: requestSignal(signal, timeoutMs),
 	});
 
 	const responseText = await response.text();
@@ -160,9 +175,12 @@ const postToPushService = async (
 /**
  * Send a push notification to a subscription endpoint.
  *
+ * Each request carries a timeout (default 30s) and, when provided, the
+ * caller's `signal`; hitting either rejects with the abort reason.
+ *
  * @returns true if successful, false if subscription is invalid (should be deleted)
  * @throws {WebPushError} on rate limits (429) and other push service errors
- * @throws {Error} on invalid input: VAPID config, payload size, `topic`
+ * @throws {Error} on invalid input: VAPID config, payload size, `topic`, `timeoutMs`
  */
 export const sendPushNotification = async (
 	subscription: PushSubscriptionData,
@@ -171,6 +189,7 @@ export const sendPushNotification = async (
 	options: SendPushOptions = {},
 ): Promise<boolean> => {
 	assertValidTopic(options.topic);
+	assertValidTimeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
 
 	// Reject bad input *before* signing the VAPID JWT — no point paying for an
 	// ECDSA signature on a request we'll refuse.
@@ -198,10 +217,11 @@ export const sendPushNotification = async (
  * back in `gone` for deletion, and every other failed send comes back in
  * `failed` with its error. One VAPID JWT is signed per push-service origin
  * rather than per message, since the token is scoped to the origin and valid
- * for the whole batch.
+ * for the whole batch. Aborting `options.signal` stops workers from starting
+ * new sends; subscriptions never attempted count toward none of the three.
  *
  * @throws {Error} on caller input — invalid VAPID config, oversized payload,
- * invalid `topic` or `concurrency` — before anything is sent.
+ * invalid `topic`, `concurrency`, or `timeoutMs` — before anything is sent.
  * @example
  * ```ts
  * const { delivered, gone, failed } = await sendPushBatch(subscriptions, payload, vapid);
@@ -220,6 +240,7 @@ export const sendPushBatch = async (
 		throw new Error("concurrency must be a positive integer");
 	}
 	assertValidTopic(sendOptions.topic);
+	assertValidTimeout(sendOptions.timeoutMs ?? DEFAULT_TIMEOUT_MS);
 
 	const payloadBytes = new TextEncoder().encode(JSON.stringify(payload));
 	assertPayloadWithinLimit(payloadBytes);
@@ -280,6 +301,9 @@ export const sendPushBatch = async (
 	const queue = subscriptions.values();
 	const worker = async (): Promise<void> => {
 		for (const subscription of queue) {
+			if (sendOptions.signal?.aborted) {
+				return;
+			}
 			// oxlint-disable-next-line no-await-in-loop -- one worker is one lane of the pool; awaiting here is the concurrency bound
 			await sendOne(subscription);
 		}

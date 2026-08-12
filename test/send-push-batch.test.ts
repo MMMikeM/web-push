@@ -219,6 +219,30 @@ describe("sendPushBatch — concurrency", () => {
 		expect(mock).toHaveBeenCalledTimes(5);
 	});
 
+	it("stops starting new sends once the caller's signal aborts", async () => {
+		const controller = new AbortController();
+		const mock = vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(
+			async () => {
+				controller.abort();
+				return new Response("", { status: 201 });
+			},
+		);
+		vi.stubGlobal("fetch", mock);
+
+		const { delivered, gone, failed } = await sendPushBatch(
+			[1, 2, 3, 4, 5].map((i) => subscription(`https://push.example/sub-${i}`)),
+			payload,
+			vapid,
+			{ concurrency: 2, signal: controller.signal },
+		);
+
+		// Both workers had already claimed a subscription; nobody claims a third.
+		expect(mock).toHaveBeenCalledTimes(2);
+		expect(delivered).toBe(2);
+		expect(gone).toEqual([]);
+		expect(failed).toEqual([]);
+	});
+
 	it.each([0, -1, 1.5])("rejects a concurrency of %s before sending anything", async (bad) => {
 		const mock = stubFetch(201);
 		await expect(
@@ -262,6 +286,14 @@ describe("sendPushBatch — caller input rejects up front", () => {
 		await expect(
 			sendPushBatch([subscription("https://push.example/a")], payload, vapid, { topic: "a+b" }),
 		).rejects.toThrow("Topic must be 1-32 URL-safe base64 characters");
+		expect(mock).not.toHaveBeenCalled();
+	});
+
+	it("throws on a non-positive timeoutMs before any send", async () => {
+		const mock = stubFetch(201);
+		await expect(
+			sendPushBatch([subscription("https://push.example/a")], payload, vapid, { timeoutMs: 0 }),
+		).rejects.toThrow("timeoutMs must be a positive number of milliseconds");
 		expect(mock).not.toHaveBeenCalled();
 	});
 });

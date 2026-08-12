@@ -97,4 +97,12 @@ export type SendPushOptions = {
 	 * this one while it is still undelivered. Max 32 URL-safe base64 characters.
 	 */
 	topic?: string;
+	/** Aborts in-flight sends; a batch also stops starting new ones. */
+	signal?: AbortSignal;
+	/**
+	 * Per-request timeout in milliseconds (default: 30000). Without one, a push
+	 * service that accepts the connection and never responds holds its pool
+	 * slot for as long as the platform allows.
+	 */
+	timeoutMs?: number;
 };
