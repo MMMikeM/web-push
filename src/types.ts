@@ -69,7 +69,7 @@ export type SendPushBatchResult = {
 	gone: string[];
 	/**
 	 * Sends that did not deliver, each with its error: a `WebPushError` for a
-	 * push-service rejection (carrying `statusCode` and `retryAfter`), a
+	 * push-service rejection (carrying `statusCode` and `retryAfterMs`), a
 	 * `TypeError` when `fetch` never reached the service, any other `Error`
 	 * for a malformed subscription.
 	 */

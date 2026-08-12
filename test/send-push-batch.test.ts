@@ -62,7 +62,7 @@ describe("sendPushBatch — result partitioning", () => {
 		expect((failed[0].error as WebPushError).statusCode).toBe(429);
 	});
 
-	it("keeps a WebPushError's retryAfter reachable through failed", async () => {
+	it("keeps a WebPushError's retryAfter reachable through failed, raw and parsed", async () => {
 		const mock = vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(
 			async () => new Response("err-body", { status: 429, headers: { "Retry-After": "120" } }),
 		);
@@ -74,6 +74,7 @@ describe("sendPushBatch — result partitioning", () => {
 			vapid,
 		);
 		expect((failed[0].error as WebPushError).retryAfter).toBe("120");
+		expect((failed[0].error as WebPushError).retryAfterMs).toBe(120000);
 	});
 
 	it("puts network failures in failed without stopping the rest of the batch", async () => {

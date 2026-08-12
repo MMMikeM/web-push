@@ -114,6 +114,7 @@ describe("sendPushNotification — status handling", () => {
 		expect(err).toMatchObject({
 			statusCode: 429,
 			retryAfter: "120",
+			retryAfterMs: 120000,
 			endpoint: ENDPOINT,
 			body: "err-body",
 		});
@@ -126,6 +127,7 @@ describe("sendPushNotification — status handling", () => {
 		expect(err).toBeInstanceOf(WebPushError);
 		expect(err.statusCode).toBe(500);
 		expect(err.retryAfter).toBeNull();
+		expect(err.retryAfterMs).toBeNull();
 		expect(err.message).toMatch(/Push service error: 500/);
 	});
 
@@ -133,7 +135,32 @@ describe("sendPushNotification — status handling", () => {
 		stubFetch(503, "Service Unavailable", { "Retry-After": "30" });
 		const err = await sendPushNotification(subscription(), payload, vapid).catch((e) => e);
 		expect(err).toBeInstanceOf(WebPushError);
-		expect(err).toMatchObject({ statusCode: 503, retryAfter: "30" });
+		expect(err).toMatchObject({ statusCode: 503, retryAfter: "30", retryAfterMs: 30000 });
+	});
+
+	it("parses an HTTP-date Retry-After into milliseconds from now", async () => {
+		stubFetch(503, "Service Unavailable", {
+			"Retry-After": new Date(Date.now() + 60000).toUTCString(),
+		});
+		const err = await sendPushNotification(subscription(), payload, vapid).catch((e) => e);
+		// toUTCString drops sub-second precision, so allow up to a second of slack.
+		expect(err.retryAfterMs).toBeGreaterThan(55000);
+		expect(err.retryAfterMs).toBeLessThanOrEqual(60000);
+	});
+
+	it("clamps an HTTP-date Retry-After in the past to zero", async () => {
+		stubFetch(503, "Service Unavailable", {
+			"Retry-After": new Date(Date.now() - 60000).toUTCString(),
+		});
+		const err = await sendPushNotification(subscription(), payload, vapid).catch((e) => e);
+		expect(err.retryAfterMs).toBe(0);
+	});
+
+	it("keeps the raw header but a null retryAfterMs when Retry-After is unparseable", async () => {
+		stubFetch(429, "Too Many Requests", { "Retry-After": "soonish" });
+		const err = await sendPushNotification(subscription(), payload, vapid).catch((e) => e);
+		expect(err.retryAfter).toBe("soonish");
+		expect(err.retryAfterMs).toBeNull();
 	});
 });
 

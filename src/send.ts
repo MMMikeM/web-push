@@ -23,16 +23,33 @@ export type {
 	SendPushBatchResult,
 };
 
+/** RFC 9110 §10.2.3: `Retry-After` is either delta-seconds or an HTTP-date. */
+const parseRetryAfterMs = (retryAfter: string | null): number | null => {
+	if (retryAfter === null) {
+		return null;
+	}
+	const trimmed = retryAfter.trim();
+	if (/^\d+$/.test(trimmed)) {
+		return Number(trimmed) * 1000;
+	}
+	const date = Date.parse(trimmed);
+	return Number.isNaN(date) ? null : Math.max(0, date - Date.now());
+};
+
 /**
  * Error thrown when the push service rejects a send with a non-2xx status,
  * other than 404/410 ("gone"), which resolve to `false` instead. Carries the
- * status, response body, endpoint, and any `Retry-After` header for backoff.
+ * status, response body, endpoint, and the `Retry-After` header both verbatim
+ * (`retryAfter`) and parsed to milliseconds-from-now (`retryAfterMs`).
  */
 export class WebPushError extends Error {
 	readonly statusCode: number;
 	readonly body: string;
 	readonly endpoint: string;
+	/** The `Retry-After` header verbatim: delta-seconds or an HTTP-date */
 	readonly retryAfter: string | null;
+	/** `Retry-After` as milliseconds from now; `null` when absent or unparseable */
+	readonly retryAfterMs: number | null;
 
 	constructor(
 		message: string,
@@ -47,6 +64,7 @@ export class WebPushError extends Error {
 		this.body = body;
 		this.endpoint = endpoint;
 		this.retryAfter = retryAfter;
+		this.retryAfterMs = parseRetryAfterMs(retryAfter);
 	}
 }
 
