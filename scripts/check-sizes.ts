@@ -34,6 +34,12 @@ const bundledGzipSize = async (entry: string): Promise<number> => {
 	return gzipSync(outputFiles[0].contents, { level: 9 }).length;
 };
 
+// Environments gzip the same bytes a few dozen bytes apart (zlib builds
+// differ), which flips exact 0.1 kB rounding at a boundary — CI measured the
+// server entry at 2855 B where a laptop got 2828 B. Real growth still trips
+// this: a small feature adds ~150 B minified+gzipped.
+const TOLERANCE_KB = 0.1;
+
 const readme = readFileSync("README.md", "utf8");
 
 const results = await Promise.all(
@@ -50,7 +56,7 @@ const results = await Promise.all(
 
 let stale = false;
 for (const { label, bytes, measured, documented } of results) {
-	const ok = documented === measured;
+	const ok = documented !== null && Math.abs(bytes / 1000 - Number(documented)) <= TOLERANCE_KB;
 	if (!ok) {
 		stale = true;
 	}
