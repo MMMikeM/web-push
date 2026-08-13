@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vite-plus/test";
-import { sendPushBatch, WebPushError } from "../src/send";
+import { rawPayload, sendPushBatch, WebPushError } from "../src/send";
 import type { PushSubscriptionData, VapidConfig } from "../src/types";
 import { generateVapidKeys, uint8ArrayToUrlBase64 } from "../src/vapid";
 import { type ClientKeys, decodeJwtSegment, makeClientKeys, stubFetch } from "./helpers";
@@ -120,6 +120,34 @@ describe("sendPushBatch — result partitioning", () => {
 		expect((failed[0].error as Error).message).toMatch(/Invalid subscription p256dh key/);
 		expect(mock).toHaveBeenCalledTimes(1);
 		expect(mock.mock.calls[0][0]).toBe("https://push.example/ok");
+	});
+
+	it("puts a non-https endpoint in failed without fetching it", async () => {
+		const mock = stubFetch(201);
+
+		const { delivered, failed } = await sendPushBatch(
+			[subscription("http://push.example/insecure"), subscription("https://push.example/ok")],
+			payload,
+			vapid,
+		);
+
+		expect(delivered).toBe(1);
+		expect(failed).toHaveLength(1);
+		expect(failed[0].endpoint).toBe("http://push.example/insecure");
+		expect((failed[0].error as Error).message).toMatch(/must be an https: URL/);
+		expect(mock).toHaveBeenCalledTimes(1);
+		expect(mock.mock.calls[0][0]).toBe("https://push.example/ok");
+	});
+
+	it("delivers a rawPayload-wrapped payload", async () => {
+		const mock = stubFetch(201);
+		const { delivered } = await sendPushBatch(
+			[subscription("https://push.example/a")],
+			rawPayload('{"custom":"shape"}'),
+			vapid,
+		);
+		expect(delivered).toBe(1);
+		expect(mock).toHaveBeenCalledOnce();
 	});
 
 	it("resolves to an all-empty result for an empty subscription array without fetching", async () => {

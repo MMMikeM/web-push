@@ -5,6 +5,34 @@ All notable changes to `@mmmike/web-push` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-08-13
+
+### Added
+
+- **`rawPayload(stringOrBytes)`** — marks a payload the caller has already serialized;
+  `sendPushNotification` and `sendPushBatch` accept it in place of a `PushPayload` and
+  encrypt the bytes verbatim. Service workers with their own payload shape (including
+  `web-push` migrations carrying `icon`/`badge`/`actions`) keep a byte-identical wire
+  format without a type cast. Deliberately a wrapper rather than a bare-`string`
+  overload: a misdirected string would type-check, deliver, and only fail inside the
+  service worker's `event.data.json()` on the device — wrapped, the opt-out of the
+  typed contract stays visible at the call site.
+- **`WebPushError.toJSON()`** — truncates `endpoint` (a capability URL: anyone holding
+  it can push to the device) and `body`, so structured loggers that JSON-serialize
+  errors don't persist a pushable URL. The error instance itself carries both in full.
+
+### Changed
+
+- **`PushPayload.body` is now optional**, matching the Notification API, where only the
+  title is required; a payload without `body` renders a title-only notification.
+- **Non-`https:` subscription endpoints are rejected** before anything is signed or sent
+  (RFC 8030 §3: the push service must use TLS). `sendPushNotification` throws;
+  `sendPushBatch` files the subscription under `failed`.
+- **README:** endpoint-security guidance (capability URLs, log hygiene, allowlisting
+  push hosts at registration time) and the difference between the payload `tag`
+  (collapses on the device, via the service worker) and the `topic` option (collapses
+  at the push service while the device is offline).
+
 ## [1.0.1] - 2026-08-12
 
 First stable release, and the first with a test suite. The library gained validation,

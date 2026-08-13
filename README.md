@@ -12,7 +12,7 @@ Sending a push notification should not require Node, a compatibility shim, or th
 - **All four pieces.** VAPID key generation, a copy-paste service worker to display the notification, the client subscribe helpers, and the server send, one at a time or fanned out to a list.
 - **No Node built-ins, no polyfills.** If it has `fetch` and `crypto.subtle`, it works. No `node:crypto`, no `node:https`, no compat layer. Cloudflare Workers, Bun, Deno, Node, and the browser.
 - **Ratified specs.** RFC 8291 `aes128gcm` encryption and RFC 8292 VAPID, pinned byte-for-byte against RFC 8291's Appendix A test vector.
-- **Small.** Minified and gzipped per subpath entry: 0.9 kB for the browser client, 2.7 kB for the server. The badge above measures the whole package, ~3.4 kB.
+- **Small.** Minified and gzipped per subpath entry: 0.9 kB for the browser client, 2.8 kB for the server. The badge above measures the whole package, ~3.5 kB.
 
 ## Installation
 
@@ -62,7 +62,7 @@ self.addEventListener("notificationclick", (event) => {
 });
 ```
 
-This is the receiving end of `PushPayload`: `title` and `body` become the notification, `tag` collapses duplicates, and `url` opens on click, focusing an already-open tab rather than stacking up new windows.
+This is the receiving end of `PushPayload`: `title` and `body` become the notification (only `title` is required), `tag` collapses duplicates, and `url` opens on click, focusing an already-open tab rather than stacking up new windows.
 
 ### 3. Client: subscribe
 
@@ -117,15 +117,19 @@ try {
 	} else if (err instanceof TypeError) {
 		// `fetch` never reached the push service: DNS, TLS, timeout. Retryable.
 	} else {
-		// Your input: bad VAPID subject or keys, oversized payload, invalid topic.
-		// Fix it, don't retry.
+		// Your input: bad VAPID subject or keys, oversized payload, invalid topic
+		// or endpoint. Fix it, don't retry.
 	}
 }
 ```
 
+The payload does not have to be a `PushPayload` object: wrap a payload you have already serialized in `rawPayload(...)` and the string or bytes are encrypted and sent verbatim, for service workers that read their own shape (see [Migrating from `web-push`](#migrating-from-web-push)).
+
 An optional fourth argument accepts `ttl`, `vapidExpiration`, `urgency`, `topic`, a `logger`, an abort `signal`, and a per-request `timeoutMs`. The timeout defaults to 30 seconds, so a push service that accepts the connection and never responds can't hold the socket indefinitely.
 
 > **`ttl` and `vapidExpiration` are independent settings.** `ttl` tells the push service how long to keep retrying an undelivered message, and multi-day values are normal there. `vapidExpiration` is the auth token's lifetime, which RFC 8292 caps at 24 hours. Reuse your `ttl` for it and every send past that cap comes back as a `401`.
+
+> **The payload `tag` and the `topic` option collapse in different places.** `tag` travels inside the payload and is read by your service worker: a new notification with the same tag replaces the one already showing on the device. `topic` is read by the push service: while the device is offline, a newer push with the same topic replaces the queued one (RFC 8030 §5.4). Topics are capped at 32 URL-safe base64 characters, so hash anything longer.
 
 A complete deployable Worker lives in [`examples/cloudflare-worker/`](https://github.com/MMMikeM/web-push/tree/main/examples/cloudflare-worker).
 
@@ -166,12 +170,27 @@ One efficiency comes free at this size: the VAPID JWT is signed once per push-se
 + await sendPushNotification(subscription, { title, body }, { subject, publicKey, privateKey });
 ```
 
-Four behavioural differences to know about:
+Three behavioural differences to know about:
 
 - **TTL defaults differ.** `web-push` defaults every send to four weeks; this package defaults to 24 hours. If you relied on the long default, pass `{ ttl: 2419200 }` explicitly.
 - **Gone subscriptions resolve, not throw.** HTTP 404/410 returns `false` here, meaning delete the subscription, where `web-push` rejects. Other push-service errors throw `WebPushError` in both libraries.
-- **The payload is a typed object**, not a pre-stringified blob. Its shape is what your service worker reads back with `event.data.json()`.
-- **That shape is fixed.** `PushPayload` is `title`, `body`, `url` and `tag`, deliberately, because the service worker above is the other end of the same contract. If you were passing `icon`, `badge`, `data` or `actions` through `web-push`, you will need to widen the type and extend that handler to match.
+- **The typed payload is optional.** Pass a `PushPayload` object (`title`, `body`, `url`, `tag`, the shape the service worker above reads back with `event.data.json()`) and it is JSON-serialized for you. Or wrap the pre-stringified payload you were passing to `web-push` in `rawPayload(...)`: it is encrypted and sent byte-for-byte, your existing service worker stays the other half of that contract, and `icon`, `badge` and `actions` ride along untouched. The wrapper is deliberate, there is no bare-string form: a misdirected string would type-check, deliver, and only fail inside `event.data.json()` on the device, so opting out of the typed contract stays visible at the call site instead.
+
+## Endpoints are capability URLs
+
+A subscription endpoint is a bearer secret: anyone holding the URL can post messages to that device until the subscription dies. Two habits follow.
+
+**Keep endpoints out of logs.** `WebPushError` carries the full endpoint so you can route on it, but its `toJSON` truncates it, so a structured logger that serializes the error will not persist a pushable URL. If you log fields by hand, prefer `statusCode` and `retryAfterMs`.
+
+**Treat stored endpoints as untrusted outbound targets.** The send functions POST to whatever endpoint the subscription contains, and the subscription came from a client. Non-`https:` endpoints are rejected (RFC 8030 §3 requires TLS), but no library can know which hosts are genuine push services. If a hostile client can register `https://internal-service.local/hooks` as its "push endpoint", your server becomes a proxy into networks it can reach and the attacker cannot. Where that matters to your threat model, allowlist the real push hosts at registration time:
+
+| Browser                          | Endpoint host                 |
+| -------------------------------- | ----------------------------- |
+| Chrome, Edge, and other Chromium | `fcm.googleapis.com`          |
+| Firefox                          | `*.push.services.mozilla.com` |
+| Safari on macOS and iOS          | `*.push.apple.com`            |
+
+Hosts as of August 2026. Browsers can change services and smaller ones run their own (Samsung Internet, for example), so treat the list as a starting point and log rejections rather than dropping them silently.
 
 ## API Reference
 
@@ -195,6 +214,7 @@ Four behavioural differences to know about:
 | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `sendPushNotification(subscription, payload, vapid, options?)` | Encrypt, sign, and send a push notification                                                           |
 | `sendPushBatch(subscriptions, payload, vapid, options?)`       | Fan out one notification with bounded concurrency; resolves to `{ delivered, gone, failed }`          |
+| `rawPayload(stringOrBytes)`                                    | Mark a payload as already serialized; sent verbatim in place of a `PushPayload`                       |
 | `WebPushError`                                                 | Thrown on push-service errors; carries `statusCode`, `body`, `endpoint`, `retryAfter`, `retryAfterMs` |
 
 ### VAPID (`@mmmike/web-push/vapid`)
@@ -214,7 +234,8 @@ Every type ships with per-field documentation, so your editor is the reference. 
 | ---------------------- | ------------------------------------------------------------------------------------- | ------------------------ |
 | `PushSubscriptionData` | A subscription in transit, endpoint plus the `p256dh`/`auth` keys                     | root, `/send`, `/client` |
 | `SubscribeResult`      | Outcome of `subscribeToPush`: `subscribed` (with `isNew`), `unsupported`, or `denied` | root, `/client`          |
-| `PushPayload`          | Notification contents: title, body, click URL, grouping tag                           | root, `/send`            |
+| `PushPayload`          | Notification contents: title (the only required field), body, click URL, grouping tag | root, `/send`            |
+| `RawPushPayload`       | A caller-serialized payload from `rawPayload`, accepted wherever `PushPayload` is     | root, `/send`            |
 | `VapidConfig`          | Your VAPID key pair and contact subject                                               | root, `/send`            |
 | `SendPushOptions`      | Per-send tuning: TTL, VAPID expiry, urgency, topic, logging, cancellation             | root, `/send`            |
 | `SendPushBatchOptions` | `SendPushOptions` plus the pool's `concurrency` bound                                 | root, `/send`            |

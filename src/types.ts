@@ -14,11 +14,14 @@ export type PushSubscriptionData = {
 };
 
 /**
- * Payload to send in a push notification.
+ * The typed payload form, JSON-serialized for the service worker to read back
+ * with `event.data.json()`. For a payload you have already serialized, wrap it
+ * in `rawPayload(...)` instead.
  */
 export type PushPayload = {
 	title: string;
-	body: string;
+	/** Omit for a title-only notification */
+	body?: string;
 	/** URL to open when notification is clicked */
 	url?: string;
 	/** Tag for notification grouping/replacement */

@@ -45,6 +45,11 @@ const parseRetryAfterMs = (retryAfter: string | null): number | null => {
 export class WebPushError extends Error {
 	readonly statusCode: number;
 	readonly body: string;
+	/**
+	 * The full subscription endpoint, a capability URL: anyone holding it can
+	 * push to the device. Route on it, but keep it out of logs; serializers
+	 * that honor `toJSON` get a truncated one.
+	 */
 	readonly endpoint: string;
 	/** The `Retry-After` header verbatim: delta-seconds or an HTTP-date */
 	readonly retryAfter: string | null;
@@ -66,7 +71,60 @@ export class WebPushError extends Error {
 		this.retryAfter = retryAfter;
 		this.retryAfterMs = parseRetryAfterMs(retryAfter);
 	}
+
+	/**
+	 * Truncates `endpoint` and `body` for serialization. Without this,
+	 * `JSON.stringify` on the error would emit every enumerable field,
+	 * persisting the full capability URL into any structured log.
+	 */
+	toJSON(): Record<string, string | number | null> {
+		return {
+			name: this.name,
+			message: this.message,
+			statusCode: this.statusCode,
+			endpoint: this.endpoint.slice(0, 50),
+			body: this.body.slice(0, 200),
+			retryAfter: this.retryAfter,
+			retryAfterMs: this.retryAfterMs,
+		};
+	}
 }
+
+// The private field makes the type nominal: nothing structural can forge
+// `#bytes`, so the only way to send raw bytes is through `rawPayload(...)`,
+// keeping every opt-out of the typed contract greppable at the call site.
+class RawBytes {
+	readonly #bytes: Uint8Array;
+
+	constructor(bytes: Uint8Array) {
+		this.#bytes = bytes;
+	}
+
+	get bytes(): Uint8Array {
+		return this.#bytes;
+	}
+}
+
+/**
+ * A payload the caller has already serialized, accepted by
+ * {@link sendPushNotification} and {@link sendPushBatch} in place of a
+ * `PushPayload`. Created by {@link rawPayload}.
+ */
+export type RawPushPayload = RawBytes;
+
+/**
+ * Mark a payload as already serialized: the string or bytes are encrypted and
+ * delivered verbatim, so your service worker's parsing is the other half of
+ * the contract. The README service worker expects `PushPayload` JSON and will
+ * throw on anything else — which is also why the send functions take this
+ * wrapper rather than a bare string: a misdirected string would type-check,
+ * deliver, and only fail inside `event.data.json()` on the device.
+ */
+export const rawPayload = (payload: string | Uint8Array): RawPushPayload =>
+	new RawBytes(typeof payload === "string" ? new TextEncoder().encode(payload) : payload);
+
+const encodePayload = (payload: PushPayload | RawPushPayload): Uint8Array =>
+	payload instanceof RawBytes ? payload.bytes : new TextEncoder().encode(JSON.stringify(payload));
 
 /** RFC 8030 §5.4: a collapse key of at most 32 URL-safe base64 characters. */
 const assertValidTopic = (topic: string | undefined): void => {
@@ -78,6 +136,10 @@ const assertValidTopic = (topic: string | undefined): void => {
 /** The JWT `aud` claim is the push service origin, not the full endpoint. */
 const pushServiceOrigin = (endpoint: string): string => {
 	const url = new URL(endpoint);
+	// Anything but TLS hands the capability URL and payload to the network.
+	if (url.protocol !== "https:") {
+		throw new Error("Invalid subscription endpoint: must be an https: URL (RFC 8030 §3)");
+	}
 	return `${url.protocol}//${url.host}`;
 };
 
@@ -177,9 +239,12 @@ const postToPushService = async (
  * Each request carries a timeout (default 30s) and, when provided, the
  * caller's `signal`; hitting either rejects with the abort reason.
  *
+ * @param payload A `PushPayload` is JSON-serialized; a {@link rawPayload}
+ * wrapper is encrypted and sent verbatim
  * @returns true if successful, false if subscription is invalid (should be deleted)
  * @throws {WebPushError} on rate limits (429) and other push service errors
- * @throws {Error} on invalid input: VAPID config, payload size, `topic`, `timeoutMs`
+ * @throws {Error} on invalid input: VAPID config, payload size, `topic`,
+ * `timeoutMs`, or a non-`https:` endpoint
  * @example
  * ```ts
  * const delivered = await sendPushNotification(subscription, payload, vapid);
@@ -188,7 +253,7 @@ const postToPushService = async (
  */
 export const sendPushNotification = async (
 	subscription: PushSubscriptionData,
-	payload: PushPayload,
+	payload: PushPayload | RawPushPayload,
 	vapid: VapidConfig,
 	options: SendPushOptions = {},
 ): Promise<boolean> => {
@@ -197,7 +262,7 @@ export const sendPushNotification = async (
 
 	// Reject bad input *before* signing the VAPID JWT — no point paying for an
 	// ECDSA signature on a request we'll refuse.
-	const payloadBytes = new TextEncoder().encode(JSON.stringify(payload));
+	const payloadBytes = encodePayload(payload);
 	validatePushInputs(payloadBytes, subscription.keys.p256dh, subscription.keys.auth);
 
 	// JWT expiry is independent of the message TTL: push services reject tokens
@@ -224,8 +289,11 @@ export const sendPushNotification = async (
  * for the whole batch. Aborting `options.signal` stops workers from starting
  * new sends; subscriptions never attempted count toward none of the three.
  *
+ * @param payload A `PushPayload` is JSON-serialized; a {@link rawPayload}
+ * wrapper is encrypted and sent verbatim
  * @throws {Error} on caller input — invalid VAPID config, oversized payload,
  * invalid `topic`, `concurrency`, or `timeoutMs` — before anything is sent.
+ * A non-`https:` endpoint is per-subscription data and lands in `failed`.
  * @example
  * ```ts
  * const { delivered, gone, failed } = await sendPushBatch(subscriptions, payload, vapid);
@@ -235,7 +303,7 @@ export const sendPushNotification = async (
  */
 export const sendPushBatch = async (
 	subscriptions: readonly PushSubscriptionData[],
-	payload: PushPayload,
+	payload: PushPayload | RawPushPayload,
 	vapid: VapidConfig,
 	options: SendPushBatchOptions = {},
 ): Promise<SendPushBatchResult> => {
@@ -246,7 +314,7 @@ export const sendPushBatch = async (
 	assertValidTopic(sendOptions.topic);
 	assertValidTimeout(sendOptions.timeoutMs ?? DEFAULT_TIMEOUT_MS);
 
-	const payloadBytes = new TextEncoder().encode(JSON.stringify(payload));
+	const payloadBytes = encodePayload(payload);
 	assertPayloadWithinLimit(payloadBytes);
 
 	const vapidJwtFor = (audience: string): Promise<string> =>

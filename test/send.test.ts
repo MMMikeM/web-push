@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vite-plus/test";
 import { encryptPayload } from "../src/encrypt";
-import { sendPushNotification, WebPushError } from "../src/send";
+import { rawPayload, sendPushNotification, WebPushError } from "../src/send";
 import type { PushSubscriptionData, VapidConfig } from "../src/types";
 import { generateVapidKeys, uint8ArrayToUrlBase64 } from "../src/vapid";
 import {
@@ -293,6 +293,64 @@ describe("sendPushNotification — options", () => {
 	});
 });
 
+describe("sendPushNotification — payload forms", () => {
+	it("sends a rawPayload string verbatim, not JSON-wrapped", async () => {
+		const mock = stubFetch(201);
+		await sendPushNotification(subscription(), rawPayload('{"custom":"shape"}'), vapid);
+
+		const body = new Uint8Array((mock.mock.calls[0][1] as RequestInit).body as ArrayBuffer);
+		const plaintext = await decryptAes128gcm(body, client);
+		expect(new TextDecoder().decode(plaintext)).toBe('{"custom":"shape"}');
+	});
+
+	it("sends rawPayload bytes byte-for-byte", async () => {
+		const mock = stubFetch(201);
+		const bytes = crypto.getRandomValues(new Uint8Array(64));
+		await sendPushNotification(subscription(), rawPayload(bytes), vapid);
+
+		const body = new Uint8Array((mock.mock.calls[0][1] as RequestInit).body as ArrayBuffer);
+		expect(await decryptAes128gcm(body, client)).toEqual(bytes);
+	});
+
+	it("holds a raw payload to the same single-record limit, in UTF-8 bytes", async () => {
+		stubFetch(201);
+		await expect(
+			sendPushNotification(subscription(), rawPayload("a".repeat(3993)), vapid),
+		).resolves.toBe(true);
+		await expect(
+			sendPushNotification(subscription(), rawPayload("a".repeat(3994)), vapid),
+		).rejects.toThrow(/^Payload too large/);
+	});
+
+	it("accepts a title-only payload: body is optional, as in the Notification API", async () => {
+		const mock = stubFetch(201);
+		await sendPushNotification(subscription(), { title: "Hi" }, vapid);
+
+		const body = new Uint8Array((mock.mock.calls[0][1] as RequestInit).body as ArrayBuffer);
+		const plaintext = await decryptAes128gcm(body, client);
+		expect(new TextDecoder().decode(plaintext)).toBe('{"title":"Hi"}');
+	});
+});
+
+describe("WebPushError — safe serialization", () => {
+	it("truncates the capability-URL endpoint and the body when JSON-serialized", () => {
+		const endpoint = `https://push.example/${"x".repeat(100)}`;
+		const err = new WebPushError("Push service error: 500", 500, "b".repeat(500), endpoint, "120");
+
+		expect(err.endpoint).toBe(endpoint);
+		const json = JSON.parse(JSON.stringify(err)) as Record<string, unknown>;
+		expect(json.endpoint).toBe(endpoint.slice(0, 50));
+		expect(json.body).toBe("b".repeat(200));
+		expect(json).toMatchObject({
+			name: "WebPushError",
+			message: "Push service error: 500",
+			statusCode: 500,
+			retryAfter: "120",
+			retryAfterMs: 120000,
+		});
+	});
+});
+
 describe("sendPushNotification — payload size & validation", () => {
 	// JSON overhead of {"title":"","body":"..."} with unescaped ASCII body.
 	const OVERHEAD = new TextEncoder().encode(JSON.stringify({ title: "", body: "" })).length;
@@ -333,6 +391,18 @@ describe("sendPushNotification — payload size & validation", () => {
 			keys: { p256dh: client.p256dh, auth: client.auth },
 		};
 		await expect(sendPushNotification(bad, payload, vapid)).rejects.toThrow("Invalid URL");
+	});
+
+	it("rejects a non-https endpoint without fetching it (RFC 8030 §3)", async () => {
+		const mock = stubFetch(201);
+		const bad: PushSubscriptionData = {
+			endpoint: "http://push.example/insecure",
+			keys: { p256dh: client.p256dh, auth: client.auth },
+		};
+		await expect(sendPushNotification(bad, payload, vapid)).rejects.toThrow(
+			"Invalid subscription endpoint: must be an https: URL (RFC 8030 §3)",
+		);
+		expect(mock).not.toHaveBeenCalled();
 	});
 
 	it("rejects an invalid p256dh key with a clear error", async () => {
