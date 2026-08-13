@@ -1,7 +1,7 @@
 {
 	"name": "@mmmike/web-push",
-	"version": "1.0.1",
-	"description": "Zero-dependency Web Push (RFC 8291) for Cloudflare Workers, Deno, Bun, Vercel Edge, Node.js, and browsers — client subscribe + server send + VAPID.",
+	"version": "1.1.0",
+	"description": "Zero-dependency Web Push (RFC 8291) for Cloudflare Workers, Deno, Bun, Node.js, and browsers — client subscribe + server send + VAPID.",
 	"keywords": [
 		"bun",
 		"cloudflare-workers",
@@ -64,7 +64,8 @@
 		"check": "pnpm run format:check && pnpm run lint && pnpm run lint:types && pnpm run test && pnpm run audit",
 		"check:exports": "attw --pack . --profile esm-only",
 		"check:publint": "publint --strict",
-		"check:package": "pnpm run build && pnpm run check:publint && pnpm run check:exports",
+		"check:sizes": "node scripts/check-sizes.ts",
+		"check:package": "pnpm run build && pnpm run check:publint && pnpm run check:exports && pnpm run check:sizes",
 		"prepublishOnly": "pnpm run check && pnpm run check:package",
 		"release": "git tag -a \"v$npm_package_version\" -m \"v$npm_package_version\" && git push --follow-tags"
 	},
@@ -73,6 +74,7 @@
 		"@arethetypeswrong/core": "^0.18.5",
 		"@types/node": "^26.1.1",
 		"@vitest/coverage-v8": "^4.1.10",
+		"esbuild": "^0.28.1",
 		"publint": "^0.3.21",
 		"typescript": "^7.0.2",
 		"vite-plus": "^0.2.8"
