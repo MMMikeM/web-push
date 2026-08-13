@@ -94,7 +94,8 @@ export type SendPushOptions = {
 	urgency?: "very-low" | "low" | "normal" | "high";
 	/**
 	 * Collapse key (RFC 8030 §5.4): a later push with the same topic replaces
-	 * this one while it is still undelivered. Max 32 URL-safe base64 characters.
+	 * this one while it is still undelivered. Max 32 URL-safe base64 characters;
+	 * derive one from an arbitrary string with `topicFromString`.
 	 */
 	topic?: string;
 	/** Aborts in-flight sends; a batch also stops starting new ones. */

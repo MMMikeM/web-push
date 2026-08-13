@@ -10,7 +10,13 @@ export {
 	unsubscribeFromPush,
 } from "./client";
 export type { SubscribeResult } from "./client";
-export { rawPayload, sendPushBatch, sendPushNotification, WebPushError } from "./send";
+export {
+	rawPayload,
+	sendPushBatch,
+	sendPushNotification,
+	topicFromString,
+	WebPushError,
+} from "./send";
 export type { RawPushPayload } from "./send";
 export type {
 	Logger,

@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vite-plus/test";
 import { encryptPayload } from "../src/encrypt";
-import { rawPayload, sendPushNotification, WebPushError } from "../src/send";
+import { rawPayload, sendPushNotification, topicFromString, WebPushError } from "../src/send";
 import type { PushSubscriptionData, VapidConfig } from "../src/types";
 import { generateVapidKeys, uint8ArrayToUrlBase64 } from "../src/vapid";
 import {
@@ -290,6 +290,31 @@ describe("sendPushNotification — options", () => {
 		await expect(
 			sendPushNotification(subscription(), payload, vapid, { topic: "a+b" }),
 		).rejects.toThrow("Topic must be 1-32 URL-safe base64 characters");
+	});
+});
+
+describe("topicFromString", () => {
+	it("derives the first 32 base64url characters of the input's SHA-256 digest", async () => {
+		expect(await topicFromString("message:123")).toBe("uqkbz5Y5Svz-VgXW4JtCYTQwSYwEcyOL");
+	});
+
+	it("always yields a topic sendPushNotification accepts", async () => {
+		const mock = stubFetch(201);
+		const topic = await topicFromString(`group_mention:${"x".repeat(200)} + spaces / 🎉`);
+		await sendPushNotification(subscription(), payload, vapid, { topic });
+		expect(headersOf(mock).Topic).toBe(topic);
+		expect(topic).toMatch(/^[A-Za-z0-9\-_]{32}$/);
+	});
+
+	it("hashes input that is already a valid topic rather than passing it through", async () => {
+		const topic = await topicFromString("chat-42");
+		expect(topic).not.toBe("chat-42");
+		expect(topic).toMatch(/^[A-Za-z0-9\-_]{32}$/);
+	});
+
+	it("gives distinct topics to inputs that would collide under truncation", async () => {
+		const prefix = `message:${"9".repeat(40)}`;
+		expect(await topicFromString(`${prefix}1`)).not.toBe(await topicFromString(`${prefix}2`));
 	});
 });
 

@@ -12,7 +12,7 @@ import type {
 	SendPushOptions,
 	VapidConfig,
 } from "./types";
-import { createVapidJwt } from "./vapid";
+import { createVapidJwt, uint8ArrayToUrlBase64 } from "./vapid";
 
 export type {
 	PushSubscriptionData,
@@ -125,6 +125,26 @@ export const rawPayload = (payload: string | Uint8Array): RawPushPayload =>
 
 const encodePayload = (payload: PushPayload | RawPushPayload): Uint8Array =>
 	payload instanceof RawBytes ? payload.bytes : new TextEncoder().encode(JSON.stringify(payload));
+
+/**
+ * Derive a valid `topic` from an arbitrary string, for collapse keys that
+ * don't fit the RFC 8030 §5.4 charset or length (`message:${id}`, a URL, …).
+ * Deterministic — the same input always yields the same topic, which is what
+ * makes push-service collapse work — and opaque, so the key's content never
+ * appears in a header the push service can read (only the payload is
+ * encrypted; headers are plaintext to the service). The first 32 base64url
+ * characters of a SHA-256 digest carry 192 bits, leaving collisions
+ * negligible.
+ *
+ * Strings that are already valid topics are hashed too, never passed through:
+ * a conditional pass-through would make near-identical inputs produce
+ * unrelated wire values. Set {@link SendPushOptions.topic} directly when you
+ * need an exact header value.
+ */
+export const topicFromString = async (input: string): Promise<string> => {
+	const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+	return uint8ArrayToUrlBase64(new Uint8Array(digest)).slice(0, 32);
+};
 
 /** RFC 8030 §5.4: a collapse key of at most 32 URL-safe base64 characters. */
 const assertValidTopic = (topic: string | undefined): void => {

@@ -12,7 +12,7 @@ Sending a push notification should not require Node, a compatibility shim, or th
 - **All four pieces.** VAPID key generation, a copy-paste service worker to display the notification, the client subscribe helpers, and the server send, one at a time or fanned out to a list.
 - **No Node built-ins, no polyfills.** If it has `fetch` and `crypto.subtle`, it works. No `node:crypto`, no `node:https`, no compat layer. Cloudflare Workers, Bun, Deno, Node, and the browser.
 - **Ratified specs.** RFC 8291 `aes128gcm` encryption and RFC 8292 VAPID, pinned byte-for-byte against RFC 8291's Appendix A test vector.
-- **Small.** Minified and gzipped per subpath entry: 0.9 kB for the browser client, 2.8 kB for the server. The badge above measures the whole package, ~3.5 kB.
+- **Small.** Minified and gzipped per subpath entry: 0.9 kB for the browser client, 2.9 kB for the server. The badge above measures the whole package, ~3.6 kB.
 
 ## Installation
 
@@ -129,7 +129,7 @@ An optional fourth argument accepts `ttl`, `vapidExpiration`, `urgency`, `topic`
 
 > **`ttl` and `vapidExpiration` are independent settings.** `ttl` tells the push service how long to keep retrying an undelivered message, and multi-day values are normal there. `vapidExpiration` is the auth token's lifetime, which RFC 8292 caps at 24 hours. Reuse your `ttl` for it and every send past that cap comes back as a `401`.
 
-> **The payload `tag` and the `topic` option collapse in different places.** `tag` travels inside the payload and is read by your service worker: a new notification with the same tag replaces the one already showing on the device. `topic` is read by the push service: while the device is offline, a newer push with the same topic replaces the queued one (RFC 8030 §5.4). Topics are capped at 32 URL-safe base64 characters, so hash anything longer.
+> **The payload `tag` and the `topic` option collapse in different places.** `tag` travels inside the payload and is read by your service worker: a new notification with the same tag replaces the one already showing on the device. `topic` is read by the push service: while the device is offline, a newer push with the same topic replaces the queued one (RFC 8030 §5.4). Topics are capped at 32 URL-safe base64 characters; `topicFromString` derives a valid one from any string (`topic: await topicFromString(\`message:${id}\`)`), keeping the raw key out of the plaintext header while staying deterministic, so collapse still works.
 
 A complete deployable Worker lives in [`examples/cloudflare-worker/`](https://github.com/MMMikeM/web-push/tree/main/examples/cloudflare-worker).
 
@@ -215,6 +215,7 @@ Hosts as of August 2026. Browsers can change services and smaller ones run their
 | `sendPushNotification(subscription, payload, vapid, options?)` | Encrypt, sign, and send a push notification                                                           |
 | `sendPushBatch(subscriptions, payload, vapid, options?)`       | Fan out one notification with bounded concurrency; resolves to `{ delivered, gone, failed }`          |
 | `rawPayload(stringOrBytes)`                                    | Mark a payload as already serialized; sent verbatim in place of a `PushPayload`                       |
+| `topicFromString(input)`                                       | Derive a valid `topic` from any string: first 32 base64url characters of its SHA-256                  |
 | `WebPushError`                                                 | Thrown on push-service errors; carries `statusCode`, `body`, `endpoint`, `retryAfter`, `retryAfterMs` |
 
 ### VAPID (`@mmmike/web-push/vapid`)

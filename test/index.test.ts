@@ -16,7 +16,13 @@ describe("index barrel", () => {
 		"subscribeToPush",
 		"unsubscribeFromPush",
 	];
-	const serverExports = ["rawPayload", "sendPushBatch", "sendPushNotification", "WebPushError"];
+	const serverExports = [
+		"rawPayload",
+		"sendPushBatch",
+		"sendPushNotification",
+		"topicFromString",
+		"WebPushError",
+	];
 	const vapidExports = [
 		"createVapidJwt",
 		"generateVapidKeys",

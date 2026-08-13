@@ -5,6 +5,17 @@ All notable changes to `@mmmike/web-push` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-08-13
+
+### Added
+
+- **`topicFromString(input)`** — derives a valid `topic` (RFC 8030 §5.4 collapse key)
+  from an arbitrary string: the first 32 base64url characters of its SHA-256 digest.
+  Deterministic, so collapse still works; opaque, so the raw key (`message:<id>`, a
+  URL) never appears in a header the push service reads in plaintext. Always hashes —
+  even input that is already a valid topic — because a conditional pass-through would
+  make near-identical inputs produce unrelated wire values.
+
 ## [1.1.0] - 2026-08-13
 
 ### Added
