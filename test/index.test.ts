@@ -13,7 +13,9 @@ describe("index barrel", () => {
 		"requestNotificationPermission",
 		"sendSubscriptionToServer",
 		"serializeSubscription",
+		"subscribe",
 		"subscribeToPush",
+		"unsubscribe",
 		"unsubscribeFromPush",
 	];
 	const serverExports = [

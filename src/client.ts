@@ -26,7 +26,7 @@ export const requestNotificationPermission = (): Promise<NotificationPermission>
 	Notification.requestPermission();
 
 /**
- * The outcome of {@link subscribeToPush}: a subscription, or why there is none.
+ * The outcome of {@link subscribe}: a subscription, or why there is none.
  */
 export type SubscribeResult =
 	| {
@@ -62,13 +62,13 @@ const isBoundToKey = (subscription: PushSubscription, key: Uint8Array): boolean 
  * @param vapidPublicKey - The server's VAPID public key (URL-safe base64)
  * @example
  * ```ts
- * const result = await subscribeToPush(vapidPublicKey);
+ * const result = await subscribe(vapidPublicKey);
  * if (result.status === "subscribed") {
  *   await sendSubscriptionToServer(result.subscription);
  * }
  * ```
  */
-export const subscribeToPush = async (vapidPublicKey: string): Promise<SubscribeResult> => {
+export const subscribe = async (vapidPublicKey: string): Promise<SubscribeResult> => {
 	if (!isPushSupported()) {
 		return { status: "unsupported" };
 	}
@@ -97,25 +97,12 @@ export const subscribeToPush = async (vapidPublicKey: string): Promise<Subscribe
 };
 
 /**
- * Unsubscribe from push notifications.
+ * Subscribe to push notifications, prompting for permission if needed.
  *
- * Resolves `true` when there is nothing to unsubscribe from — no current
- * subscription, or push not supported in this browser.
+ * @deprecated Renamed to {@link subscribe} — same behavior, symmetric with
+ * `unsubscribe`.
  */
-export const unsubscribeFromPush = async (): Promise<boolean> => {
-	if (!isPushSupported()) {
-		return true;
-	}
-
-	const registration = await navigator.serviceWorker.ready;
-	const subscription = await registration.pushManager.getSubscription();
-
-	if (!subscription) {
-		return true;
-	}
-
-	return subscription.unsubscribe();
-};
+export const subscribeToPush = subscribe;
 
 /**
  * Get the current push subscription if it exists.
@@ -127,6 +114,46 @@ export const getCurrentSubscription = async (): Promise<PushSubscription | null>
 
 	const registration = await navigator.serviceWorker.ready;
 	return registration.pushManager.getSubscription();
+};
+
+/**
+ * Unsubscribe from push notifications.
+ *
+ * Resolves `true` when there is nothing to unsubscribe from — no current
+ * subscription, or push not supported in this browser.
+ *
+ * @deprecated Use {@link unsubscribe} instead: it returns the
+ * unsubscribed endpoint, which the server needs to prune its matching
+ * subscription record — this boolean drops it.
+ */
+export const unsubscribeFromPush = async (): Promise<boolean> => {
+	const subscription = await getCurrentSubscription();
+	return subscription ? subscription.unsubscribe() : true;
+};
+
+/**
+ * Unsubscribe from push notifications, returning the unsubscribed endpoint.
+ *
+ * Resolves to the subscription's endpoint so the caller can prune the matching
+ * server-side record, or `null` when there was nothing to unsubscribe — no
+ * current subscription, or push not supported in this browser. The endpoint is
+ * returned even if the browser reports the unsubscribe as failed or rejects
+ * (e.g. the push service is unreachable): the caller's intent is to stop
+ * receiving pushes, and removing the server record achieves that regardless.
+ */
+export const unsubscribe = async (): Promise<string | null> => {
+	const subscription = await getCurrentSubscription();
+	if (!subscription) {
+		return null;
+	}
+
+	const { endpoint } = subscription;
+	try {
+		await subscription.unsubscribe();
+	} catch {
+		// The endpoint is the contract; a failed deregistration must not hide it.
+	}
+	return endpoint;
 };
 
 const requireKey = (subscription: PushSubscription, name: "p256dh" | "auth"): ArrayBuffer => {

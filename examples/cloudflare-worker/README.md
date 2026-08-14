@@ -37,7 +37,7 @@ npm run deploy
 ## Send a test push
 
 `subscription` is what the browser produces via
-[`subscribeToPush()`](https://www.npmjs.com/package/@mmmike/web-push) on the
+[`subscribe()`](https://www.npmjs.com/package/@mmmike/web-push) on the
 client and POSTs to your server.
 
 ```bash

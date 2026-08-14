@@ -6,7 +6,9 @@ export {
 	requestNotificationPermission,
 	sendSubscriptionToServer,
 	serializeSubscription,
+	subscribe,
 	subscribeToPush,
+	unsubscribe,
 	unsubscribeFromPush,
 } from "./client";
 export type { SubscribeResult } from "./client";

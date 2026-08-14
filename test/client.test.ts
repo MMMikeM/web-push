@@ -7,7 +7,9 @@ import {
 	requestNotificationPermission,
 	sendSubscriptionToServer,
 	serializeSubscription,
+	subscribe,
 	subscribeToPush,
+	unsubscribe,
 	unsubscribeFromPush,
 } from "../src/client";
 import { uint8ArrayToUrlBase64, urlBase64ToUint8Array } from "../src/vapid";
@@ -147,15 +149,19 @@ const subscriptionBoundTo = (vapidPublicKey: string) =>
 		urlBase64ToUint8Array(vapidPublicKey).buffer,
 	);
 
-describe("subscribeToPush", () => {
+describe("subscribe", () => {
+	it("subscribeToPush is the deprecated alias of subscribe", () => {
+		expect(subscribeToPush).toBe(subscribe);
+	});
+
 	it("reports unsupported when push APIs are missing", async () => {
 		setupPushEnv({ serviceWorker: false });
-		expect(await subscribeToPush("BPk")).toEqual({ status: "unsupported" });
+		expect(await subscribe("BPk")).toEqual({ status: "unsupported" });
 	});
 
 	it("reports denied when the permission prompt is declined", async () => {
 		setupPushEnv({ permission: "default", promptResult: "denied" });
-		expect(await subscribeToPush("BPk")).toEqual({ status: "denied" });
+		expect(await subscribe("BPk")).toEqual({ status: "denied" });
 	});
 
 	it("prompts for permission and subscribes once granted", async () => {
@@ -163,7 +169,7 @@ describe("subscribeToPush", () => {
 			permission: "default",
 			promptResult: "granted",
 		});
-		expect(await subscribeToPush("BPk")).toEqual({
+		expect(await subscribe("BPk")).toEqual({
 			status: "subscribed",
 			subscription: created,
 			isNew: true,
@@ -175,7 +181,7 @@ describe("subscribeToPush", () => {
 		const vapidPublicKey = randomVapidKey();
 		const existing = subscriptionBoundTo(vapidPublicKey);
 		const { pushManager } = setupPushEnv({ existing });
-		expect(await subscribeToPush(vapidPublicKey)).toEqual({
+		expect(await subscribe(vapidPublicKey)).toEqual({
 			status: "subscribed",
 			subscription: existing,
 			isNew: false,
@@ -186,7 +192,7 @@ describe("subscribeToPush", () => {
 	it("keeps an existing subscription whose applicationServerKey the browser does not report", async () => {
 		const existing = makeSubscription("https://push.example.com/existing");
 		const { pushManager } = setupPushEnv({ existing });
-		expect(await subscribeToPush(randomVapidKey())).toEqual({
+		expect(await subscribe(randomVapidKey())).toEqual({
 			status: "subscribed",
 			subscription: existing,
 			isNew: false,
@@ -198,7 +204,7 @@ describe("subscribeToPush", () => {
 	it("rotates a subscription bound to a different VAPID key and flags it as new", async () => {
 		const existing = subscriptionBoundTo(randomVapidKey());
 		const { pushManager, created } = setupPushEnv({ existing });
-		expect(await subscribeToPush(randomVapidKey())).toEqual({
+		expect(await subscribe(randomVapidKey())).toEqual({
 			status: "subscribed",
 			subscription: created,
 			isNew: true,
@@ -210,7 +216,7 @@ describe("subscribeToPush", () => {
 	it("subscribes with the decoded applicationServerKey when none exists", async () => {
 		const vapidPublicKey = randomVapidKey();
 		const { pushManager, created } = setupPushEnv({ existing: null });
-		const result = await subscribeToPush(vapidPublicKey);
+		const result = await subscribe(vapidPublicKey);
 
 		expect(result).toEqual({ status: "subscribed", subscription: created, isNew: true });
 		expect(pushManager.subscribe).toHaveBeenCalledOnce();
@@ -221,29 +227,62 @@ describe("subscribeToPush", () => {
 	});
 });
 
-describe("unsubscribeFromPush & getCurrentSubscription", () => {
-	it("unsubscribe returns true when push is unsupported", async () => {
+describe("unsubscribe & getCurrentSubscription", () => {
+	it("unsubscribeFromPush returns true when push is unsupported", async () => {
 		setupPushEnv({ serviceWorker: false });
 		expect(await unsubscribeFromPush()).toBe(true);
 	});
 
-	it("unsubscribe returns true when there is no subscription", async () => {
+	it("unsubscribeFromPush returns true when there is no subscription", async () => {
 		setupPushEnv({ existing: null });
 		expect(await unsubscribeFromPush()).toBe(true);
 	});
 
-	it("unsubscribe calls subscription.unsubscribe when one exists", async () => {
+	it("unsubscribeFromPush calls subscription.unsubscribe when one exists", async () => {
 		const existing = makeSubscription();
 		setupPushEnv({ existing });
 		expect(await unsubscribeFromPush()).toBe(true);
 		expect(existing.unsubscribe).toHaveBeenCalledOnce();
 	});
 
-	it("unsubscribe returns false when the browser fails to unsubscribe", async () => {
+	it("unsubscribeFromPush returns false when the browser fails to unsubscribe", async () => {
 		const existing = makeSubscription();
 		existing.unsubscribe.mockResolvedValueOnce(false);
 		setupPushEnv({ existing });
 		expect(await unsubscribeFromPush()).toBe(false);
+	});
+
+	it("unsubscribe returns null when push is unsupported", async () => {
+		setupPushEnv({ serviceWorker: false });
+		expect(await unsubscribe()).toBeNull();
+	});
+
+	it("unsubscribe returns null when there is no subscription", async () => {
+		setupPushEnv({ existing: null });
+		expect(await unsubscribe()).toBeNull();
+	});
+
+	it("unsubscribe calls subscription.unsubscribe and returns its endpoint", async () => {
+		const existing = makeSubscription();
+		setupPushEnv({ existing });
+		expect(await unsubscribe()).toBe(existing.endpoint);
+		expect(existing.unsubscribe).toHaveBeenCalledOnce();
+	});
+
+	it("unsubscribe still returns the endpoint when the browser reports failure", async () => {
+		const existing = makeSubscription();
+		existing.unsubscribe.mockResolvedValueOnce(false);
+		setupPushEnv({ existing });
+		expect(await unsubscribe()).toBe(existing.endpoint);
+		expect(existing.unsubscribe).toHaveBeenCalledOnce();
+	});
+
+	it("unsubscribe still returns the endpoint when the browser rejects the unsubscribe", async () => {
+		const existing = makeSubscription();
+		existing.unsubscribe.mockRejectedValueOnce(new Error("push service unreachable"));
+		setupPushEnv({ existing });
+		expect(await unsubscribe()).toBe(existing.endpoint);
+		expect(existing.unsubscribe).toHaveBeenCalledOnce();
 	});
 
 	it("getCurrentSubscription returns null when unsupported", async () => {
@@ -260,13 +299,13 @@ describe("unsubscribeFromPush & getCurrentSubscription", () => {
 	it("supports the full lifecycle: subscribe, read back, unsubscribe, gone", async () => {
 		const { created } = setupPushEnv();
 		expect(await getCurrentSubscription()).toBeNull();
-		expect(await subscribeToPush("BPk")).toEqual({
+		expect(await subscribe("BPk")).toEqual({
 			status: "subscribed",
 			subscription: created,
 			isNew: true,
 		});
 		expect(await getCurrentSubscription()).toBe(created);
-		expect(await unsubscribeFromPush()).toBe(true);
+		expect(await unsubscribe()).toBe(created.endpoint);
 		expect(await getCurrentSubscription()).toBeNull();
 	});
 });

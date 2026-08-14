@@ -39,7 +39,7 @@ console.log({ publicKey, privateKey });
 
 ### 2. The service worker
 
-Push needs a service worker, because the browser wakes it to display the notification even when your page is closed. Without one registered, `subscribeToPush` waits on `navigator.serviceWorker.ready` forever.
+Push needs a service worker, because the browser wakes it to display the notification even when your page is closed. Without one registered, `subscribe` waits on `navigator.serviceWorker.ready` forever.
 
 ```javascript
 // sw.js
@@ -67,17 +67,17 @@ This is the receiving end of `PushPayload`: `title` and `body` become the notifi
 ### 3. Client: subscribe
 
 ```typescript
-import { subscribeToPush, sendSubscriptionToServer } from "@mmmike/web-push/client";
+import { subscribe, sendSubscriptionToServer } from "@mmmike/web-push/client";
 
 await navigator.serviceWorker.register("/sw.js");
 
-const result = await subscribeToPush(vapidPublicKey);
+const result = await subscribe(vapidPublicKey);
 if (result.status === "subscribed") {
 	await sendSubscriptionToServer(result.subscription, "/api/push/subscribe");
 }
 ```
 
-`subscribeToPush` resolves to `{ status: "unsupported" }` when the browser can't do push, `{ status: "denied" }` when the user declines the permission prompt, and `{ status: "subscribed", subscription, isNew }` otherwise. `isNew` is `true` when this call created the subscription: a first subscribe, or a VAPID key rotation replacing the stale one.
+`subscribe` resolves to `{ status: "unsupported" }` when the browser can't do push, `{ status: "denied" }` when the user declines the permission prompt, and `{ status: "subscribed", subscription, isNew }` otherwise. `isNew` is `true` when this call created the subscription: a first subscribe, or a VAPID key rotation replacing the stale one.
 
 POST the subscription on every visit rather than gating on `isNew`. Your endpoint has to upsert by endpoint URL anyway, since the browser hands back the same subscription on every call, and gating means one failed upload strands a subscription your server never hears about. Use `isNew` for what it does tell you: counting fresh subscribes and key rotations.
 
@@ -89,7 +89,7 @@ Requirements:
 
 Encrypted-payload push works in Chrome, Edge, Firefox, Opera and Samsung Internet, and in Safari 16+ on macOS 13+ and iOS 16.4+. `isPushSupported()` is the runtime check.
 
-Rotating VAPID keys is handled for you: when the existing subscription was created with a different key, `subscribeToPush` unsubscribes it and creates a fresh one (`isNew: true`), since the push service would reject the old one anyway. The one gap is a browser that doesn't expose which key a subscription was bound to (`subscription.options.applicationServerKey` is null): with nothing to compare against, the existing subscription is kept. If it was in fact bound to a retired key, every send to it fails with a 401/403 `WebPushError`, and nothing in that error names the rotation as the cause; if you rotate keys and then see those, this is where to look.
+Rotating VAPID keys is handled for you: when the existing subscription was created with a different key, `subscribe` unsubscribes it and creates a fresh one (`isNew: true`), since the push service would reject the old one anyway. The one gap is a browser that doesn't expose which key a subscription was bound to (`subscription.options.applicationServerKey` is null): with nothing to compare against, the existing subscription is kept. If it was in fact bound to a retired key, every send to it fails with a 401/403 `WebPushError`, and nothing in that error names the rotation as the cause; if you rotate keys and then see those, this is where to look.
 
 ### 4. Server: send
 
@@ -201,8 +201,10 @@ Hosts as of August 2026. Browsers can change services and smaller ones run their
 | `isPushSupported()`                                                  | Check if push is supported in this browser                                          |
 | `getNotificationPermission()`                                        | Get current notification permission                                                 |
 | `requestNotificationPermission()`                                    | Request notification permission                                                     |
-| `subscribeToPush(vapidPublicKey)`                                    | Subscribe to push, rotating a stale-key subscription; resolves to `SubscribeResult` |
-| `unsubscribeFromPush()`                                              | Unsubscribe from push notifications                                                 |
+| `subscribe(vapidPublicKey)`                                          | Subscribe to push, rotating a stale-key subscription; resolves to `SubscribeResult` |
+| `unsubscribe()`                                                      | Unsubscribe from push; resolves to the endpoint (for the server prune) or `null`    |
+| `subscribeToPush(vapidPublicKey)`                                    | Deprecated: renamed to `subscribe()`, same behavior                                 |
+| `unsubscribeFromPush()`                                              | Deprecated: use `unsubscribe()`, which returns the endpoint instead of a boolean    |
 | `getCurrentSubscription()`                                           | Get the existing subscription, if any                                               |
 | `serializeSubscription(sub)`                                         | Convert subscription to JSON-safe format (throws if it has no `p256dh`/`auth` key)  |
 | `sendSubscriptionToServer(sub, serverEndpoint)`                      | POST subscription to your server                                                    |
@@ -234,7 +236,7 @@ Every type ships with per-field documentation, so your editor is the reference. 
 | Type                   | Purpose                                                                               | Exported from            |
 | ---------------------- | ------------------------------------------------------------------------------------- | ------------------------ |
 | `PushSubscriptionData` | A subscription in transit, endpoint plus the `p256dh`/`auth` keys                     | root, `/send`, `/client` |
-| `SubscribeResult`      | Outcome of `subscribeToPush`: `subscribed` (with `isNew`), `unsupported`, or `denied` | root, `/client`          |
+| `SubscribeResult`      | Outcome of `subscribe`: `subscribed` (with `isNew`), `unsupported`, or `denied`       | root, `/client`          |
 | `PushPayload`          | Notification contents: title (the only required field), body, click URL, grouping tag | root, `/send`            |
 | `RawPushPayload`       | A caller-serialized payload from `rawPayload`, accepted wherever `PushPayload` is     | root, `/send`            |
 | `VapidConfig`          | Your VAPID key pair and contact subject                                               | root, `/send`            |
