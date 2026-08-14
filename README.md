@@ -12,7 +12,7 @@ Sending a push notification should not require Node, a compatibility shim, or th
 - **All four pieces.** VAPID key generation, a copy-paste service worker to display the notification, the client subscribe helpers, and the server send, one at a time or fanned out to a list.
 - **No Node built-ins, no polyfills.** If it has `fetch` and `crypto.subtle`, it works. No `node:crypto`, no `node:https`, no compat layer. Cloudflare Workers, Bun, Deno, Node, and the browser.
 - **Ratified specs.** RFC 8291 `aes128gcm` encryption and RFC 8292 VAPID, pinned byte-for-byte against RFC 8291's Appendix A test vector.
-- **Small.** Minified and gzipped per subpath entry: 0.9 kB for the browser client, 2.9 kB for the server. The badge above measures the whole package, ~3.6 kB.
+- **Small.** Minified and gzipped per subpath entry: 1.0 kB for the browser client, 2.9 kB for the server. The badge above measures the whole package, ~3.6 kB.
 
 ## Installation
 

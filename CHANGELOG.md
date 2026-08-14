@@ -5,6 +5,27 @@ All notable changes to `@mmmike/web-push` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-08-14
+
+### Added
+
+- **`subscribe(vapidPublicKey)`** — the new name for `subscribeToPush`, same behavior.
+  The pair `subscribe`/`unsubscribe` is symmetric where `subscribeToPush`/
+  `unsubscribeFromPush` was not.
+- **`unsubscribe()`** — unsubscribes and resolves to the subscription's endpoint (or
+  `null` when there was nothing to unsubscribe), so the caller can prune the matching
+  server-side record. The endpoint is returned even when the browser reports the
+  unsubscribe as failed or rejects (e.g. the push service is unreachable): the
+  caller's intent is to stop receiving pushes, and deleting the server record
+  achieves that regardless.
+
+### Deprecated
+
+- **`subscribeToPush`** — alias of `subscribe`; switch at leisure, it will be removed
+  in the next major.
+- **`unsubscribeFromPush`** — its boolean return drops the endpoint the server needs
+  to prune its record; use `unsubscribe` instead. Removal in the next major.
+
 ## [1.2.0] - 2026-08-13
 
 ### Added
