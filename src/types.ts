@@ -82,7 +82,7 @@ export type SendPushBatchResult = {
  */
 export type SendPushOptions = {
 	logger?: Logger;
-	/** TTL in seconds (default: 86400 = 24 hours) */
+	/** TTL in whole seconds, 0 or more (default: 86400 = 24 hours) */
 	ttl?: number;
 	/**
 	 * VAPID JWT expiration in seconds from now (default: 43200 = 12 hours).
@@ -101,9 +101,9 @@ export type SendPushOptions = {
 	/** Aborts in-flight sends; a batch also stops starting new ones. */
 	signal?: AbortSignal;
 	/**
-	 * Per-request timeout in milliseconds (default: 30000). Without one, a push
-	 * service that accepts the connection and never responds holds its pool
-	 * slot for as long as the platform allows.
+	 * Per-request timeout in whole milliseconds, at most 2^31 - 1 (default:
+	 * 30000). Without one, a push service that accepts the connection and never
+	 * responds holds its pool slot for as long as the platform allows.
 	 */
 	timeoutMs?: number;
 };

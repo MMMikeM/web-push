@@ -317,11 +317,30 @@ describe("sendPushBatch — caller input rejects up front", () => {
 		expect(mock).not.toHaveBeenCalled();
 	});
 
-	it("throws on a non-positive timeoutMs before any send", async () => {
+	it("throws on a timeoutMs AbortSignal.timeout would mishandle before any send", async () => {
 		const mock = stubFetch(201);
 		await expect(
-			sendPushBatch([subscription("https://push.example/a")], payload, vapid, { timeoutMs: 0 }),
-		).rejects.toThrow("timeoutMs must be a positive number of milliseconds");
+			sendPushBatch([subscription("https://push.example/a")], payload, vapid, { timeoutMs: 3e9 }),
+		).rejects.toThrow("timeoutMs must be a whole number of milliseconds from 1 to 2147483647");
+		expect(mock).not.toHaveBeenCalled();
+	});
+
+	it("throws on an invalid ttl once, not once per subscription", async () => {
+		const mock = stubFetch(201);
+		const subs = [1, 2, 3].map((i) => subscription(`https://push.example/sub-${i}`));
+		await expect(sendPushBatch(subs, payload, vapid, { ttl: -1 })).rejects.toThrow(
+			"ttl must be a whole number of seconds, 0 or more",
+		);
+		expect(mock).not.toHaveBeenCalled();
+	});
+
+	it("throws on a NaN vapidExpiration once, instead of signing exp: null", async () => {
+		const mock = stubFetch(201);
+		await expect(
+			sendPushBatch([subscription("https://push.example/a")], payload, vapid, {
+				vapidExpiration: Number.NaN,
+			}),
+		).rejects.toThrow("VAPID JWT expiration must be between 1 and 86400 seconds (24 hours)");
 		expect(mock).not.toHaveBeenCalled();
 	});
 });

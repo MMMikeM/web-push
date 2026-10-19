@@ -195,12 +195,21 @@ describe("sendPushNotification — abort & timeout", () => {
 		).rejects.toThrow(/aborted/i);
 	});
 
-	it("rejects a non-positive timeoutMs before sending", async () => {
+	it.each([0, -1, 1500.5, 3e9, Number.NaN])(
+		"rejects timeoutMs %s before sending, since AbortSignal.timeout takes whole ms up to 2^31 - 1",
+		async (timeoutMs) => {
+			const mock = stubFetch(201);
+			await expect(
+				sendPushNotification(subscription(), payload, vapid, { timeoutMs }),
+			).rejects.toThrow("timeoutMs must be a whole number of milliseconds from 1 to 2147483647");
+			expect(mock).not.toHaveBeenCalled();
+		},
+	);
+
+	it("accepts the largest timeoutMs AbortSignal.timeout honours", async () => {
 		const mock = stubFetch(201);
-		await expect(
-			sendPushNotification(subscription(), payload, vapid, { timeoutMs: 0 }),
-		).rejects.toThrow("timeoutMs must be a positive number of milliseconds");
-		expect(mock).not.toHaveBeenCalled();
+		await sendPushNotification(subscription(), payload, vapid, { timeoutMs: 2 ** 31 - 1 });
+		expect((mock.mock.calls[0][1] as RequestInit).signal?.aborted).toBe(false);
 	});
 });
 
@@ -216,6 +225,17 @@ describe("sendPushNotification — options", () => {
 		await sendPushNotification(subscription(), payload, vapid, { ttl: 0 });
 		expect(headersOf(mock).TTL).toBe("0");
 	});
+
+	it.each([-1, 1.5, Number.NaN, 1e21])(
+		"rejects ttl %s before sending: TTL is delta-seconds (RFC 8030 §5.2)",
+		async (ttl) => {
+			const mock = stubFetch(201);
+			await expect(sendPushNotification(subscription(), payload, vapid, { ttl })).rejects.toThrow(
+				"ttl must be a whole number of seconds, 0 or more",
+			);
+			expect(mock).not.toHaveBeenCalled();
+		},
+	);
 
 	it("logs the response via logger.debug", async () => {
 		stubFetch(201);

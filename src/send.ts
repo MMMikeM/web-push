@@ -168,10 +168,31 @@ const isSubscriptionGone = (status: number): boolean => status === 404 || status
 
 const DEFAULT_TIMEOUT_MS = 30000;
 
+// setTimeout's ceiling, which AbortSignal.timeout shares: Node silently fires
+// anything larger after 1ms, and throws on fractions.
+const MAX_TIMEOUT_MS = 2 ** 31 - 1;
+
 const assertValidTimeout = (timeoutMs: number): void => {
-	if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
-		throw new Error("timeoutMs must be a positive number of milliseconds");
+	if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > MAX_TIMEOUT_MS) {
+		throw new Error(`timeoutMs must be a whole number of milliseconds from 1 to ${MAX_TIMEOUT_MS}`);
 	}
+};
+
+/** RFC 8030 §5.2: `TTL` is delta-seconds, a non-negative integer. */
+const assertValidTtl = (ttl: number | undefined): void => {
+	if (ttl !== undefined && (!Number.isSafeInteger(ttl) || ttl < 0)) {
+		throw new Error("ttl must be a whole number of seconds, 0 or more");
+	}
+};
+
+const assertValidSendOptions = ({
+	topic,
+	ttl,
+	timeoutMs = DEFAULT_TIMEOUT_MS,
+}: SendPushOptions): void => {
+	assertValidTopic(topic);
+	assertValidTtl(ttl);
+	assertValidTimeout(timeoutMs);
 };
 
 const requestSignal = (signal: AbortSignal | undefined, timeoutMs: number): AbortSignal =>
@@ -263,7 +284,7 @@ const postToPushService = async (
  * wrapper is encrypted and sent verbatim
  * @returns true if successful, false if subscription is invalid (should be deleted)
  * @throws {WebPushError} on rate limits (429) and other push service errors
- * @throws {Error} on invalid input: VAPID config, payload size, `topic`,
+ * @throws {Error} on invalid input: VAPID config, payload size, `topic`, `ttl`,
  * `timeoutMs`, or a non-`https:` endpoint
  * @example
  * ```ts
@@ -277,8 +298,7 @@ export const sendPushNotification = async (
 	vapid: VapidConfig,
 	options: SendPushOptions = {},
 ): Promise<boolean> => {
-	assertValidTopic(options.topic);
-	assertValidTimeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+	assertValidSendOptions(options);
 
 	// Reject bad input *before* signing the VAPID JWT — no point paying for an
 	// ECDSA signature on a request we'll refuse.
@@ -312,7 +332,7 @@ export const sendPushNotification = async (
  * @param payload A `PushPayload` is JSON-serialized; a {@link rawPayload}
  * wrapper is encrypted and sent verbatim
  * @throws {Error} on caller input — invalid VAPID config, oversized payload,
- * invalid `topic`, `concurrency`, or `timeoutMs` — before anything is sent.
+ * invalid `topic`, `ttl`, `concurrency`, or `timeoutMs` — before anything is sent.
  * A non-`https:` endpoint is per-subscription data and lands in `failed`.
  * @example
  * ```ts
@@ -331,8 +351,7 @@ export const sendPushBatch = async (
 	if (!Number.isInteger(concurrency) || concurrency < 1) {
 		throw new Error("concurrency must be a positive integer");
 	}
-	assertValidTopic(sendOptions.topic);
-	assertValidTimeout(sendOptions.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+	assertValidSendOptions(sendOptions);
 
 	const payloadBytes = encodePayload(payload);
 	assertPayloadWithinLimit(payloadBytes);

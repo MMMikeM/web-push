@@ -30,6 +30,13 @@ this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **A VAPID public key or subscription `p256dh` key that is not base64url** (an env
   var with its quotes left on, say) now throws the same descriptive error as a
   wrong-length key, instead of `atob`'s `InvalidCharacterError`.
+- **Send options that could only fail on the wire are now rejected up front.**
+  `timeoutMs` must be a whole number of milliseconds up to 2^31 - 1: Node fired a
+  larger one after 1ms and threw per send on a fraction. `ttl` must be a whole number
+  of seconds, 0 or more, instead of reaching the `TTL` header as `NaN` or `-1` and
+  drawing a 400 per subscription. A NaN `vapidExpiration` no longer signs a token
+  with `"exp": null` that every push service rejects. `sendPushBatch` throws once for
+  each of these, before any send, rather than filling `failed`.
 
 ## [1.3.0] - 2026-08-14
 

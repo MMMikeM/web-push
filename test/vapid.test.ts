@@ -204,6 +204,19 @@ describe("createVapidJwt", () => {
 		).rejects.toThrow("VAPID JWT expiration must be between 1 and 86400 seconds (24 hours)");
 	});
 
+	it("rejects a NaN expiration, as Number() of an unset env var gives", async () => {
+		const { publicKey, privateKey } = await generateVapidKeys();
+		await expect(
+			createVapidJwt({
+				audience: "https://example.com",
+				subject: "mailto:a@b.com",
+				publicKey,
+				privateKey,
+				expiration: Number.NaN,
+			}),
+		).rejects.toThrow("VAPID JWT expiration must be between 1 and 86400 seconds (24 hours)");
+	});
+
 	it("accepts an expiration of exactly 24 hours (86400s)", async () => {
 		const { publicKey, privateKey } = await generateVapidKeys();
 		const jwt = await createVapidJwt({

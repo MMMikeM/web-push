@@ -90,14 +90,14 @@ const importSigningKey = (publicKey: string, privateKey: string): Promise<Crypto
 /**
  * Create a VAPID JWT for authenticating with push services.
  *
- * @throws {Error} if the expiration is outside 1–86400 seconds, the subject is
+ * @throws {Error} if the expiration is NaN or outside 1–86400 seconds, the subject is
  * not a `mailto:`/`https://` URI, or either key is malformed.
  */
 export const createVapidJwt = async (options: VapidJwtOptions): Promise<string> => {
 	const { audience, subject, publicKey, privateKey, expiration = 43200 } = options;
 
 	// VAPID JWT lifetime is capped at 24h (RFC 8292 §2); services reject longer.
-	if (expiration <= 0 || expiration > 86400) {
+	if (Number.isNaN(expiration) || expiration <= 0 || expiration > 86400) {
 		throw new Error("VAPID JWT expiration must be between 1 and 86400 seconds (24 hours)");
 	}
 	// RFC 8292 §2.1: the subject must be a contact URI (mailto: or https:).
