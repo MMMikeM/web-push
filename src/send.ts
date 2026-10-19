@@ -44,6 +44,7 @@ const parseRetryAfterMs = (retryAfter: string | null): number | null => {
  */
 export class WebPushError extends Error {
 	readonly statusCode: number;
+	/** The push service's response body, cut off after its first 4 KB */
 	readonly body: string;
 	/**
 	 * The full subscription endpoint, a capability URL: anyone holding it can
@@ -224,6 +225,36 @@ const buildPushHeaders = ({
 	return headers;
 };
 
+/**
+ * Push services answer in a few hundred bytes. The endpoint is chosen by the
+ * subscriber, so without a cap a hostile one could stream an unbounded body
+ * into memory on every send.
+ */
+const MAX_RESPONSE_BODY_BYTES = 4096;
+
+const readBodyPrefix = async (response: Response): Promise<string> => {
+	if (!response.body) {
+		return "";
+	}
+	const reader = response.body.getReader();
+	const decoder = new TextDecoder();
+	let text = "";
+	let received = 0;
+	while (received < MAX_RESPONSE_BODY_BYTES) {
+		// oxlint-disable-next-line no-await-in-loop -- a stream yields its chunks in order
+		const { done, value } = await reader.read();
+		if (done) {
+			return text + decoder.decode();
+		}
+		text += decoder.decode(value.subarray(0, MAX_RESPONSE_BODY_BYTES - received), {
+			stream: true,
+		});
+		received += value.length;
+	}
+	await reader.cancel();
+	return text + decoder.decode();
+};
+
 const postToPushService = async (
 	subscription: PushSubscriptionData,
 	payloadBytes: Uint8Array,
@@ -246,7 +277,7 @@ const postToPushService = async (
 		signal: requestSignal(signal, timeoutMs),
 	});
 
-	const responseText = await response.text();
+	const responseText = await readBodyPrefix(response);
 
 	logger?.debug?.("Push response", {
 		endpoint: subscription.endpoint.slice(0, 50),

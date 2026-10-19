@@ -125,6 +125,27 @@ describe("sendPushNotification — status handling", () => {
 		expect(err.message).toMatch(/rate limit/i);
 	});
 
+	it("keeps only the first 4 KB of an endless error body, then cancels the stream", async () => {
+		let cancelled = false;
+		const endless = new ReadableStream<Uint8Array>({
+			pull: (controller) => controller.enqueue(new Uint8Array(1000).fill(0x78)),
+			cancel: () => {
+				cancelled = true;
+			},
+		});
+		vi.stubGlobal(
+			"fetch",
+			vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(
+				async () => new Response(endless, { status: 500 }),
+			),
+		);
+
+		const err = await sendPushNotification(subscription(), payload, vapid).catch((e) => e);
+		expect(err).toBeInstanceOf(WebPushError);
+		expect(err.body).toBe("x".repeat(4096));
+		expect(cancelled).toBe(true);
+	});
+
 	it("throws WebPushError with the status on other server errors", async () => {
 		stubFetch(500, "Internal Server Error");
 		const err = await sendPushNotification(subscription(), payload, vapid).catch((e) => e);

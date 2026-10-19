@@ -44,6 +44,14 @@ this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `.endpoint` off the row, threw, and rejected the batch while its workers kept
   sending unobserved. The row now lands in `failed` with an empty `endpoint`.
 
+### Security
+
+- **Push service responses are read up to 4 KB, then the stream is cancelled.**
+  Endpoints come from subscribers, so a hostile one could stream an unbounded body that
+  was buffered whole on every send. `WebPushError.body` now holds at most the first 4 KB.
+- **The per-message ECDH key pair is generated non-extractable.** Only its public
+  half is ever exported, and public keys stay exportable regardless.
+
 ## [1.3.0] - 2026-08-14
 
 ### Added
