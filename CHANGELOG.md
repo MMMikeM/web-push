@@ -5,6 +5,20 @@ All notable changes to `@mmmike/web-push` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **`subscribe` no longer discards a working subscription when given a malformed VAPID
+  key.** An empty or wrong-length key (an unset env var, the private key by mistake)
+  never matched the existing subscription's key, so it was unsubscribed as a stale-key
+  rotation before `pushManager.subscribe` rejected the key. The key is now validated
+  first and throws `VAPID public key must be a 65-byte uncompressed P-256 point`
+  before the permission prompt.
+- **`getCurrentSubscription`, `unsubscribe` and `unsubscribeFromPush` resolve when no
+  service worker is registered** (`null`, `null`, `true`) instead of waiting on
+  `navigator.serviceWorker.ready` forever.
+
 ## [1.3.0] - 2026-08-14
 
 ### Added

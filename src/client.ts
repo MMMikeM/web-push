@@ -49,6 +49,16 @@ const isBoundToKey = (subscription: PushSubscription, key: Uint8Array): boolean 
 	return boundBytes.length === key.length && boundBytes.every((byte, i) => byte === key[i]);
 };
 
+// Checked before the stale-key comparison: an empty or wrong-length key never
+// matches, so it would otherwise unsubscribe a working subscription as a "rotation".
+const decodeVapidPublicKey = (vapidPublicKey: string): Uint8Array<ArrayBuffer> => {
+	const key = urlBase64ToUint8Array(vapidPublicKey);
+	if (key.length !== 65 || key[0] !== 0x04) {
+		throw new Error("VAPID public key must be a 65-byte uncompressed P-256 point");
+	}
+	return key;
+};
+
 /**
  * Subscribe to push notifications, prompting for permission if needed.
  *
@@ -60,6 +70,10 @@ const isBoundToKey = (subscription: PushSubscription, key: Uint8Array): boolean 
  * one failed request strands a subscription your server never hears about.
  *
  * @param vapidPublicKey - The server's VAPID public key (URL-safe base64)
+ * @throws {Error} if `vapidPublicKey` is not a 65-byte uncompressed P-256 point;
+ * checked before the permission prompt and before any existing subscription is touched.
+ * @throws {DOMException} if the browser or push service refuses the subscription, or
+ * the stale-key subscription can't be unsubscribed during a rotation.
  * @example
  * ```ts
  * const result = await subscribe(vapidPublicKey);
@@ -73,14 +87,14 @@ export const subscribe = async (vapidPublicKey: string): Promise<SubscribeResult
 		return { status: "unsupported" };
 	}
 
+	const applicationServerKey = decodeVapidPublicKey(vapidPublicKey);
+
 	const permission = await requestNotificationPermission();
 	if (permission !== "granted") {
 		return { status: "denied" };
 	}
 
 	const registration = await navigator.serviceWorker.ready;
-	const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
-
 	const existingSubscription = await registration.pushManager.getSubscription();
 	if (existingSubscription) {
 		if (isBoundToKey(existingSubscription, applicationServerKey)) {
@@ -112,8 +126,10 @@ export const getCurrentSubscription = async (): Promise<PushSubscription | null>
 		return null;
 	}
 
-	const registration = await navigator.serviceWorker.ready;
-	return registration.pushManager.getSubscription();
+	// Not `ready`: it never settles without a registered worker, and no
+	// registration means no subscription.
+	const registration = await navigator.serviceWorker.getRegistration();
+	return registration ? registration.pushManager.getSubscription() : null;
 };
 
 /**
@@ -125,6 +141,8 @@ export const getCurrentSubscription = async (): Promise<PushSubscription | null>
  * @deprecated Use {@link unsubscribe} instead: it returns the
  * unsubscribed endpoint, which the server needs to prune its matching
  * subscription record — this boolean drops it.
+ * @throws {DOMException} if the browser rejects the unsubscribe (e.g. the push
+ * service is unreachable), where `unsubscribe` still resolves the endpoint.
  */
 export const unsubscribeFromPush = async (): Promise<boolean> => {
 	const subscription = await getCurrentSubscription();
@@ -148,11 +166,7 @@ export const unsubscribe = async (): Promise<string | null> => {
 	}
 
 	const { endpoint } = subscription;
-	try {
-		await subscription.unsubscribe();
-	} catch {
-		// The endpoint is the contract; a failed deregistration must not hide it.
-	}
+	await subscription.unsubscribe().catch(() => false);
 	return endpoint;
 };
 

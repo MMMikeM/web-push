@@ -81,6 +81,17 @@ if (result.status === "subscribed") {
 
 POST the subscription on every visit rather than gating on `isNew`. Your endpoint has to upsert by endpoint URL anyway, since the browser hands back the same subscription on every call, and gating means one failed upload strands a subscription your server never hears about. Use `isNew` for what it does tell you: counting fresh subscribes and key rotations.
 
+To turn push off, `unsubscribe` resolves to the endpoint your server keyed the record by, or `null` when there was nothing to unsubscribe:
+
+```typescript
+import { unsubscribe, removeSubscriptionFromServer } from "@mmmike/web-push/client";
+
+const endpoint = await unsubscribe();
+if (endpoint) {
+	await removeSubscriptionFromServer(endpoint, "/api/push/subscribe");
+}
+```
+
 Requirements:
 
 - a secure context (HTTPS or `localhost`)

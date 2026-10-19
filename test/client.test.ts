@@ -42,6 +42,7 @@ type EnvOptions = {
 	permission?: NotificationPermission;
 	promptResult?: NotificationPermission;
 	existing?: FakeSubscription | null;
+	registered?: boolean;
 };
 
 function PushManager() {}
@@ -54,6 +55,7 @@ const setupPushEnv = (opts: EnvOptions = {}) => {
 		permission = "granted",
 		promptResult = permission,
 		existing = null,
+		registered = true,
 	} = opts;
 	const created = makeSubscription("https://push.example.com/sub/new");
 
@@ -97,8 +99,11 @@ const setupPushEnv = (opts: EnvOptions = {}) => {
 	if (hasPushManager) {
 		windowStub.PushManager = PushManager;
 	}
+	// Unregistered mirrors the browser: `ready` never settles, `getRegistration` is undefined.
 	if (serviceWorker) {
-		navigatorStub.serviceWorker = { ready: Promise.resolve(registration) };
+		navigatorStub.serviceWorker = registered
+			? { ready: Promise.resolve(registration), getRegistration: async () => registration }
+			: { ready: new Promise(() => {}), getRegistration: async () => undefined };
 	}
 
 	vi.stubGlobal("window", windowStub);
@@ -140,7 +145,11 @@ describe("feature detection & permission", () => {
 	});
 });
 
-const randomVapidKey = () => uint8ArrayToUrlBase64(crypto.getRandomValues(new Uint8Array(65)));
+const randomVapidKey = () => {
+	const point = crypto.getRandomValues(new Uint8Array(65));
+	point[0] = 0x04; // SEC1 uncompressed-point tag
+	return uint8ArrayToUrlBase64(point);
+};
 const subscriptionBoundTo = (vapidPublicKey: string) =>
 	makeSubscription(
 		"https://push.example.com/existing",
@@ -161,7 +170,7 @@ describe("subscribe", () => {
 
 	it("reports denied when the permission prompt is declined", async () => {
 		setupPushEnv({ permission: "default", promptResult: "denied" });
-		expect(await subscribe("BPk")).toEqual({ status: "denied" });
+		expect(await subscribe(randomVapidKey())).toEqual({ status: "denied" });
 	});
 
 	it("prompts for permission and subscribes once granted", async () => {
@@ -169,7 +178,7 @@ describe("subscribe", () => {
 			permission: "default",
 			promptResult: "granted",
 		});
-		expect(await subscribe("BPk")).toEqual({
+		expect(await subscribe(randomVapidKey())).toEqual({
 			status: "subscribed",
 			subscription: created,
 			isNew: true,
@@ -225,6 +234,23 @@ describe("subscribe", () => {
 			applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
 		});
 	});
+
+	it.each([
+		{ kind: "an empty", key: "" },
+		{ kind: "a 32-byte (private-key-sized)", key: uint8ArrayToUrlBase64(new Uint8Array(32)) },
+	])(
+		"rejects $kind VAPID key before prompting, keeping the existing subscription",
+		async ({ key }) => {
+			const existing = subscriptionBoundTo(randomVapidKey());
+			const { pushManager, NotificationStub } = setupPushEnv({ existing });
+			await expect(subscribe(key)).rejects.toThrow(
+				"VAPID public key must be a 65-byte uncompressed P-256 point",
+			);
+			expect(NotificationStub.requestPermission).not.toHaveBeenCalled();
+			expect(existing.unsubscribe).not.toHaveBeenCalled();
+			expect(pushManager.subscribe).not.toHaveBeenCalled();
+		},
+	);
 });
 
 describe("unsubscribe & getCurrentSubscription", () => {
@@ -285,6 +311,16 @@ describe("unsubscribe & getCurrentSubscription", () => {
 		expect(existing.unsubscribe).toHaveBeenCalledOnce();
 	});
 
+	it("unsubscribe resolves null instead of hanging when no service worker is registered", async () => {
+		setupPushEnv({ registered: false });
+		expect(await unsubscribe()).toBeNull();
+	});
+
+	it("getCurrentSubscription resolves null when no service worker is registered", async () => {
+		setupPushEnv({ registered: false });
+		expect(await getCurrentSubscription()).toBeNull();
+	});
+
 	it("getCurrentSubscription returns null when unsupported", async () => {
 		setupPushEnv({ serviceWorker: false });
 		expect(await getCurrentSubscription()).toBeNull();
@@ -299,7 +335,7 @@ describe("unsubscribe & getCurrentSubscription", () => {
 	it("supports the full lifecycle: subscribe, read back, unsubscribe, gone", async () => {
 		const { created } = setupPushEnv();
 		expect(await getCurrentSubscription()).toBeNull();
-		expect(await subscribe("BPk")).toEqual({
+		expect(await subscribe(randomVapidKey())).toEqual({
 			status: "subscribed",
 			subscription: created,
 			isNew: true,
