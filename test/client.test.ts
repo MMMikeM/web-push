@@ -210,13 +210,14 @@ describe("subscribe", () => {
 		expect(pushManager.subscribe).not.toHaveBeenCalled();
 	});
 
-	it("rotates a subscription bound to a different VAPID key and flags it as new", async () => {
+	it("rotates a subscription bound to a different VAPID key, returning the replaced endpoint", async () => {
 		const existing = subscriptionBoundTo(randomVapidKey());
 		const { pushManager, created } = setupPushEnv({ existing });
 		expect(await subscribe(randomVapidKey())).toEqual({
 			status: "subscribed",
 			subscription: created,
 			isNew: true,
+			replacedEndpoint: existing.endpoint,
 		});
 		expect(existing.unsubscribe).toHaveBeenCalledOnce();
 		expect(pushManager.subscribe).toHaveBeenCalledOnce();

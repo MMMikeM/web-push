@@ -7,6 +7,13 @@ this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **`SubscribeResult.replacedEndpoint`.** When `subscribe` rotates a stale-key
+  subscription, the old endpoint is now returned so the server can delete its record.
+  Before, it was discarded, and the record lingered until a send happened to report it
+  gone, which never happens while the push service answers the new key with 401/403.
+
 ### Fixed
 
 - **`subscribe` no longer discards a working subscription when given a malformed VAPID

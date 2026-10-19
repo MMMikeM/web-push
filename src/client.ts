@@ -34,6 +34,8 @@ export type SubscribeResult =
 			subscription: PushSubscription;
 			/** Whether this call created the subscription: first subscribe, or key rotation */
 			isNew: boolean;
+			/** Endpoint a key rotation unsubscribed; delete its server record */
+			replacedEndpoint?: string;
 	  }
 	| { status: "unsupported" }
 	| { status: "denied" };
@@ -64,7 +66,8 @@ const decodeVapidPublicKey = (vapidPublicKey: string): Uint8Array<ArrayBuffer> =
  *
  * Reuses an existing subscription when it was created with the same VAPID key.
  * If the key has changed, the stale subscription is unsubscribed and replaced,
- * since the push service would reject it anyway. `isNew` reports whether this
+ * since the push service would reject it anyway, and its endpoint comes back as
+ * `replacedEndpoint` so the server can delete that record. `isNew` reports whether this
  * call created the subscription (first subscribe or key rotation). Send the
  * subscription to your server either way: gating the upload on `isNew` means
  * one failed request strands a subscription your server never hears about.
@@ -107,7 +110,12 @@ export const subscribe = async (vapidPublicKey: string): Promise<SubscribeResult
 		userVisibleOnly: true,
 		applicationServerKey,
 	});
-	return { status: "subscribed", subscription, isNew: true };
+	return {
+		status: "subscribed",
+		subscription,
+		isNew: true,
+		replacedEndpoint: existingSubscription?.endpoint,
+	};
 };
 
 /**
