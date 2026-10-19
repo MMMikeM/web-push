@@ -34,7 +34,7 @@ export type SubscribeResult =
 			subscription: PushSubscription;
 			/** Whether this call created the subscription: first subscribe, or key rotation */
 			isNew: boolean;
-			/** Endpoint a key rotation unsubscribed; delete its server record */
+			/** Endpoint a key rotation unsubscribed, when it differs from the new one; delete its record */
 			replacedEndpoint?: string;
 	  }
 	| { status: "unsupported" }
@@ -110,12 +110,12 @@ export const subscribe = async (vapidPublicKey: string): Promise<SubscribeResult
 		userVisibleOnly: true,
 		applicationServerKey,
 	});
-	return {
-		status: "subscribed",
-		subscription,
-		isNew: true,
-		replacedEndpoint: existingSubscription?.endpoint,
-	};
+	const staleEndpoint = existingSubscription?.endpoint;
+	// A push service may reissue the same endpoint; reporting it would have the
+	// caller delete the record it just saved.
+	return staleEndpoint && staleEndpoint !== subscription.endpoint
+		? { status: "subscribed", subscription, isNew: true, replacedEndpoint: staleEndpoint }
+		: { status: "subscribed", subscription, isNew: true };
 };
 
 /**

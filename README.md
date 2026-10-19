@@ -84,7 +84,7 @@ if (result.status === "subscribed") {
 }
 ```
 
-`subscribe` resolves to `{ status: "unsupported" }` when the browser can't do push, `{ status: "denied" }` when the user declines the permission prompt, and `{ status: "subscribed", subscription, isNew, replacedEndpoint? }` otherwise. `isNew` is `true` when this call created the subscription: a first subscribe, or a VAPID key rotation replacing the stale one. `replacedEndpoint` is set only after a rotation, and names the stale subscription your server should delete.
+`subscribe` resolves to `{ status: "unsupported" }` when the browser can't do push, `{ status: "denied" }` when the user declines the permission prompt, and `{ status: "subscribed", subscription, isNew, replacedEndpoint? }` otherwise. `isNew` is `true` when this call created the subscription: a first subscribe, or a VAPID key rotation replacing the stale one. `replacedEndpoint` is present only after a rotation that issued a new endpoint, and names the stale subscription your server should delete.
 
 POST the subscription on every visit rather than gating on `isNew`. Your endpoint has to upsert by endpoint URL anyway, since the browser hands back the same subscription on every call, and gating means one failed upload strands a subscription your server never hears about. Use `isNew` for what it does tell you: counting fresh subscribes and key rotations.
 

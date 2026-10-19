@@ -13,6 +13,8 @@ this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   subscription, the old endpoint is now returned so the server can delete its record.
   Before, it was discarded, and the record lingered until a send happened to report it
   gone, which never happens while the push service answers the new key with 401/403.
+  The property is absent when nothing was replaced, or when the push service reissued
+  the same endpoint (deleting it would remove the record just saved).
 
 ### Fixed
 

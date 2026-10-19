@@ -223,12 +223,27 @@ describe("subscribe", () => {
 		expect(pushManager.subscribe).toHaveBeenCalledOnce();
 	});
 
+	it("omits replacedEndpoint when a rotation reissues the same endpoint", async () => {
+		const existing = makeSubscription(
+			"https://push.example.com/sub/new",
+			undefined,
+			undefined,
+			urlBase64ToUint8Array(randomVapidKey()).buffer,
+		);
+		const { created } = setupPushEnv({ existing });
+		const result = await subscribe(randomVapidKey());
+
+		expect(result).toStrictEqual({ status: "subscribed", subscription: created, isNew: true });
+		expect(result).not.toHaveProperty("replacedEndpoint");
+	});
+
 	it("subscribes with the decoded applicationServerKey when none exists", async () => {
 		const vapidPublicKey = randomVapidKey();
 		const { pushManager, created } = setupPushEnv({ existing: null });
 		const result = await subscribe(vapidPublicKey);
 
-		expect(result).toEqual({ status: "subscribed", subscription: created, isNew: true });
+		expect(result).toStrictEqual({ status: "subscribed", subscription: created, isNew: true });
+		expect(result).not.toHaveProperty("replacedEndpoint");
 		expect(pushManager.subscribe).toHaveBeenCalledOnce();
 		expect(pushManager.subscribe).toHaveBeenCalledWith({
 			userVisibleOnly: true,
