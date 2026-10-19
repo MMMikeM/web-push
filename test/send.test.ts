@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vite-plus/test";
-import { encryptPayload } from "../src/encrypt";
+import { decodeSubscriptionKeys, encryptPayload } from "../src/encrypt";
 import { rawPayload, sendPushNotification, topicFromString, WebPushError } from "../src/send";
 import type { PushSubscriptionData, VapidConfig } from "../src/types";
 import { generateVapidKeys, uint8ArrayToUrlBase64 } from "../src/vapid";
@@ -499,7 +499,10 @@ describe("encryptPayload — round-trip across payload sizes", () => {
 	// random binary bytes rule out any ASCII/JSON assumption in the record path.
 	it.each([0, 1, 1337, 3992, 3993])("round-trips a %i-byte random payload", async (size) => {
 		const plaintext = crypto.getRandomValues(new Uint8Array(size));
-		const body = await encryptPayload(plaintext, client.p256dh, client.auth);
+		const body = await encryptPayload(
+			plaintext,
+			decodeSubscriptionKeys(client.p256dh, client.auth),
+		);
 		expect(await decryptAes128gcm(body, client)).toEqual(plaintext);
 	});
 });

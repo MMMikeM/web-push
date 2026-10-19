@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { encryptRecord } from "../src/encrypt";
+import { decodeSubscriptionKeys, encryptRecord } from "../src/encrypt";
 import { uint8ArrayToUrlBase64, urlBase64ToUint8Array } from "../src/vapid";
 
 /**
@@ -62,7 +62,8 @@ describe("RFC 8291 Appendix A vector", () => {
 		const salt = urlBase64ToUint8Array(SALT);
 		const payload = new TextEncoder().encode(PLAINTEXT);
 
-		const body = await encryptRecord(payload, UA_PUBLIC, AUTH_SECRET, keyPair, salt);
+		const keys = decodeSubscriptionKeys(UA_PUBLIC, AUTH_SECRET);
+		const body = await encryptRecord(payload, keys, keyPair, salt);
 
 		expect(uint8ArrayToUrlBase64(body)).toBe(EXPECTED_BODY);
 	});

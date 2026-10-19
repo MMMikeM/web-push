@@ -3,7 +3,7 @@
  * body (RFC 8291), plus the status handling that decides delivered / gone / error.
  */
 
-import { assertPayloadWithinLimit, encryptPayload, validatePushInputs } from "./encrypt";
+import { assertPayloadWithinLimit, decodeSubscriptionKeys, encryptPayload } from "./encrypt";
 import type {
 	PushPayload,
 	PushSubscriptionData,
@@ -256,21 +256,15 @@ const readBodyPrefix = async (response: Response): Promise<string> => {
 };
 
 const postToPushService = async (
-	subscription: PushSubscriptionData,
-	payloadBytes: Uint8Array,
+	endpoint: string,
+	encryptedPayload: Uint8Array<ArrayBuffer>,
 	jwt: string,
 	vapidPublicKey: string,
 	options: SendPushOptions,
 ): Promise<boolean> => {
 	const { logger, ttl = 86400, urgency, topic, signal, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
 
-	const encryptedPayload = await encryptPayload(
-		payloadBytes,
-		subscription.keys.p256dh,
-		subscription.keys.auth,
-	);
-
-	const response = await fetch(subscription.endpoint, {
+	const response = await fetch(endpoint, {
 		method: "POST",
 		headers: buildPushHeaders({ jwt, vapidPublicKey, ttl, urgency, topic }),
 		body: encryptedPayload,
@@ -280,7 +274,7 @@ const postToPushService = async (
 	const responseText = await readBodyPrefix(response);
 
 	logger?.debug?.("Push response", {
-		endpoint: subscription.endpoint.slice(0, 50),
+		endpoint: endpoint.slice(0, 50),
 		status: response.status,
 		statusText: response.statusText,
 		body: responseText.slice(0, 200),
@@ -300,7 +294,7 @@ const postToPushService = async (
 			: `Push service error: ${response.status} ${response.statusText}`,
 		response.status,
 		responseText,
-		subscription.endpoint,
+		endpoint,
 		response.headers.get("retry-after"),
 	);
 };
@@ -334,7 +328,8 @@ export const sendPushNotification = async (
 	// Reject bad input *before* signing the VAPID JWT — no point paying for an
 	// ECDSA signature on a request we'll refuse.
 	const payloadBytes = encodePayload(payload);
-	validatePushInputs(payloadBytes, subscription.keys.p256dh, subscription.keys.auth);
+	assertPayloadWithinLimit(payloadBytes);
+	const keys = decodeSubscriptionKeys(subscription.keys.p256dh, subscription.keys.auth);
 
 	// JWT expiry is independent of the message TTL: push services reject tokens
 	// valid for more than 24h, whereas TTL (message retention) is routinely longer.
@@ -346,7 +341,8 @@ export const sendPushNotification = async (
 		expiration: options.vapidExpiration ?? 43200,
 	});
 
-	return postToPushService(subscription, payloadBytes, jwt, vapid.publicKey, options);
+	const encryptedPayload = await encryptPayload(payloadBytes, keys);
+	return postToPushService(subscription.endpoint, encryptedPayload, jwt, vapid.publicKey, options);
 };
 
 /**
@@ -421,11 +417,11 @@ export const sendPushBatch = async (
 
 	const sendOne = async (subscription: PushSubscriptionData): Promise<void> => {
 		try {
-			validatePushInputs(payloadBytes, subscription.keys.p256dh, subscription.keys.auth);
+			const keys = decodeSubscriptionKeys(subscription.keys.p256dh, subscription.keys.auth);
 			const jwt = await cachedJwtFor(pushServiceOrigin(subscription.endpoint));
 			const accepted = await postToPushService(
-				subscription,
-				payloadBytes,
+				subscription.endpoint,
+				await encryptPayload(payloadBytes, keys),
 				jwt,
 				vapid.publicKey,
 				sendOptions,

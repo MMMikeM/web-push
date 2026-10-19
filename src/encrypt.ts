@@ -36,8 +36,9 @@ const MAX_PAYLOAD_BYTES = RECORD_SIZE - HEADER_LENGTH - 1 - GCM_TAG_LENGTH;
 const encoder = new TextEncoder();
 
 /**
- * Split from {@link validatePushInputs} so a batch send can reject an
- * oversized payload once, up front, rather than once per subscription.
+ * Kept apart from {@link decodeSubscriptionKeys} so a batch send rejects an
+ * oversized payload once, up front, rather than once per subscription. The
+ * encryption core trusts its caller to have run it.
  *
  * @throws {Error} if the payload exceeds the single-record limit.
  */
@@ -61,22 +62,22 @@ const concat = (...parts: Uint8Array[]): Uint8Array<ArrayBuffer> => {
 	return out;
 };
 
+/** A subscription's `p256dh` key and auth secret, decoded and checked. */
+export type SubscriptionKeyBytes = {
+	clientPublicKeyBytes: Uint8Array<ArrayBuffer>;
+	authSecretBytes: Uint8Array<ArrayBuffer>;
+};
+
 /**
- * Validate the payload size and the subscription's public key and auth secret,
- * returning the decoded key bytes. Exported so the send path can reject invalid
- * input *before* paying for the ECDSA VAPID signature (see `send.ts`). The
- * encryption core re-checks as a self-contained guard for direct callers.
+ * Decode and check a subscription's public key and auth secret, once per send,
+ * before the send path pays for the ECDSA VAPID signature (see `send.ts`).
  *
- * @throws {Error} if the payload exceeds the single-record limit, or either
- * subscription key is malformed.
+ * @throws {Error} if either subscription key is malformed.
  */
-export const validatePushInputs = (
-	payload: Uint8Array,
+export const decodeSubscriptionKeys = (
 	p256dhKey: string,
 	authSecret: string,
-): { clientPublicKeyBytes: Uint8Array<ArrayBuffer>; authSecretBytes: Uint8Array<ArrayBuffer> } => {
-	assertPayloadWithinLimit(payload);
-
+): SubscriptionKeyBytes => {
 	const clientPublicKeyBytes = decodeP256PublicKey(
 		p256dhKey,
 		"Invalid subscription p256dh key: expected a 65-byte uncompressed P-256 public key",
@@ -184,13 +185,11 @@ const contentCodingHeader = (
  * Encrypt a payload as a single aes128gcm record (RFC 8291 / RFC 8188),
  * generating a fresh ephemeral key pair and salt for this message.
  *
- * @throws {Error} if the payload is too large or the subscription keys are
- * malformed (see {@link validatePushInputs}).
+ * Expects a payload already held to {@link assertPayloadWithinLimit}.
  */
 export const encryptPayload = async (
 	payload: Uint8Array,
-	p256dhKey: string,
-	authSecret: string,
+	keys: SubscriptionKeyBytes,
 ): Promise<Uint8Array<ArrayBuffer>> => {
 	// Public keys are always exportable; `false` locks only the private half.
 	const serverKeyPair = await crypto.subtle.generateKey(
@@ -199,7 +198,7 @@ export const encryptPayload = async (
 		["deriveBits"],
 	);
 	const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
-	return encryptRecord(payload, p256dhKey, authSecret, serverKeyPair, salt);
+	return encryptRecord(payload, keys, serverKeyPair, salt);
 };
 
 /**
@@ -213,17 +212,10 @@ export const encryptPayload = async (
  */
 export const encryptRecord = async (
 	payload: Uint8Array,
-	p256dhKey: string,
-	authSecret: string,
+	{ clientPublicKeyBytes, authSecretBytes }: SubscriptionKeyBytes,
 	serverKeyPair: CryptoKeyPair,
 	salt: Uint8Array<ArrayBuffer>,
 ): Promise<Uint8Array<ArrayBuffer>> => {
-	const { clientPublicKeyBytes, authSecretBytes } = validatePushInputs(
-		payload,
-		p256dhKey,
-		authSecret,
-	);
-
 	const clientPublicKey = await importClientPublicKey(clientPublicKeyBytes);
 	const sharedSecret = await deriveSharedSecret(serverKeyPair.privateKey, clientPublicKey);
 	const serverPublicKey = await exportRawPublicKey(serverKeyPair.publicKey);
