@@ -12,6 +12,7 @@ export { uint8ArrayToUrlBase64, urlBase64ToUint8Array } from "./encoding";
  * Generate a new VAPID key pair using ECDSA P-256.
  * Returns keys as URL-safe base64 strings.
  *
+ * @throws {Error} if the runtime exports the private key without its scalar.
  * @example
  * ```ts
  * const { publicKey, privateKey } = await generateVapidKeys();

@@ -120,6 +120,8 @@ export const subscribeToPush = subscribe;
 
 /**
  * Get the current push subscription if it exists.
+ *
+ * @throws {DOMException} if the browser refuses the registration or subscription lookup.
  */
 export const getCurrentSubscription = async (): Promise<PushSubscription | null> => {
 	if (!isPushSupported()) {
@@ -141,8 +143,9 @@ export const getCurrentSubscription = async (): Promise<PushSubscription | null>
  * @deprecated Use {@link unsubscribe} instead: it returns the
  * unsubscribed endpoint, which the server needs to prune its matching
  * subscription record — this boolean drops it.
- * @throws {DOMException} if the browser rejects the unsubscribe (e.g. the push
- * service is unreachable), where `unsubscribe` still resolves the endpoint.
+ * @throws {DOMException} if the browser refuses the subscription lookup, or
+ * rejects the unsubscribe itself (e.g. the push service is unreachable). In
+ * that second case `unsubscribe` resolves the endpoint instead.
  */
 export const unsubscribeFromPush = async (): Promise<boolean> => {
 	const subscription = await getCurrentSubscription();
@@ -158,6 +161,9 @@ export const unsubscribeFromPush = async (): Promise<boolean> => {
  * returned even if the browser reports the unsubscribe as failed or rejects
  * (e.g. the push service is unreachable): the caller's intent is to stop
  * receiving pushes, and removing the server record achieves that regardless.
+ *
+ * @throws {DOMException} if the browser refuses the subscription lookup, before
+ * anything is unsubscribed.
  */
 export const unsubscribe = async (): Promise<string | null> => {
 	const subscription = await getCurrentSubscription();
@@ -202,6 +208,9 @@ const sendJson = async (endpoint: string, method: string, body: unknown): Promis
 
 /**
  * Send a push subscription to a server endpoint.
+ *
+ * @throws {Error} if the subscription is missing its `p256dh` or `auth` key.
+ * @throws {TypeError} if the request never reaches the server.
  */
 export const sendSubscriptionToServer = async (
 	subscription: PushSubscription,
@@ -210,6 +219,8 @@ export const sendSubscriptionToServer = async (
 
 /**
  * Remove a push subscription from a server endpoint.
+ *
+ * @throws {TypeError} if the request never reaches the server.
  */
 export const removeSubscriptionFromServer = (
 	subscriptionEndpoint: string,
