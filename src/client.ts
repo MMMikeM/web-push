@@ -4,7 +4,7 @@
  */
 
 import type { PushSubscriptionData } from "./types";
-import { uint8ArrayToUrlBase64, urlBase64ToUint8Array } from "./vapid";
+import { decodeVapidPublicKey, uint8ArrayToUrlBase64 } from "./encoding";
 
 export type { PushSubscriptionData };
 
@@ -51,16 +51,6 @@ const isBoundToKey = (subscription: PushSubscription, key: Uint8Array): boolean 
 	return boundBytes.length === key.length && boundBytes.every((byte, i) => byte === key[i]);
 };
 
-// Checked before the stale-key comparison: an empty or wrong-length key never
-// matches, so it would otherwise unsubscribe a working subscription as a "rotation".
-const decodeVapidPublicKey = (vapidPublicKey: string): Uint8Array<ArrayBuffer> => {
-	const key = urlBase64ToUint8Array(vapidPublicKey);
-	if (key.length !== 65 || key[0] !== 0x04) {
-		throw new Error("VAPID public key must be a 65-byte uncompressed P-256 point");
-	}
-	return key;
-};
-
 /**
  * Subscribe to push notifications, prompting for permission if needed.
  *
@@ -90,6 +80,8 @@ export const subscribe = async (vapidPublicKey: string): Promise<SubscribeResult
 		return { status: "unsupported" };
 	}
 
+	// Before the stale-key comparison: a malformed key never matches, so it
+	// would otherwise unsubscribe a working subscription as a "rotation".
 	const applicationServerKey = decodeVapidPublicKey(vapidPublicKey);
 
 	const permission = await requestNotificationPermission();

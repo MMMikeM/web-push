@@ -8,7 +8,7 @@
  * directly — never by consumers of the published package.
  */
 
-import { urlBase64ToUint8Array } from "./vapid";
+import { decodeP256PublicKey, urlBase64ToUint8Array } from "./encoding";
 
 const SALT_LENGTH = 16;
 const RECORD_SIZE_LENGTH = 4;
@@ -16,7 +16,6 @@ const ID_LENGTH_LENGTH = 1;
 const KEY_ID_LENGTH = 65;
 const GCM_TAG_LENGTH = 16;
 const PADDING_DELIMITER = 0x02;
-const UNCOMPRESSED_POINT_TAG = 0x04;
 
 /** aes128gcm content-coding header length, 86 octets (RFC 8188 §2.1). */
 const HEADER_LENGTH = SALT_LENGTH + RECORD_SIZE_LENGTH + ID_LENGTH_LENGTH + KEY_ID_LENGTH;
@@ -78,15 +77,10 @@ export const validatePushInputs = (
 ): { clientPublicKeyBytes: Uint8Array<ArrayBuffer>; authSecretBytes: Uint8Array<ArrayBuffer> } => {
 	assertPayloadWithinLimit(payload);
 
-	const clientPublicKeyBytes = urlBase64ToUint8Array(p256dhKey);
-	if (
-		clientPublicKeyBytes.length !== KEY_ID_LENGTH ||
-		clientPublicKeyBytes[0] !== UNCOMPRESSED_POINT_TAG
-	) {
-		throw new Error(
-			"Invalid subscription p256dh key: expected a 65-byte uncompressed P-256 public key",
-		);
-	}
+	const clientPublicKeyBytes = decodeP256PublicKey(
+		p256dhKey,
+		"Invalid subscription p256dh key: expected a 65-byte uncompressed P-256 public key",
+	);
 
 	const authSecretBytes = urlBase64ToUint8Array(authSecret);
 	if (authSecretBytes.length < 16) {

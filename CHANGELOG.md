@@ -27,6 +27,9 @@ this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **`getCurrentSubscription`, `unsubscribe` and `unsubscribeFromPush` resolve when no
   service worker is registered** (`null`, `null`, `true`) instead of waiting on
   `navigator.serviceWorker.ready` forever.
+- **A VAPID public key or subscription `p256dh` key that is not base64url** (an env
+  var with its quotes left on, say) now throws the same descriptive error as a
+  wrong-length key, instead of `atob`'s `InvalidCharacterError`.
 
 ## [1.3.0] - 2026-08-14
 

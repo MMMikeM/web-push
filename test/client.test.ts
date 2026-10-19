@@ -254,6 +254,7 @@ describe("subscribe", () => {
 	it.each([
 		{ kind: "an empty", key: "" },
 		{ kind: "a 32-byte (private-key-sized)", key: uint8ArrayToUrlBase64(new Uint8Array(32)) },
+		{ kind: "a still-quoted (not base64url)", key: `"${randomVapidKey()}"` },
 	])(
 		"rejects $kind VAPID key before prompting, keeping the existing subscription",
 		async ({ key }) => {

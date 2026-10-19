@@ -251,6 +251,18 @@ describe("createVapidJwt", () => {
 		).rejects.toThrow("VAPID public key must be a 65-byte uncompressed P-256 point");
 	});
 
+	it("rejects a public key that is not base64url with the same message, not atob's", async () => {
+		const { publicKey, privateKey } = await generateVapidKeys();
+		await expect(
+			createVapidJwt({
+				audience: "https://example.com",
+				subject: "mailto:a@b.com",
+				publicKey: `"${publicKey}"`,
+				privateKey,
+			}),
+		).rejects.toThrow("VAPID public key must be a 65-byte uncompressed P-256 point");
+	});
+
 	it("rejects a 65-byte public key without the 0x04 uncompressed prefix", async () => {
 		const { privateKey } = await generateVapidKeys();
 		const compressedPrefix = new Uint8Array(65);

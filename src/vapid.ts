@@ -4,41 +4,9 @@
  * service, so it will accept pushes for its subscriptions.
  */
 
-/**
- * Convert a URL-safe base64 string to a Uint8Array.
- */
-export const urlBase64ToUint8Array = (base64String: string): Uint8Array<ArrayBuffer> => {
-	if (!base64String) {
-		return new Uint8Array(0);
-	}
+import { decodeVapidPublicKey, uint8ArrayToUrlBase64, urlBase64ToUint8Array } from "./encoding";
 
-	const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-	const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-
-	const rawData = atob(base64);
-	const outputArray = new Uint8Array(rawData.length);
-
-	for (let i = 0; i < rawData.length; ++i) {
-		outputArray[i] = rawData.charCodeAt(i);
-	}
-
-	return outputArray;
-};
-
-/**
- * Convert a Uint8Array to a URL-safe base64 string (no padding).
- */
-export const uint8ArrayToUrlBase64 = (array: Uint8Array): string => {
-	// Build the binary string in chunks — String.fromCharCode(...array) spreads
-	// every byte as a call argument and overflows the stack for large inputs.
-	let binary = "";
-	const chunkSize = 0x8000;
-	for (let i = 0; i < array.length; i += chunkSize) {
-		binary += String.fromCharCode(...array.subarray(i, i + chunkSize));
-	}
-	const base64 = btoa(binary);
-	return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-};
+export { uint8ArrayToUrlBase64, urlBase64ToUint8Array } from "./encoding";
 
 /**
  * Generate a new VAPID key pair using ECDSA P-256.
@@ -101,11 +69,8 @@ const encodeJwtSegment = (segment: object): string =>
  * @throws {Error} if either key is the wrong length or encoding.
  */
 const importSigningKey = (publicKey: string, privateKey: string): Promise<CryptoKey> => {
-	const publicKeyArray = urlBase64ToUint8Array(publicKey);
+	const publicKeyArray = decodeVapidPublicKey(publicKey);
 	const privateKeyArray = urlBase64ToUint8Array(privateKey);
-	if (publicKeyArray.length !== 65 || publicKeyArray[0] !== 0x04) {
-		throw new Error("VAPID public key must be a 65-byte uncompressed P-256 point");
-	}
 	if (privateKeyArray.length !== 32) {
 		throw new Error("VAPID private key must be a 32-byte P-256 scalar");
 	}
