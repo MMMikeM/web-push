@@ -37,6 +37,12 @@ this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   drawing a 400 per subscription. A NaN `vapidExpiration` no longer signs a token
   with `"exp": null` that every push service rejects. `sendPushBatch` throws once for
   each of these, before any send, rather than filling `failed`.
+- **`sendPushBatch` re-signs its per-origin VAPID token at half its lifetime.** One
+  token was cached for the whole batch, so a batch that outlasted `vapidExpiration`
+  sent expired tokens and filled `failed` with 401/403s.
+- **A `null` row no longer rejects the whole `sendPushBatch`.** The error handler read
+  `.endpoint` off the row, threw, and rejected the batch while its workers kept
+  sending unobserved. The row now lands in `failed` with an empty `endpoint`.
 
 ## [1.3.0] - 2026-08-14
 

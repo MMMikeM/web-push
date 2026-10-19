@@ -36,6 +36,7 @@ const authHeaderOf = (call: [string | URL | Request, RequestInit?]): string =>
 
 afterEach(() => {
 	vi.unstubAllGlobals();
+	vi.useRealTimers();
 });
 
 describe("sendPushBatch — result partitioning", () => {
@@ -139,6 +140,22 @@ describe("sendPushBatch — result partitioning", () => {
 		expect(mock.mock.calls[0][0]).toBe("https://push.example/ok");
 	});
 
+	it("puts a null row in failed instead of rejecting the whole batch", async () => {
+		stubFetch(201);
+		const rows: PushSubscriptionData[] = JSON.parse(
+			JSON.stringify([
+				subscription("https://push.example/a"),
+				null,
+				subscription("https://push.example/b"),
+			]),
+		);
+
+		const result = await sendPushBatch(rows, payload, vapid);
+
+		expect(result.delivered).toBe(2);
+		expect(result.failed).toEqual([{ endpoint: "", error: expect.any(TypeError) }]);
+	});
+
 	it("delivers a rawPayload-wrapped payload", async () => {
 		const mock = stubFetch(201);
 		const { delivered } = await sendPushBatch(
@@ -203,6 +220,35 @@ describe("sendPushBatch — VAPID JWT reuse", () => {
 			"https://updates.push.services.mozilla.com",
 		);
 		expect(new Set(mock.mock.calls.map(authHeaderOf)).size).toBe(2);
+	});
+
+	it("never sends an expired JWT, even when the batch outlasts vapidExpiration", async () => {
+		vi.useFakeTimers({ toFake: ["Date"] });
+		const sends: { sentAt: number; exp: number }[] = [];
+		const mock = vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(
+			async (_input, init) => {
+				const jwt = ((init as RequestInit).headers as Record<string, string>).Authorization.slice(
+					"vapid t=".length,
+				).split(", k=")[0];
+				const { exp } = decodeJwtSegment(jwt.split(".")[1]) as { exp: number };
+				sends.push({ sentAt: Date.now(), exp: exp * 1000 });
+				vi.setSystemTime(Date.now() + 31_000);
+				return new Response(null, { status: 201 });
+			},
+		);
+		vi.stubGlobal("fetch", mock);
+
+		await sendPushBatch(
+			[1, 2, 3].map((i) => subscription(`https://push.example/sub-${i}`)),
+			payload,
+			vapid,
+			{ vapidExpiration: 60, concurrency: 1 },
+		);
+
+		expect(sends).toHaveLength(3);
+		for (const { sentAt, exp } of sends) {
+			expect(exp).toBeGreaterThan(sentAt);
+		}
 	});
 });
 

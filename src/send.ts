@@ -325,9 +325,10 @@ export const sendPushNotification = async (
  * sends the push service accepted, endpoints it reported gone (404/410) come
  * back in `gone` for deletion, and every other failed send comes back in
  * `failed` with its error. One VAPID JWT is signed per push-service origin
- * rather than per message, since the token is scoped to the origin and valid
- * for the whole batch. Aborting `options.signal` stops workers from starting
- * new sends; subscriptions never attempted count toward none of the three.
+ * rather than per message, since the token is scoped to the origin, and
+ * re-signed at half its lifetime, so a batch that outlasts `vapidExpiration`
+ * never sends an expired one. Aborting `options.signal` stops workers from
+ * starting new sends; subscriptions never attempted count toward none of the three.
  *
  * @param payload A `PushPayload` is JSON-serialized; a {@link rawPayload}
  * wrapper is encrypted and sent verbatim
@@ -356,13 +357,14 @@ export const sendPushBatch = async (
 	const payloadBytes = encodePayload(payload);
 	assertPayloadWithinLimit(payloadBytes);
 
+	const vapidExpiration = sendOptions.vapidExpiration ?? 43200;
 	const vapidJwtFor = (audience: string): Promise<string> =>
 		createVapidJwt({
 			audience,
 			subject: vapid.subject,
 			publicKey: vapid.publicKey,
 			privateKey: vapid.privateKey,
-			expiration: sendOptions.vapidExpiration ?? 43200,
+			expiration: vapidExpiration,
 		});
 
 	// Sign a throwaway token so a bad VAPID config (subject, expiration, key
@@ -371,14 +373,14 @@ export const sendPushBatch = async (
 
 	// Caching the promise, not the token, so concurrent workers hitting the
 	// same origin share one signature instead of racing to sign their own.
-	const jwtByOrigin = new Map<string, Promise<string>>();
+	const jwtByOrigin = new Map<string, { jwt: Promise<string>; refreshAt: number }>();
 	const cachedJwtFor = (origin: string): Promise<string> => {
 		const cached = jwtByOrigin.get(origin);
-		if (cached) {
-			return cached;
+		if (cached && Date.now() < cached.refreshAt) {
+			return cached.jwt;
 		}
 		const jwt = vapidJwtFor(origin);
-		jwtByOrigin.set(origin, jwt);
+		jwtByOrigin.set(origin, { jwt, refreshAt: Date.now() + (vapidExpiration * 1000) / 2 });
 		return jwt;
 	};
 
@@ -403,7 +405,9 @@ export const sendPushBatch = async (
 				gone.push(subscription.endpoint);
 			}
 		} catch (error) {
-			failed.push({ endpoint: subscription.endpoint, error });
+			// Rows are often cast from a database or JSON; reading `.endpoint` off a
+			// null one here would reject the whole batch.
+			failed.push({ endpoint: subscription?.endpoint ?? "", error });
 		}
 	};
 
