@@ -12,7 +12,7 @@ Sending a push notification should not require Node, a compatibility shim, or th
 - **All four pieces.** VAPID key generation, a copy-paste service worker to display the notification, the client subscribe helpers, and the server send, one at a time or fanned out to a list.
 - **No Node built-ins, no polyfills.** If it has `fetch` and `crypto.subtle`, it works. No `node:crypto`, no `node:https`, no compat layer. Cloudflare Workers, Bun, Deno, Node, and the browser.
 - **Ratified specs.** RFC 8291 `aes128gcm` encryption and RFC 8292 VAPID, pinned byte-for-byte against RFC 8291's Appendix A test vector.
-- **Small.** Minified and gzipped per subpath entry: 1.1 kB for the browser client, 2.9 kB for the server. The badge above measures the whole package, ~3.7 kB.
+- **Small.** Minified and gzipped per subpath entry: 1.1 kB for the browser client, 2.9 kB for the server. The badge above measures the whole package, ~3.8 kB.
 
 ## Installation
 
@@ -212,19 +212,19 @@ Hosts as of August 2026. Browsers can change services and smaller ones run their
 
 ### Client (`@mmmike/web-push/client`)
 
-| Function                                                             | Description                                                                         |
-| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `isPushSupported()`                                                  | Check if push is supported in this browser                                          |
-| `getNotificationPermission()`                                        | Get current notification permission                                                 |
-| `requestNotificationPermission()`                                    | Request notification permission                                                     |
-| `subscribe(vapidPublicKey, options?)`                                | Subscribe to push, rotating a stale-key subscription; resolves to `SubscribeResult` |
-| `unsubscribe(options?)`                                              | Unsubscribe from push; resolves to the endpoint (for the server prune) or `null`    |
-| `subscribeToPush(vapidPublicKey)`                                    | Deprecated: renamed to `subscribe()`, same behavior                                 |
-| `unsubscribeFromPush()`                                              | Deprecated: use `unsubscribe()`, which returns the endpoint instead of a boolean    |
-| `getCurrentSubscription(options?)`                                   | Get the existing subscription, if any                                               |
-| `serializeSubscription(sub)`                                         | Convert subscription to JSON-safe format (throws if it has no `p256dh`/`auth` key)  |
-| `sendSubscriptionToServer(sub, serverEndpoint)`                      | POST subscription to your server                                                    |
-| `removeSubscriptionFromServer(subscriptionEndpoint, serverEndpoint)` | DELETE subscription from your server                                                |
+| Function                                                                    | Description                                                                         |
+| --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `isPushSupported()`                                                         | Check if push is supported in this browser                                          |
+| `getNotificationPermission()`                                               | Get current notification permission                                                 |
+| `requestNotificationPermission()`                                           | Request notification permission                                                     |
+| `subscribe(vapidPublicKey, options?)`                                       | Subscribe to push, rotating a stale-key subscription; resolves to `SubscribeResult` |
+| `unsubscribe(options?)`                                                     | Unsubscribe from push; resolves to the endpoint (for the server prune) or `null`    |
+| `subscribeToPush(vapidPublicKey)`                                           | Deprecated: renamed to `subscribe()`, same behavior                                 |
+| `unsubscribeFromPush()`                                                     | Deprecated: use `unsubscribe()`, which returns the endpoint instead of a boolean    |
+| `getCurrentSubscription(options?)`                                          | Get the existing subscription, if any                                               |
+| `serializeSubscription(sub)`                                                | Convert subscription to JSON-safe format (throws if it has no `p256dh`/`auth` key)  |
+| `sendSubscriptionToServer(sub, serverEndpoint, init?)`                      | POST subscription to your server; `init` adds headers, credentials, a signal        |
+| `removeSubscriptionFromServer(subscriptionEndpoint, serverEndpoint, init?)` | DELETE subscription from your server; `init` can change the method                  |
 
 ### Server (`@mmmike/web-push/send`)
 

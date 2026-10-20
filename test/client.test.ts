@@ -13,7 +13,7 @@ import {
 	unsubscribeFromPush,
 } from "../src/client";
 import { uint8ArrayToUrlBase64, urlBase64ToUint8Array } from "../src/vapid";
-import { headersOf, stubFetch } from "./helpers";
+import { stubFetch } from "./helpers";
 
 // A real PushSubscription, so fakes pass into client.ts without casts; the
 // intersection keeps `unsubscribe` a typed mock the tests can assert on.
@@ -425,7 +425,7 @@ describe("server sync helpers", () => {
 		const [url, init] = mock.mock.calls[0];
 		expect(url).toBe("/api/push/subscribe");
 		expect(init?.method).toBe("POST");
-		expect(headersOf(mock)["Content-Type"]).toBe("application/json");
+		expect(new Headers(init?.headers).get("Content-Type")).toBe("application/json");
 		expect(JSON.parse(init?.body as string)).toEqual(serializeSubscription(sub));
 	});
 
@@ -453,6 +453,68 @@ describe("server sync helpers", () => {
 		expect(ok).toBe(false);
 		expect(mock).toHaveBeenCalledOnce();
 		expect(mock.mock.calls[0][0]).toBe("/custom");
+	});
+
+	it("sendSubscriptionToServer merges init headers with the JSON content type", async () => {
+		const mock = stubFetch(200);
+		const controller = new AbortController();
+		await sendSubscriptionToServer(makeSubscription(), "https://api.example.com/push", {
+			headers: { Authorization: "Bearer t0k" },
+			credentials: "include",
+			signal: controller.signal,
+		});
+
+		const [url, init] = mock.mock.calls[0];
+		const headers = new Headers(init?.headers);
+		expect(url).toBe("https://api.example.com/push");
+		expect(init?.method).toBe("POST");
+		expect(init?.credentials).toBe("include");
+		expect(init?.signal).toBe(controller.signal);
+		expect(headers.get("Authorization")).toBe("Bearer t0k");
+		expect(headers.get("Content-Type")).toBe("application/json");
+	});
+
+	it.each([
+		{ form: "a Headers instance", headers: new Headers({ Authorization: "Bearer t0k" }) },
+		{ form: "an entry array", headers: [["Authorization", "Bearer t0k"]] satisfies HeadersInit },
+	])("sendSubscriptionToServer accepts init headers as $form", async ({ headers }) => {
+		const mock = stubFetch(200);
+		await sendSubscriptionToServer(makeSubscription(), undefined, { headers });
+		const sent = new Headers(mock.mock.calls[0][1]?.headers);
+		expect(sent.get("Authorization")).toBe("Bearer t0k");
+		expect(sent.get("Content-Type")).toBe("application/json");
+	});
+
+	it("sendSubscriptionToServer keeps a Content-Type the caller sets", async () => {
+		const mock = stubFetch(200);
+		await sendSubscriptionToServer(makeSubscription(), undefined, {
+			headers: { "content-type": "application/json; charset=utf-8" },
+		});
+		expect(new Headers(mock.mock.calls[0][1]?.headers).get("Content-Type")).toBe(
+			"application/json; charset=utf-8",
+		);
+	});
+
+	it("sendSubscriptionToServer always sends the serialized subscription as the body", async () => {
+		const mock = stubFetch(200);
+		const sub = makeSubscription();
+		// @ts-expect-error the body is the library's to set
+		await sendSubscriptionToServer(sub, undefined, { body: "replaced" });
+		expect(JSON.parse(mock.mock.calls[0][1]?.body as string)).toEqual(serializeSubscription(sub));
+	});
+
+	it("removeSubscriptionFromServer takes its method and headers from init", async () => {
+		const mock = stubFetch(200);
+		await removeSubscriptionFromServer("https://push.example.com/z", "/api/push/unsubscribe", {
+			method: "POST",
+			headers: { Authorization: "Bearer t0k" },
+		});
+
+		const [url, init] = mock.mock.calls[0];
+		expect(url).toBe("/api/push/unsubscribe");
+		expect(init?.method).toBe("POST");
+		expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer t0k");
+		expect(JSON.parse(init?.body as string)).toEqual({ endpoint: "https://push.example.com/z" });
 	});
 
 	it("removeSubscriptionFromServer DELETEs by endpoint", async () => {

@@ -239,30 +239,57 @@ export const serializeSubscription = (subscription: PushSubscription): PushSubsc
 	},
 });
 
-const sendJson = async (endpoint: string, method: string, body: unknown): Promise<boolean> => {
+const sendJson = async (
+	endpoint: string,
+	defaultMethod: string,
+	body: unknown,
+	init: Omit<RequestInit, "body">,
+): Promise<boolean> => {
+	const headers = new Headers(init.headers);
+	if (!headers.has("Content-Type")) {
+		headers.set("Content-Type", "application/json");
+	}
 	const response = await fetch(endpoint, {
-		method,
-		headers: { "Content-Type": "application/json" },
+		...init,
+		method: init.method ?? defaultMethod,
+		headers,
 		body: JSON.stringify(body),
 	});
 	return response.ok;
 };
 
 /**
- * Send a push subscription to a server endpoint.
+ * Send a push subscription to a server endpoint, resolving to whether it answered 2xx.
+ *
+ * `init` adds to the request: an `Authorization` header, `credentials`, a `signal`.
+ * Its `method` replaces `POST`, and its headers merge with `Content-Type:
+ * application/json`. Cross-origin, the server must allow those headers in its CORS
+ * preflight; an extension calling a host in its `host_permissions` skips CORS.
+ *
+ * @throws {Error} if the subscription is missing its `p256dh` or `auth` key.
+ * @throws {TypeError} on a network failure.
+ * @throws {DOMException} `AbortError` when `init.signal` aborts.
  */
 export const sendSubscriptionToServer = async (
 	subscription: PushSubscription,
 	endpoint = "/api/push/subscribe",
-): Promise<boolean> => sendJson(endpoint, "POST", serializeSubscription(subscription));
+	init: Omit<RequestInit, "body"> = {},
+): Promise<boolean> => sendJson(endpoint, "POST", serializeSubscription(subscription), init);
 
 /**
- * Remove a push subscription from a server endpoint.
+ * Remove a push subscription from a server endpoint, resolving to whether it answered 2xx.
+ *
+ * Sends `{ endpoint }`. `init` works as in {@link sendSubscriptionToServer}, with
+ * its `method` replacing `DELETE`.
+ *
+ * @throws {TypeError} on a network failure.
+ * @throws {DOMException} `AbortError` when `init.signal` aborts.
  */
 export const removeSubscriptionFromServer = (
 	subscriptionEndpoint: string,
 	serverEndpoint = "/api/push/subscribe",
-): Promise<boolean> => sendJson(serverEndpoint, "DELETE", { endpoint: subscriptionEndpoint });
+	init: Omit<RequestInit, "body"> = {},
+): Promise<boolean> => sendJson(serverEndpoint, "DELETE", { endpoint: subscriptionEndpoint }, init);
 
 const arrayBufferToUrlBase64 = (buffer: ArrayBuffer): string =>
 	uint8ArrayToUrlBase64(new Uint8Array(buffer));
