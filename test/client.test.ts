@@ -36,6 +36,8 @@ const makeSubscription = (
 });
 
 type EnvOptions = {
+	/** A service worker global: no `navigator.serviceWorker`, no `Notification.requestPermission`. */
+	worker?: boolean;
 	serviceWorker?: boolean;
 	pushManager?: boolean;
 	notification?: boolean;
@@ -46,9 +48,14 @@ type EnvOptions = {
 
 function PushManager() {}
 
+// client.ts touches only `pushManager`; the Pick checks that much of the fake.
+const asRegistration = (fake: Pick<ServiceWorkerRegistration, "pushManager">) =>
+	fake as ServiceWorkerRegistration;
+
 const setupPushEnv = (opts: EnvOptions = {}) => {
 	const {
-		serviceWorker = true,
+		worker = false,
+		serviceWorker = !worker,
 		pushManager: hasPushManager = true,
 		notification = true,
 		permission = "granted",
@@ -79,33 +86,38 @@ const setupPushEnv = (opts: EnvOptions = {}) => {
 				return created;
 			},
 		),
+		// Chrome rejects `userVisibleOnly: false` here, even in extensions.
+		permissionState: vi.fn<(options?: PushSubscriptionOptionsInit) => Promise<PermissionState>>(
+			async (options) => {
+				if (!options?.userVisibleOnly) {
+					throw new DOMException("userVisibleOnly required", "NotSupportedError");
+				}
+				return "granted";
+			},
+		),
 	};
-	const registration = { pushManager };
+	const registration = asRegistration({ pushManager });
 
 	const NotificationStub = {
 		permission,
 		requestPermission: vi.fn<() => Promise<NotificationPermission>>(async () => promptResult),
 	};
 
-	// `in window` / `in navigator` checks drive isPushSupported; each flag
+	// `in globalThis` / `in navigator` checks drive isPushSupported; each flag
 	// removes exactly one of its three clauses.
-	const windowStub: Record<string, unknown> = {};
 	const navigatorStub: Record<string, unknown> = {};
 	if (notification) {
-		windowStub.Notification = NotificationStub;
+		vi.stubGlobal("Notification", worker ? { permission } : NotificationStub);
 	}
 	if (hasPushManager) {
-		windowStub.PushManager = PushManager;
+		vi.stubGlobal("PushManager", PushManager);
 	}
 	if (serviceWorker) {
 		navigatorStub.serviceWorker = { ready: Promise.resolve(registration) };
 	}
-
-	vi.stubGlobal("window", windowStub);
 	vi.stubGlobal("navigator", navigatorStub);
-	vi.stubGlobal("Notification", NotificationStub);
 
-	return { pushManager, created, NotificationStub };
+	return { pushManager, registration, created, NotificationStub };
 };
 
 afterEach(() => {
@@ -213,6 +225,38 @@ describe("subscribe", () => {
 		expect(pushManager.subscribe).toHaveBeenCalledOnce();
 	});
 
+	it("prompts for permission before waiting on a still-installing service worker", async () => {
+		const { NotificationStub } = setupPushEnv({ permission: "default" });
+		vi.stubGlobal("navigator", { serviceWorker: { ready: new Promise(() => {}) } });
+		void subscribe("BPk");
+		await vi.waitFor(() => expect(NotificationStub.requestPermission).toHaveBeenCalledOnce());
+	});
+
+	it("replaces a subscription created with a different userVisibleOnly mode", async () => {
+		const vapidPublicKey = randomVapidKey();
+		const existing = subscriptionBoundTo(vapidPublicKey);
+		const { registration, created } = setupPushEnv({ worker: true, existing });
+		expect(await subscribe(vapidPublicKey, { registration, userVisibleOnly: false })).toEqual({
+			status: "subscribed",
+			subscription: created,
+			isNew: true,
+		});
+		expect(existing.unsubscribe).toHaveBeenCalledOnce();
+	});
+
+	it("keeps an existing subscription whose userVisibleOnly mode the browser does not report", async () => {
+		const vapidPublicKey = randomVapidKey();
+		const existing = subscriptionBoundTo(vapidPublicKey);
+		Reflect.deleteProperty(existing.options, "userVisibleOnly");
+		const { pushManager } = setupPushEnv({ existing });
+		expect(await subscribe(vapidPublicKey)).toEqual({
+			status: "subscribed",
+			subscription: existing,
+			isNew: false,
+		});
+		expect(pushManager.subscribe).not.toHaveBeenCalled();
+	});
+
 	it("subscribes with the decoded applicationServerKey when none exists", async () => {
 		const vapidPublicKey = randomVapidKey();
 		const { pushManager, created } = setupPushEnv({ existing: null });
@@ -224,6 +268,45 @@ describe("subscribe", () => {
 			userVisibleOnly: true,
 			applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
 		});
+	});
+});
+
+describe("from a service worker", () => {
+	it("subscribes on the given registration with userVisibleOnly false, without prompting", async () => {
+		const vapidPublicKey = randomVapidKey();
+		const { registration, pushManager, created } = setupPushEnv({ worker: true });
+
+		expect(await subscribe(vapidPublicKey, { registration, userVisibleOnly: false })).toEqual({
+			status: "subscribed",
+			subscription: created,
+			isNew: true,
+		});
+		expect(pushManager.subscribe).toHaveBeenCalledWith({
+			userVisibleOnly: false,
+			applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+		});
+	});
+
+	it.each(["default", "denied"] as const)(
+		"reports denied when the notification permission is %s",
+		async (permission) => {
+			const { registration, pushManager } = setupPushEnv({ worker: true, permission });
+			expect(await subscribe("BPk", { registration })).toEqual({ status: "denied" });
+			expect(pushManager.subscribe).not.toHaveBeenCalled();
+		},
+	);
+
+	it("reports unsupported when PushManager is missing, even with a registration", async () => {
+		const { registration } = setupPushEnv({ worker: true, pushManager: false });
+		expect(await subscribe("BPk", { registration })).toEqual({ status: "unsupported" });
+	});
+
+	it("reads and unsubscribes through the given registration", async () => {
+		const existing = makeSubscription();
+		const { registration } = setupPushEnv({ worker: true, existing });
+		expect(await getCurrentSubscription({ registration })).toBe(existing);
+		expect(await unsubscribe({ registration })).toBe(existing.endpoint);
+		expect(await getCurrentSubscription({ registration })).toBeNull();
 	});
 });
 

@@ -12,7 +12,7 @@ Sending a push notification should not require Node, a compatibility shim, or th
 - **All four pieces.** VAPID key generation, a copy-paste service worker to display the notification, the client subscribe helpers, and the server send, one at a time or fanned out to a list.
 - **No Node built-ins, no polyfills.** If it has `fetch` and `crypto.subtle`, it works. No `node:crypto`, no `node:https`, no compat layer. Cloudflare Workers, Bun, Deno, Node, and the browser.
 - **Ratified specs.** RFC 8291 `aes128gcm` encryption and RFC 8292 VAPID, pinned byte-for-byte against RFC 8291's Appendix A test vector.
-- **Small.** Minified and gzipped per subpath entry: 1.0 kB for the browser client, 2.9 kB for the server. The badge above measures the whole package, ~3.6 kB.
+- **Small.** Minified and gzipped per subpath entry: 1.1 kB for the browser client, 2.9 kB for the server. The badge above measures the whole package, ~3.7 kB.
 
 ## Installation
 
@@ -77,7 +77,7 @@ if (result.status === "subscribed") {
 }
 ```
 
-`subscribe` resolves to `{ status: "unsupported" }` when the browser can't do push, `{ status: "denied" }` when the user declines the permission prompt, and `{ status: "subscribed", subscription, isNew }` otherwise. `isNew` is `true` when this call created the subscription: a first subscribe, or a VAPID key rotation replacing the stale one.
+`subscribe` resolves to `{ status: "unsupported" }` when the browser can't do push, `{ status: "denied" }` when the user declines the permission prompt, and `{ status: "subscribed", subscription, isNew }` otherwise. `isNew` is `true` when this call created the subscription: a first subscribe, or a replacement for one bound to another VAPID key or `userVisibleOnly` mode.
 
 POST the subscription on every visit rather than gating on `isNew`. Your endpoint has to upsert by endpoint URL anyway, since the browser hands back the same subscription on every call, and gating means one failed upload strands a subscription your server never hears about. Use `isNew` for what it does tell you: counting fresh subscribes and key rotations.
 
@@ -87,7 +87,23 @@ Requirements:
 - a registered service worker
 - on iOS, the site installed to the home screen. Safari exposes the Push API only to installed web apps, so `isPushSupported()` reports `false` in a plain iOS Safari tab.
 
-Encrypted-payload push works in Chrome, Edge, Firefox, Opera and Samsung Internet, and in Safari 16+ on macOS 13+ and iOS 16.4+. `isPushSupported()` is the runtime check.
+Encrypted-payload push works in Chrome, Edge, Firefox, Opera and Samsung Internet, and in Safari 16+ on macOS 13+ and iOS 16.4+. `isPushSupported()` is the runtime check in a page; given a `registration`, `subscribe` makes its own.
+
+#### From an extension service worker
+
+A service worker passes its own registration, and since it cannot show a permission prompt, the permission it already holds decides the result. Chrome 121+ lets an extension's service worker subscribe without the user-visible-notification promise:
+
+```typescript
+const result = await subscribe(vapidPublicKey, {
+	registration: self.registration,
+	userVisibleOnly: false,
+});
+if (result.status === "subscribed") {
+	await sendSubscriptionToServer(result.subscription, "https://example.com/api/push/subscribe");
+}
+```
+
+The extension needs the `notifications` permission in its manifest; Chrome refuses push without it. Pass an absolute server URL, since a relative one resolves against `chrome-extension://<id>/`. `getCurrentSubscription` and `unsubscribe` take the same `{ registration }` option. Chrome rejects `userVisibleOnly: false` from any page, extension pages included, so subscribe from the service worker. Keep to that one context and mode: a popup calling `subscribe(vapidPublicKey)` with the default `true` replaces the worker's subscription, and its endpoint, each time; read it there with `getCurrentSubscription()` instead.
 
 Rotating VAPID keys is handled for you: when the existing subscription was created with a different key, `subscribe` unsubscribes it and creates a fresh one (`isNew: true`), since the push service would reject the old one anyway. The one gap is a browser that doesn't expose which key a subscription was bound to (`subscription.options.applicationServerKey` is null): with nothing to compare against, the existing subscription is kept. If it was in fact bound to a retired key, every send to it fails with a 401/403 `WebPushError`, and nothing in that error names the rotation as the cause; if you rotate keys and then see those, this is where to look.
 
@@ -201,11 +217,11 @@ Hosts as of August 2026. Browsers can change services and smaller ones run their
 | `isPushSupported()`                                                  | Check if push is supported in this browser                                          |
 | `getNotificationPermission()`                                        | Get current notification permission                                                 |
 | `requestNotificationPermission()`                                    | Request notification permission                                                     |
-| `subscribe(vapidPublicKey)`                                          | Subscribe to push, rotating a stale-key subscription; resolves to `SubscribeResult` |
-| `unsubscribe()`                                                      | Unsubscribe from push; resolves to the endpoint (for the server prune) or `null`    |
+| `subscribe(vapidPublicKey, options?)`                                | Subscribe to push, rotating a stale-key subscription; resolves to `SubscribeResult` |
+| `unsubscribe(options?)`                                              | Unsubscribe from push; resolves to the endpoint (for the server prune) or `null`    |
 | `subscribeToPush(vapidPublicKey)`                                    | Deprecated: renamed to `subscribe()`, same behavior                                 |
 | `unsubscribeFromPush()`                                              | Deprecated: use `unsubscribe()`, which returns the endpoint instead of a boolean    |
-| `getCurrentSubscription()`                                           | Get the existing subscription, if any                                               |
+| `getCurrentSubscription(options?)`                                   | Get the existing subscription, if any                                               |
 | `serializeSubscription(sub)`                                         | Convert subscription to JSON-safe format (throws if it has no `p256dh`/`auth` key)  |
 | `sendSubscriptionToServer(sub, serverEndpoint)`                      | POST subscription to your server                                                    |
 | `removeSubscriptionFromServer(subscriptionEndpoint, serverEndpoint)` | DELETE subscription from your server                                                |
@@ -237,6 +253,7 @@ Every type ships with per-field documentation, so your editor is the reference. 
 | ---------------------- | ------------------------------------------------------------------------------------- | ------------------------ |
 | `PushSubscriptionData` | A subscription in transit, endpoint plus the `p256dh`/`auth` keys                     | root, `/send`, `/client` |
 | `SubscribeResult`      | Outcome of `subscribe`: `subscribed` (with `isNew`), `unsupported`, or `denied`       | root, `/client`          |
+| `SubscribeOptions`     | The `registration` to use and the `userVisibleOnly` mode; defaults suit a page        | root, `/client`          |
 | `PushPayload`          | Notification contents: title (the only required field), body, click URL, grouping tag | root, `/send`            |
 | `RawPushPayload`       | A caller-serialized payload from `rawPayload`, accepted wherever `PushPayload` is     | root, `/send`            |
 | `VapidConfig`          | Your VAPID key pair and contact subject                                               | root, `/send`            |

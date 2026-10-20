@@ -11,7 +11,7 @@ export {
 	unsubscribe,
 	unsubscribeFromPush,
 } from "./client";
-export type { SubscribeResult } from "./client";
+export type { SubscribeOptions, SubscribeResult } from "./client";
 export {
 	rawPayload,
 	sendPushBatch,

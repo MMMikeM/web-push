@@ -1,6 +1,6 @@
 /**
- * Browser-only. These reach for `window`, `navigator`, and `Notification`, so
- * they throw anywhere else — server code wants `./send`.
+ * Browser-only: a page, or a service worker that passes its own `registration`.
+ * Elsewhere the permission helpers throw — server code wants `./send`.
  */
 
 import type { PushSubscriptionData } from "./types";
@@ -12,7 +12,7 @@ export type { PushSubscriptionData };
  * Check if push notifications are supported in this browser.
  */
 export const isPushSupported = (): boolean =>
-	"serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+	"serviceWorker" in navigator && "PushManager" in globalThis && "Notification" in globalThis;
 
 /**
  * Get the current notification permission status.
@@ -32,11 +32,42 @@ export type SubscribeResult =
 	| {
 			status: "subscribed";
 			subscription: PushSubscription;
-			/** Whether this call created the subscription: first subscribe, or key rotation */
+			/**
+			 * Whether this call created the subscription: first subscribe, or
+			 * replacing one bound to another VAPID key or `userVisibleOnly` mode
+			 */
 			isNew: boolean;
 	  }
 	| { status: "unsupported" }
 	| { status: "denied" };
+
+/**
+ * Where and how {@link subscribe} subscribes. The defaults suit a page.
+ */
+export type SubscribeOptions = {
+	/**
+	 * The registration to subscribe on. Defaults to `navigator.serviceWorker.ready`;
+	 * a service worker passes `self.registration`.
+	 */
+	registration?: ServiceWorkerRegistration;
+	/**
+	 * Whether every push must show a notification. Defaults to `true`; only a
+	 * Chrome extension's service worker (Chrome 121+) may pass `false`.
+	 */
+	userVisibleOnly?: boolean;
+};
+
+const isPushAvailable = (registration: ServiceWorkerRegistration | undefined): boolean =>
+	registration ? "PushManager" in globalThis && "Notification" in globalThis : isPushSupported();
+
+// `Notification.requestPermission` is Window-only, so a service worker can only
+// read the permission it already holds. Not `pushManager.permissionState`: Chrome
+// rejects it for `userVisibleOnly: false`, even in extensions.
+// https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/modules/push_messaging/push_messaging_bridge.cc
+const isPermissionGranted = async (): Promise<boolean> =>
+	("requestPermission" in Notification
+		? await requestNotificationPermission()
+		: getNotificationPermission()) === "granted";
 
 // Browsers that predate `options.applicationServerKey` report null; treat that
 // as a match — discarding a working subscription is worse than keeping it.
@@ -49,17 +80,29 @@ const isBoundToKey = (subscription: PushSubscription, key: Uint8Array): boolean 
 	return boundBytes.length === key.length && boundBytes.every((byte, i) => byte === key[i]);
 };
 
+// Not every browser reports `options.userVisibleOnly`. Treating its absence as a
+// mismatch would replace the subscription, and change its endpoint, on every call.
+const hasVisibility = (subscription: PushSubscription, userVisibleOnly: boolean): boolean => {
+	const bound = subscription.options.userVisibleOnly;
+	return bound === undefined || bound === userVisibleOnly;
+};
+
 /**
  * Subscribe to push notifications, prompting for permission if needed.
  *
- * Reuses an existing subscription when it was created with the same VAPID key.
- * If the key has changed, the stale subscription is unsubscribed and replaced,
- * since the push service would reject it anyway. `isNew` reports whether this
- * call created the subscription (first subscribe or key rotation). Send the
- * subscription to your server either way: gating the upload on `isNew` means
- * one failed request strands a subscription your server never hears about.
+ * Reuses an existing subscription when it was created with the same VAPID key
+ * and `userVisibleOnly` mode. Otherwise the stale subscription is unsubscribed
+ * and replaced, since the push service would reject it anyway. `isNew` reports
+ * whether this call created the subscription. Send the subscription to your
+ * server either way: gating the upload on `isNew` means one failed request
+ * strands a subscription your server never hears about.
+ *
+ * In a service worker, which cannot prompt, pass `self.registration`; the
+ * permission it already holds decides between `subscribed` and `denied`.
  *
  * @param vapidPublicKey - The server's VAPID public key (URL-safe base64)
+ * @throws {DOMException} when the browser refuses `userVisibleOnly: false`, which it
+ * does everywhere but a Chrome extension's service worker.
  * @example
  * ```ts
  * const result = await subscribe(vapidPublicKey);
@@ -67,30 +110,45 @@ const isBoundToKey = (subscription: PushSubscription, key: Uint8Array): boolean 
  *   await sendSubscriptionToServer(result.subscription);
  * }
  * ```
+ * @example
+ * ```ts
+ * // Chrome extension service worker
+ * const result = await subscribe(vapidPublicKey, {
+ *   registration: self.registration,
+ *   userVisibleOnly: false,
+ * });
+ * ```
  */
-export const subscribe = async (vapidPublicKey: string): Promise<SubscribeResult> => {
-	if (!isPushSupported()) {
+export const subscribe = async (
+	vapidPublicKey: string,
+	{ registration, userVisibleOnly = true }: SubscribeOptions = {},
+): Promise<SubscribeResult> => {
+	if (!isPushAvailable(registration)) {
 		return { status: "unsupported" };
 	}
 
-	const permission = await requestNotificationPermission();
-	if (permission !== "granted") {
+	// Prompt before waiting on the registration: on a first visit the worker may
+	// still be installing, and a prompt delayed past the user gesture can be blocked.
+	if (!(await isPermissionGranted())) {
 		return { status: "denied" };
 	}
 
-	const registration = await navigator.serviceWorker.ready;
+	const target = registration ?? (await navigator.serviceWorker.ready);
 	const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
 
-	const existingSubscription = await registration.pushManager.getSubscription();
+	const existingSubscription = await target.pushManager.getSubscription();
 	if (existingSubscription) {
-		if (isBoundToKey(existingSubscription, applicationServerKey)) {
+		if (
+			isBoundToKey(existingSubscription, applicationServerKey) &&
+			hasVisibility(existingSubscription, userVisibleOnly)
+		) {
 			return { status: "subscribed", subscription: existingSubscription, isNew: false };
 		}
 		await existingSubscription.unsubscribe();
 	}
 
-	const subscription = await registration.pushManager.subscribe({
-		userVisibleOnly: true,
+	const subscription = await target.pushManager.subscribe({
+		userVisibleOnly,
 		applicationServerKey,
 	});
 	return { status: "subscribed", subscription, isNew: true };
@@ -107,13 +165,15 @@ export const subscribeToPush = subscribe;
 /**
  * Get the current push subscription if it exists.
  */
-export const getCurrentSubscription = async (): Promise<PushSubscription | null> => {
-	if (!isPushSupported()) {
+export const getCurrentSubscription = async ({
+	registration,
+}: Pick<SubscribeOptions, "registration"> = {}): Promise<PushSubscription | null> => {
+	if (!isPushAvailable(registration)) {
 		return null;
 	}
 
-	const registration = await navigator.serviceWorker.ready;
-	return registration.pushManager.getSubscription();
+	const target = registration ?? (await navigator.serviceWorker.ready);
+	return target.pushManager.getSubscription();
 };
 
 /**
@@ -141,8 +201,10 @@ export const unsubscribeFromPush = async (): Promise<boolean> => {
  * (e.g. the push service is unreachable): the caller's intent is to stop
  * receiving pushes, and removing the server record achieves that regardless.
  */
-export const unsubscribe = async (): Promise<string | null> => {
-	const subscription = await getCurrentSubscription();
+export const unsubscribe = async (
+	options: Pick<SubscribeOptions, "registration"> = {},
+): Promise<string | null> => {
+	const subscription = await getCurrentSubscription(options);
 	if (!subscription) {
 		return null;
 	}
