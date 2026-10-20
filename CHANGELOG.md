@@ -5,6 +5,15 @@ All notable changes to `@mmmike/web-push` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0-beta.1] - 2026-10-20
+
+### Added
+
+- **`init` on `sendSubscriptionToServer` and `removeSubscriptionFromServer`** — an
+  optional `RequestInit`, minus `body`, merged into the request: an `Authorization`
+  header, `credentials`, a `signal`. Its `method` replaces the default, and its headers
+  merge with `Content-Type: application/json`.
+
 ## [1.4.0-beta.0] - 2026-10-20
 
 ### Added
