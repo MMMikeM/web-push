@@ -9,3 +9,5 @@ minimumReleaseAgeExclude:
 
 overrides:
   nanoid@<3.3.18: ^3.3.18
+  source-map-js@<1.2.2: ^1.2.2
+  tinypool@<2.1.2: ~2.1.2
