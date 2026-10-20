@@ -5,6 +5,23 @@ All notable changes to `@mmmike/web-push` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0-beta.0] - 2026-10-20
+
+### Added
+
+- **`subscribe(vapidPublicKey, { registration, userVisibleOnly })`** — subscribe from a
+  service worker, such as a Chrome extension's, by passing `self.registration`. Where
+  `Notification.requestPermission` is unavailable, the notification permission the
+  worker already holds decides between `subscribed` and `denied`.
+  `userVisibleOnly: false` is for a Chrome extension's service worker (Chrome 121+).
+  `getCurrentSubscription` and `unsubscribe` take the same `registration` option.
+
+### Changed
+
+- `subscribe` replaces an existing subscription created with a different
+  `userVisibleOnly` mode, as it already did for a different VAPID key.
+- `isPushSupported` checks `globalThis` instead of `window`.
+
 ## [1.3.0] - 2026-08-14
 
 ### Added
