@@ -42,14 +42,20 @@ export type SubscribeResult =
 	| { status: "denied" };
 
 /**
- * Where and how {@link subscribe} subscribes. The defaults suit a page.
+ * Which service worker registration to act on.
  */
-export type SubscribeOptions = {
+export type RegistrationOption = {
 	/**
-	 * The registration to subscribe on. Defaults to `navigator.serviceWorker.ready`;
-	 * a service worker passes `self.registration`.
+	 * Defaults to `navigator.serviceWorker.ready`; a service worker passes
+	 * `self.registration`.
 	 */
 	registration?: ServiceWorkerRegistration;
+};
+
+/**
+ * Where and how {@link subscribe} subscribes. The defaults suit a page.
+ */
+export type SubscribeOptions = RegistrationOption & {
 	/**
 	 * Whether every push must show a notification. Defaults to `true`; only a
 	 * Chrome extension's service worker (Chrome 121+) may pass `false`.
@@ -181,7 +187,7 @@ export const subscribeToPush = subscribe;
  */
 export const getCurrentSubscription = async ({
 	registration,
-}: Pick<SubscribeOptions, "registration"> = {}): Promise<PushSubscription | null> => {
+}: RegistrationOption = {}): Promise<PushSubscription | null> => {
 	if (!isPushAvailable(registration)) {
 		return null;
 	}
@@ -215,9 +221,7 @@ export const unsubscribeFromPush = async (): Promise<boolean> => {
  * (e.g. the push service is unreachable): the caller's intent is to stop
  * receiving pushes, and removing the server record achieves that regardless.
  */
-export const unsubscribe = async (
-	options: Pick<SubscribeOptions, "registration"> = {},
-): Promise<string | null> => {
+export const unsubscribe = async (options: RegistrationOption = {}): Promise<string | null> => {
 	const subscription = await getCurrentSubscription(options);
 	if (!subscription) {
 		return null;

@@ -7,6 +7,13 @@ this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **`RegistrationOption`** — the `{ registration }` option as its own type, exported from
+  the root and `/client`. `getCurrentSubscription` and `unsubscribe` take it in place of
+  `Pick<SubscribeOptions, "registration">`, and `SubscribeOptions` extends it. The shape
+  is unchanged, so existing calls still compile.
+
 ### Changed
 
 - `subscribe` throws on a `vapidPublicKey` that isn't a 65-byte P-256 public key before
