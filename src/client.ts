@@ -69,6 +69,17 @@ const isPermissionGranted = async (): Promise<boolean> =>
 		? await requestNotificationPermission()
 		: getNotificationPermission()) === "granted";
 
+// A key that can't be a P-256 public key (a missing env var, the private key
+// pasted by mistake) must fail before the existing subscription is touched:
+// otherwise it is torn down and the browser then refuses the replacement.
+const decodeVapidPublicKey = (vapidPublicKey: string): Uint8Array<ArrayBuffer> => {
+	const key = urlBase64ToUint8Array(vapidPublicKey);
+	if (key.length !== 65 || key[0] !== 0x04) {
+		throw new Error("vapidPublicKey must be a 65-byte uncompressed P-256 public key");
+	}
+	return key;
+};
+
 // Browsers that predate `options.applicationServerKey` report null; treat that
 // as a match — discarding a working subscription is worse than keeping it.
 const isBoundToKey = (subscription: PushSubscription, key: Uint8Array): boolean => {
@@ -101,8 +112,12 @@ const hasVisibility = (subscription: PushSubscription, userVisibleOnly: boolean)
  * permission it already holds decides between `subscribed` and `denied`.
  *
  * @param vapidPublicKey - The server's VAPID public key (URL-safe base64)
- * @throws {DOMException} when the browser refuses `userVisibleOnly: false`, which it
- * does everywhere but a Chrome extension's service worker.
+ * @throws {Error} when `vapidPublicKey` isn't a 65-byte P-256 public key, checked before
+ * anything else, so a misconfigured key never costs a subscriber their subscription.
+ * @throws {DOMException} `InvalidCharacterError` when `vapidPublicKey` isn't valid base64url.
+ * @throws {DOMException} when the browser refuses the subscription: `NotAllowedError`
+ * for `userVisibleOnly: false` anywhere but a Chrome extension's service worker,
+ * `AbortError` when its push service is unavailable, as in Brave by default.
  * @example
  * ```ts
  * const result = await subscribe(vapidPublicKey);
@@ -123,6 +138,7 @@ export const subscribe = async (
 	vapidPublicKey: string,
 	{ registration, userVisibleOnly = true }: SubscribeOptions = {},
 ): Promise<SubscribeResult> => {
+	const applicationServerKey = decodeVapidPublicKey(vapidPublicKey);
 	if (!isPushAvailable(registration)) {
 		return { status: "unsupported" };
 	}
@@ -134,8 +150,6 @@ export const subscribe = async (
 	}
 
 	const target = registration ?? (await navigator.serviceWorker.ready);
-	const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
-
 	const existingSubscription = await target.pushManager.getSubscription();
 	if (existingSubscription) {
 		if (

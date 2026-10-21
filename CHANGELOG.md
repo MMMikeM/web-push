@@ -9,6 +9,8 @@ this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- `subscribe` throws on a `vapidPublicKey` that isn't a 65-byte P-256 public key before
+  prompting or touching the existing subscription.
 - A malformed subscription (unparseable endpoint, missing or non-base64url keys, a
   `p256dh` off the curve) makes the send functions throw a plain `Error` instead of a
   `TypeError` or `DOMException`, so a `TypeError` now means the network alone.

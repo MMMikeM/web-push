@@ -152,7 +152,12 @@ describe("feature detection & permission", () => {
 	});
 });
 
-const randomVapidKey = () => uint8ArrayToUrlBase64(crypto.getRandomValues(new Uint8Array(65)));
+const randomVapidKey = () => {
+	const key = crypto.getRandomValues(new Uint8Array(65));
+	key[0] = 0x04;
+	return uint8ArrayToUrlBase64(key);
+};
+const VAPID_KEY = randomVapidKey();
 const subscriptionBoundTo = (vapidPublicKey: string) =>
 	makeSubscription(
 		"https://push.example.com/existing",
@@ -168,12 +173,12 @@ describe("subscribe", () => {
 
 	it("reports unsupported when push APIs are missing", async () => {
 		setupPushEnv({ serviceWorker: false });
-		expect(await subscribe("BPk")).toEqual({ status: "unsupported" });
+		expect(await subscribe(VAPID_KEY)).toEqual({ status: "unsupported" });
 	});
 
 	it("reports denied when the permission prompt is declined", async () => {
 		setupPushEnv({ permission: "default", promptResult: "denied" });
-		expect(await subscribe("BPk")).toEqual({ status: "denied" });
+		expect(await subscribe(VAPID_KEY)).toEqual({ status: "denied" });
 	});
 
 	it("prompts for permission and subscribes once granted", async () => {
@@ -181,7 +186,7 @@ describe("subscribe", () => {
 			permission: "default",
 			promptResult: "granted",
 		});
-		expect(await subscribe("BPk")).toEqual({
+		expect(await subscribe(VAPID_KEY)).toEqual({
 			status: "subscribed",
 			subscription: created,
 			isNew: true,
@@ -228,7 +233,7 @@ describe("subscribe", () => {
 	it("prompts for permission before waiting on a still-installing service worker", async () => {
 		const { NotificationStub } = setupPushEnv({ permission: "default" });
 		vi.stubGlobal("navigator", { serviceWorker: { ready: new Promise(() => {}) } });
-		void subscribe("BPk");
+		void subscribe(VAPID_KEY);
 		await vi.waitFor(() => expect(NotificationStub.requestPermission).toHaveBeenCalledOnce());
 	});
 
@@ -254,6 +259,23 @@ describe("subscribe", () => {
 			subscription: existing,
 			isNew: false,
 		});
+		expect(pushManager.subscribe).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ problem: "an empty key", key: "" },
+		{ problem: "a private key", key: uint8ArrayToUrlBase64(new Uint8Array(32)) },
+	])("rejects $problem before prompting or touching the existing subscription", async ({ key }) => {
+		const existing = subscriptionBoundTo(randomVapidKey());
+		const { NotificationStub, pushManager } = setupPushEnv({
+			permission: "default",
+			existing,
+		});
+		await expect(subscribe(key)).rejects.toThrow(
+			"vapidPublicKey must be a 65-byte uncompressed P-256 public key",
+		);
+		expect(NotificationStub.requestPermission).not.toHaveBeenCalled();
+		expect(existing.unsubscribe).not.toHaveBeenCalled();
 		expect(pushManager.subscribe).not.toHaveBeenCalled();
 	});
 
@@ -291,14 +313,14 @@ describe("from a service worker", () => {
 		"reports denied when the notification permission is %s",
 		async (permission) => {
 			const { registration, pushManager } = setupPushEnv({ worker: true, permission });
-			expect(await subscribe("BPk", { registration })).toEqual({ status: "denied" });
+			expect(await subscribe(VAPID_KEY, { registration })).toEqual({ status: "denied" });
 			expect(pushManager.subscribe).not.toHaveBeenCalled();
 		},
 	);
 
 	it("reports unsupported when PushManager is missing, even with a registration", async () => {
 		const { registration } = setupPushEnv({ worker: true, pushManager: false });
-		expect(await subscribe("BPk", { registration })).toEqual({ status: "unsupported" });
+		expect(await subscribe(VAPID_KEY, { registration })).toEqual({ status: "unsupported" });
 	});
 
 	it("reads and unsubscribes through the given registration", async () => {
@@ -382,7 +404,7 @@ describe("unsubscribe & getCurrentSubscription", () => {
 	it("supports the full lifecycle: subscribe, read back, unsubscribe, gone", async () => {
 		const { created } = setupPushEnv();
 		expect(await getCurrentSubscription()).toBeNull();
-		expect(await subscribe("BPk")).toEqual({
+		expect(await subscribe(VAPID_KEY)).toEqual({
 			status: "subscribed",
 			subscription: created,
 			isNew: true,
