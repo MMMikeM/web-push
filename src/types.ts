@@ -69,10 +69,12 @@ export type SendPushBatchResult = {
 	/** Endpoints the push service reported gone (404/410) — delete these */
 	gone: string[];
 	/**
-	 * Sends that did not deliver, each with its error: a `WebPushError` for a
-	 * push-service rejection (carrying `statusCode` and `retryAfterMs`), a
-	 * `TypeError` when `fetch` never reached the service, any other `Error`
-	 * for a malformed subscription.
+	 * Sends that did not deliver, each with its error. A plain `Error` means the
+	 * subscription itself is malformed: delete it. A `WebPushError` is a
+	 * push-service rejection carrying `statusCode` and `retryAfterMs`; a 401 or
+	 * 403 usually means the subscription was made with a different VAPID key. A
+	 * `TypeError` (the network) or a `TimeoutError` is worth retrying, and the
+	 * `signal`'s abort reason means you cut the send short.
 	 */
 	failed: { endpoint: string; error: unknown }[];
 };

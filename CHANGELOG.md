@@ -5,6 +5,14 @@ All notable changes to `@mmmike/web-push` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- A malformed subscription (unparseable endpoint, missing or non-base64url keys, a
+  `p256dh` off the curve) makes the send functions throw a plain `Error` instead of a
+  `TypeError` or `DOMException`, so a `TypeError` now means the network alone.
+
 ## [1.4.0-beta.1] - 2026-10-20
 
 ### Added

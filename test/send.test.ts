@@ -409,14 +409,54 @@ describe("sendPushNotification — payload size & validation", () => {
 		);
 	});
 
-	it("throws on a malformed endpoint URL", async () => {
-		stubFetch(201);
-		const bad: PushSubscriptionData = {
-			endpoint: "not a url",
-			keys: { p256dh: client.p256dh, auth: client.auth },
-		};
-		await expect(sendPushNotification(bad, payload, vapid)).rejects.toThrow("Invalid URL");
-	});
+	// A TypeError must mean the network alone, so callers can retry on it safely.
+	it.each([
+		{
+			problem: "a malformed endpoint URL",
+			makeSubscription: (): PushSubscriptionData => ({
+				endpoint: "not a url",
+				keys: { p256dh: client.p256dh, auth: client.auth },
+			}),
+			message: "Invalid subscription endpoint: not a URL",
+		},
+		{
+			problem: "missing keys",
+			makeSubscription: () => ({ endpoint: ENDPOINT }) as unknown as PushSubscriptionData,
+			message: "Invalid subscription: missing its p256dh or auth key",
+		},
+		{
+			problem: "a p256dh key that isn't base64url",
+			makeSubscription: (): PushSubscriptionData => ({
+				endpoint: ENDPOINT,
+				keys: { p256dh: "not*base64", auth: client.auth },
+			}),
+			message: "Invalid subscription p256dh key: not URL-safe base64",
+		},
+		{
+			problem: "a p256dh key that isn't a point on the curve",
+			makeSubscription: (): PushSubscriptionData => {
+				const offCurve = new Uint8Array(65);
+				offCurve[0] = 0x04;
+				return {
+					endpoint: ENDPOINT,
+					keys: { p256dh: uint8ArrayToUrlBase64(offCurve), auth: client.auth },
+				};
+			},
+			message: "Invalid subscription p256dh key: not a point on the P-256 curve",
+		},
+	])(
+		"rejects $problem with a plain Error, not a TypeError or DOMException",
+		async ({ makeSubscription, message }) => {
+			stubFetch(201);
+			const error = await sendPushNotification(makeSubscription(), payload, vapid).catch(
+				(caught: unknown) => caught,
+			);
+			expect(error).toBeInstanceOf(Error);
+			expect(error).not.toBeInstanceOf(TypeError);
+			expect(error).not.toBeInstanceOf(DOMException);
+			expect((error as Error).message).toBe(message);
+		},
+	);
 
 	it("rejects a non-https endpoint without fetching it (RFC 8030 §3)", async () => {
 		const mock = stubFetch(201);

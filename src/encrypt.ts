@@ -62,6 +62,14 @@ const concat = (...parts: Uint8Array[]): Uint8Array<ArrayBuffer> => {
 	return out;
 };
 
+const decodeSubscriptionKey = (value: string, name: string): Uint8Array<ArrayBuffer> => {
+	try {
+		return urlBase64ToUint8Array(value);
+	} catch (cause) {
+		throw new Error(`Invalid subscription ${name}: not URL-safe base64`, { cause });
+	}
+};
+
 /**
  * Validate the payload size and the subscription's public key and auth secret,
  * returning the decoded key bytes. Exported so the send path can reject invalid
@@ -78,7 +86,7 @@ export const validatePushInputs = (
 ): { clientPublicKeyBytes: Uint8Array<ArrayBuffer>; authSecretBytes: Uint8Array<ArrayBuffer> } => {
 	assertPayloadWithinLimit(payload);
 
-	const clientPublicKeyBytes = urlBase64ToUint8Array(p256dhKey);
+	const clientPublicKeyBytes = decodeSubscriptionKey(p256dhKey, "p256dh key");
 	if (
 		clientPublicKeyBytes.length !== KEY_ID_LENGTH ||
 		clientPublicKeyBytes[0] !== UNCOMPRESSED_POINT_TAG
@@ -88,7 +96,7 @@ export const validatePushInputs = (
 		);
 	}
 
-	const authSecretBytes = urlBase64ToUint8Array(authSecret);
+	const authSecretBytes = decodeSubscriptionKey(authSecret, "auth secret");
 	if (authSecretBytes.length < 16) {
 		throw new Error("Invalid subscription auth secret: expected at least 16 bytes");
 	}
@@ -96,8 +104,21 @@ export const validatePushInputs = (
 	return { clientPublicKeyBytes, authSecretBytes };
 };
 
-const importClientPublicKey = (rawKey: Uint8Array<ArrayBuffer>): Promise<CryptoKey> =>
-	crypto.subtle.importKey("raw", rawKey, { name: "ECDH", namedCurve: "P-256" }, false, []);
+const importClientPublicKey = async (rawKey: Uint8Array<ArrayBuffer>): Promise<CryptoKey> => {
+	try {
+		return await crypto.subtle.importKey(
+			"raw",
+			rawKey,
+			{ name: "ECDH", namedCurve: "P-256" },
+			false,
+			[],
+		);
+	} catch (cause) {
+		throw new Error("Invalid subscription p256dh key: not a point on the P-256 curve", {
+			cause,
+		});
+	}
+};
 
 const deriveSharedSecret = async (
 	serverPrivateKey: CryptoKey,

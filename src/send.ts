@@ -153,8 +153,20 @@ const assertValidTopic = (topic: string | undefined): void => {
 	}
 };
 
+// Malformed subscription input throws a plain Error, never the TypeError that
+// `new URL` or a missing `keys` would, so TypeError means the network alone.
+const subscriptionKeys = ({ keys }: PushSubscriptionData): [p256dh: string, auth: string] => {
+	if (typeof keys?.p256dh !== "string" || typeof keys.auth !== "string") {
+		throw new Error("Invalid subscription: missing its p256dh or auth key");
+	}
+	return [keys.p256dh, keys.auth];
+};
+
 /** The JWT `aud` claim is the push service origin, not the full endpoint. */
 const pushServiceOrigin = (endpoint: string): string => {
+	if (!URL.canParse(endpoint)) {
+		throw new Error("Invalid subscription endpoint: not a URL");
+	}
 	const url = new URL(endpoint);
 	// Anything but TLS hands the capability URL and payload to the network.
 	if (url.protocol !== "https:") {
@@ -259,10 +271,15 @@ const postToPushService = async (
  * Each request carries a timeout (default 30s) and, when provided, the
  * caller's `signal`; hitting either rejects with the abort reason.
  *
- * @param payload A `PushPayload` is JSON-serialized; a {@link rawPayload}
+ * @param payload A {@link PushPayload} is JSON-serialized; a {@link rawPayload}
  * wrapper is encrypted and sent verbatim
- * @returns true if successful, false if subscription is invalid (should be deleted)
+ * @returns `true` once the push service accepts the message, `false` when the
+ * subscription is gone (404/410) and should be deleted from your store
  * @throws {WebPushError} on rate limits (429) and other push service errors
+ * @throws {TypeError} when `fetch` never reaches the push service: DNS, TLS, a dropped connection
+ * @throws {DOMException} `TimeoutError` after `timeoutMs`
+ * @throws the `signal`'s abort reason when it aborts: an `AbortError` `DOMException`
+ * unless you passed `abort()` a reason of your own
  * @throws {Error} on invalid input: VAPID config, payload size, `topic`,
  * `timeoutMs`, or a non-`https:` endpoint
  * @example
@@ -283,7 +300,7 @@ export const sendPushNotification = async (
 	// Reject bad input *before* signing the VAPID JWT — no point paying for an
 	// ECDSA signature on a request we'll refuse.
 	const payloadBytes = encodePayload(payload);
-	validatePushInputs(payloadBytes, subscription.keys.p256dh, subscription.keys.auth);
+	validatePushInputs(payloadBytes, ...subscriptionKeys(subscription));
 
 	// JWT expiry is independent of the message TTL: push services reject tokens
 	// valid for more than 24h, whereas TTL (message retention) is routinely longer.
@@ -369,7 +386,7 @@ export const sendPushBatch = async (
 
 	const sendOne = async (subscription: PushSubscriptionData): Promise<void> => {
 		try {
-			validatePushInputs(payloadBytes, subscription.keys.p256dh, subscription.keys.auth);
+			validatePushInputs(payloadBytes, ...subscriptionKeys(subscription));
 			const jwt = await cachedJwtFor(pushServiceOrigin(subscription.endpoint));
 			const accepted = await postToPushService(
 				subscription,
