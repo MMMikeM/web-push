@@ -27,26 +27,33 @@ this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - **`init` on `sendSubscriptionToServer` and `removeSubscriptionFromServer`** — an
-  optional `RequestInit`, minus `body`, merged into the request: an `Authorization`
-  header, `credentials`, a `signal`. Its `method` replaces the default, and its headers
-  merge with `Content-Type: application/json`.
+  optional third argument, a `RequestInit` merged into the upload, for servers that
+  need an `Authorization` header, cookies via `credentials`, or an abort `signal`. Its
+  `method` replaces the default, so `removeSubscriptionFromServer` can reach a
+  `POST /unsubscribe` route. Its headers merge with `Content-Type: application/json`
+  rather than replacing it. The body stays the library's: passing one is a type error.
 
 ## [1.4.0-beta.0] - 2026-10-20
 
 ### Added
 
-- **`subscribe(vapidPublicKey, { registration, userVisibleOnly })`** — subscribe from a
-  service worker, such as a Chrome extension's, by passing `self.registration`. Where
-  `Notification.requestPermission` is unavailable, the notification permission the
-  worker already holds decides between `subscribed` and `denied`.
-  `userVisibleOnly: false` is for a Chrome extension's service worker (Chrome 121+).
-  `getCurrentSubscription` and `unsubscribe` take the same `registration` option.
+- **Subscribing from a service worker** — `subscribe(vapidPublicKey, { registration })`
+  subscribes on the given registration, such as `self.registration` in a Chrome
+  extension, instead of waiting on `navigator.serviceWorker.ready`. A worker can't show
+  a permission prompt, so the notification permission it already holds decides between
+  `subscribed` and `denied`. `getCurrentSubscription` and `unsubscribe` take the same
+  `registration` option.
+- **`userVisibleOnly`** — a `subscribe` option, default `true`. Chrome 121+ accepts
+  `false` from an extension's service worker, for pushes that show no notification;
+  every other context rejects it.
+- **`SubscribeOptions`** — the options type, exported from the root and `/client`.
 
 ### Changed
 
 - `subscribe` replaces an existing subscription created with a different
-  `userVisibleOnly` mode, as it already did for a different VAPID key.
-- `isPushSupported` checks `globalThis` instead of `window`.
+  `userVisibleOnly` mode (`isNew: true`), as it already did for a different VAPID key.
+  A browser that doesn't report the mode keeps its subscription.
+- `isPushSupported` checks `globalThis` instead of `window`, which workers don't have.
 
 ## [1.3.0] - 2026-08-14
 
