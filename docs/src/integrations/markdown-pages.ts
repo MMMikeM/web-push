@@ -59,14 +59,12 @@ const prepareTabs = (tree: Root) => {
 		const panels = selectAll('[role="tabpanel"]', tabs);
 		tabs.tagName = "ul";
 		tabs.properties = {};
-		tabs.children = panels.map(
-			(panel, index): Element => ({
-				type: "element",
-				tagName: "li",
-				properties: {},
-				children: [paragraph(`**${labels[index] ?? ""}**`), panel],
-			}),
-		);
+		tabs.children = panels.map((panel, index): Element => ({
+			type: "element",
+			tagName: "li",
+			properties: {},
+			children: [paragraph(`**${labels[index] ?? ""}**`), panel],
+		}));
 	}
 };
 
