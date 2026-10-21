@@ -1,0 +1,215 @@
+---
+title: Build a complete app
+runtimePicker: true
+description: Build a page with a notifications toggle, a server that stores subscriptions, and a route that pushes to every subscriber, on Node, Bun, Deno, or Cloudflare Workers.
+---
+
+import { Code, TabItem, Tabs } from "@astrojs/starlight/components";
+import indexHtml from "../../../../examples/app/public/index.html?raw";
+import appJs from "../../../../examples/app/public/app.js?raw";
+import swJs from "../../../../examples/app/public/sw.js?raw";
+import storeTs from "../../../../examples/app/src/store.ts?raw";
+import appTs from "../../../../examples/app/src/app.ts?raw";
+import memoryStoreTs from "../../../../examples/app/src/memory-store.ts?raw";
+import nodeTs from "../../../../examples/app/src/node.ts?raw";
+import bunTs from "../../../../examples/app/src/bun.ts?raw";
+import denoTs from "../../../../examples/app/src/deno.ts?raw";
+import workerTs from "../../../../examples/app/src/worker.ts?raw";
+import wranglerToml from "../../../../examples/app/wrangler.toml?raw";
+import generateKeysTs from "../../../../examples/app/scripts/generate-keys.ts?raw";
+
+Build an app that turns notifications on and off, remembers who subscribed, and pushes to all of them. Every file shown is the source of [`examples/app`](https://github.com/MMMikeM/web-push/tree/main/examples/app), as it is in the repository.
+
+## 1. Get the code and generate keys
+
+The example lives in the library's repository and uses the library from it, so build that first. In your own project, `npm install @mmmike/web-push` instead.
+
+```bash
+git clone https://github.com/MMMikeM/web-push.git
+cd web-push && pnpm install && pnpm run build
+cd examples/app && pnpm install
+```
+
+The VAPID key pair identifies your server to the push services. Generate it once, along with a token that guards the broadcast route:
+
+<Code code={generateKeysTs} lang="ts" title="scripts/generate-keys.ts" />
+
+<Tabs syncKey="runtime">
+<TabItem label="Node">
+
+Write the output straight into `.env`, then put your own contact address in `VAPID_SUBJECT`:
+
+```bash
+pnpm run keys > .env
+```
+
+</TabItem>
+<TabItem label="Bun">
+
+Write the output straight into `.env`, which Bun loads on its own, then put your own contact address in `VAPID_SUBJECT`:
+
+```bash
+pnpm run keys > .env
+```
+
+</TabItem>
+<TabItem label="Deno">
+
+Write the output straight into `.env`, then put your own contact address in `VAPID_SUBJECT`:
+
+```bash
+pnpm run keys > .env
+```
+
+</TabItem>
+<TabItem label="Cloudflare Workers">
+
+Locally, `wrangler dev` reads secrets from `.dev.vars`, which takes the same format. Put your own contact address in `VAPID_SUBJECT`:
+
+```bash
+pnpm run keys > .dev.vars
+```
+
+For a deployed Worker, store each value as a secret, and create the KV namespace that holds subscriptions. Paste the id it prints into `wrangler.toml`:
+
+```bash
+npx wrangler secret put VAPID_PUBLIC_KEY   # and VAPID_PRIVATE_KEY, VAPID_SUBJECT, ADMIN_TOKEN
+npx wrangler kv namespace create SUBSCRIPTIONS
+```
+
+</TabItem>
+</Tabs>
+
+Keep the private key and the admin token secret. Anyone with the private key can push to every subscriber you have.
+
+## 2. The service worker
+
+The browser wakes the service worker to show a notification even when no page of yours is open. This one shows the payload's `title` and `body`, and on click focuses a tab already showing the payload's `url`, or opens one:
+
+<Code code={swJs} lang="js" title="public/sw.js" />
+
+## 3. The page
+
+The page loads the client helpers from a CDN through an import map, so it needs no build step. A bundled app imports `@mmmike/web-push/client` the usual way.
+
+<Code code={indexHtml} lang="html" title="public/index.html" />
+
+The script is where the subscription flow lives:
+
+<Code code={appJs} lang="js" title="public/app.js" />
+
+Three things in it are deliberate:
+
+- **The service worker is registered on load, and `subscribe` runs on a click.** Browsers only show the permission prompt in response to a user gesture, and registering early means the prompt doesn't wait on it.
+- **A visitor who is already subscribed is subscribed again on every visit.** That doesn't prompt. It replaces a subscription bound to an old VAPID key, and the upload is an upsert, so the server always holds the current subscription even if an earlier upload failed. A visitor who turned notifications off stays off, though their permission is still granted.
+- **Turning notifications off removes the server's record too.** [`unsubscribe`](/web-push/reference/client/#unsubscribe) resolves to the endpoint for exactly this, even when the browser fails to unsubscribe.
+
+## 4. The server
+
+The server needs somewhere to keep subscriptions. Each runtime supplies a store behind this interface: KV on Workers, and on the others this in-memory one, which forgets everyone on restart:
+
+<Code code={storeTs} lang="ts" title="src/store.ts" />
+
+<Code code={memoryStoreTs} lang="ts" title="src/memory-store.ts" />
+
+The rest of the server is one fetch handler, `(request) => response`, so every runtime shares all of it:
+
+<Code code={appTs} lang="ts" title="src/app.ts" />
+
+Its four routes:
+
+| Route                        | What it does                                                                                 |
+| ---------------------------- | -------------------------------------------------------------------------------------------- |
+| `GET /api/vapid-public-key`  | Hands the page the public key to subscribe with                                              |
+| `POST /api/push/subscribe`   | Saves a subscription, the default route of `sendSubscriptionToServer`                        |
+| `DELETE /api/push/subscribe` | Forgets one, the default route of `removeSubscriptionFromServer`                             |
+| `POST /api/push/broadcast`   | Pushes a payload to every subscriber, deletes the ones that are gone, and reports the counts |
+
+Saving rejects any endpoint that isn't a known push service. The server will later POST to whatever URL a subscription names, and a subscription comes from a browser you don't control; [Secure your endpoints](/web-push/guides/secure-endpoints/) explains why that matters.
+
+## 5. Run it
+
+<Tabs syncKey="runtime">
+<TabItem label="Node">
+
+Node's `http` server predates `Request` and `Response`, so this entry point converts between them, and serves `public/` itself:
+
+<Code code={nodeTs} lang="ts" title="src/node.ts" />
+
+Start it, then open [http://localhost:3000](http://localhost:3000):
+
+```bash
+pnpm run start:node
+```
+
+</TabItem>
+<TabItem label="Bun">
+
+`Bun.serve` takes the fetch handler as it is, so this entry point only adds the environment and static files:
+
+<Code code={bunTs} lang="ts" title="src/bun.ts" />
+
+Start it, then open [http://localhost:3000](http://localhost:3000):
+
+```bash
+pnpm run start:bun
+```
+
+</TabItem>
+<TabItem label="Deno">
+
+`Deno.serve` takes the fetch handler as it is, so this entry point only adds the environment and static files:
+
+<Code code={denoTs} lang="ts" title="src/deno.ts" />
+
+Start it with network, environment, and file access, then open [http://localhost:3000](http://localhost:3000):
+
+```bash
+pnpm run start:deno
+```
+
+</TabItem>
+<TabItem label="Cloudflare Workers">
+
+The Worker keeps subscriptions in KV, keyed by endpoint. Workers Static Assets serves `public/` before the Worker runs, so only `/api` requests reach it:
+
+<Code code={workerTs} lang="ts" title="src/worker.ts" />
+
+<Code code={wranglerToml} lang="toml" title="wrangler.toml" />
+
+Run it locally and open [http://localhost:8787](http://localhost:8787), or deploy it:
+
+```bash
+pnpm run dev:worker
+pnpm run deploy
+```
+
+No `nodejs_compat` flag is needed: the library uses only Web Crypto and `fetch`.
+
+</TabItem>
+</Tabs>
+
+Click the button, accept the prompt, and the subscription is saved. Browsers allow push on `localhost` without HTTPS; anywhere else, the page must be served over HTTPS.
+
+## 6. Send a notification
+
+Broadcast to everyone subscribed, with the admin token from step 1. On Workers, use port 8787:
+
+```bash
+curl -X POST http://localhost:3000/api/push/broadcast \
+  -H "Authorization: Bearer <your ADMIN_TOKEN>" \
+  -d '{ "title": "Hello", "body": "Your first push", "url": "/" }'
+```
+
+The response counts what happened: `delivered` were accepted by their push service, `removed` were gone (the browser unsubscribed or the subscription expired) and have been deleted, and `failed` didn't go through this time.
+
+## 7. Before production
+
+The example keeps each part small. A real deployment usually wants:
+
+- **A durable store.** A database table keyed by endpoint, instead of memory or a KV listing that reads every key.
+- **Subscriptions tied to users,** so you can push to one person's devices rather than everyone. See [Authenticated uploads](/web-push/guides/authenticated-uploads/).
+- **Retries for `failed`,** sorted by error type. See [Handle errors and retries](/web-push/guides/handle-errors/).
+- **Sending in pages** once the subscriber list is large. See [Send to many](/web-push/guides/send-to-many/).
+- **A plan for rotating keys.** See [Rotate VAPID keys](/web-push/guides/rotate-vapid-keys/).
+- **Real authentication on the broadcast route,** rather than one shared token.

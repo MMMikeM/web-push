@@ -1,0 +1,39 @@
+---
+title: "@mmmike/web-push"
+description: The whole Web Push flow in one zero-dependency package that runs on every modern runtime.
+template: splash
+hero:
+  tagline: The whole Web Push flow in one zero-dependency package that runs on every modern runtime.
+  actions:
+    - text: Get started
+      link: /web-push/getting-started/
+      icon: right-arrow
+    - text: API reference
+      link: /web-push/reference/
+      variant: minimal
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+```bash
+npm install @mmmike/web-push
+```
+
+<CardGrid>
+	<Card title="All four pieces" icon="puzzle">
+		VAPID key generation, a copy-paste service worker, the client subscribe
+		helpers, and the server send, one at a time or fanned out to a list.
+	</Card>
+	<Card title="No Node built-ins" icon="rocket">
+		If it has `fetch` and `crypto.subtle`, it works: Cloudflare Workers, Bun,
+		Deno, Node, and the browser, with no polyfill or compat layer.
+	</Card>
+	<Card title="Ratified specs" icon="approve-check">
+		RFC 8291 `aes128gcm` encryption and RFC 8292 VAPID, pinned byte-for-byte
+		against RFC 8291's Appendix A test vector.
+	</Card>
+	<Card title="Small" icon="seti:zip">
+		Zero dependencies, and each entry point is tree-shakeable on its own, so the
+		browser bundle carries only the client.
+	</Card>
+</CardGrid>

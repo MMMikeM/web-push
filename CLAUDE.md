@@ -12,6 +12,15 @@ Zero-dependency Web Push (RFC 8291) for Workers, Deno, Bun, Vercel Edge, Node 22
 
 `pnpm run check` is the gate: `format:check` → `lint` → `lint:types` → `test` → `audit`. Run it before claiming done. `pnpm run check:package` additionally builds and validates the exports map.
 
+## Docs site
+
+`docs/` is an Astro Starlight site, a separate project with its own `pnpm-workspace.yaml` and lockfile, so its dependencies never reach the library's lockfile or the `audit` in its release gate. Install and build from inside it (`pnpm --dir docs build`). The root formatter covers it, except the generated reference pages.
+
+- **The API reference is generated, not written.** `docs/scripts/generate-reference.ts` reads `src/` through TypeScript 7.1's API (a beta, hence the release-age exclusions in `docs/pnpm-workspace.yaml`) and writes `src/content/docs/reference/`, which is gitignored. Change the JSDoc, not the output.
+- **The build fails on an export without JSDoc.**
+- **The tutorial shows `examples/app` as it is.** `tutorial.mdx` imports the example's files with `?raw`, so changing the example changes the tutorial; keep its prose in step.
+- **Links are absolute and carry the `/web-push` base.** The same Markdown is served per page (`<page>.md`) and bundled into `llms-full.txt`, where relative links resolve against the wrong URL.
+
 ## Documentation
 
 **Every exported function, class, and type in `src/` carries JSDoc.** Re-export statements (`export type { X } from "./y"`) don't. **So does every field of an exported object type**: the reference renders each one as a table row, and an undocumented field is an empty cell.

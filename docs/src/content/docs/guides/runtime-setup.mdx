@@ -1,0 +1,128 @@
+---
+title: Runtime setup
+runtimePicker: true
+description: Install the library and load your VAPID keys on Node, Cloudflare Workers, Deno, Bun, and Vercel Edge.
+sidebar:
+  order: 8
+---
+
+import { TabItem, Tabs } from "@astrojs/starlight/components";
+
+The library needs only `fetch` and `crypto.subtle`, so the sending code is the same everywhere. What differs is how you install it and where your VAPID keys come from.
+
+<Tabs syncKey="runtime">
+<TabItem label="Node">
+
+Node 22.12 or later. The package is ESM-only; `require()` also works there, through `require(esm)`.
+
+```bash
+npm install @mmmike/web-push
+```
+
+Load the keys from the environment, for example with `node --env-file=.env server.js`:
+
+```ts
+const vapid = {
+	publicKey: process.env.VAPID_PUBLIC_KEY!,
+	privateKey: process.env.VAPID_PRIVATE_KEY!,
+	subject: process.env.VAPID_SUBJECT!,
+};
+```
+
+</TabItem>
+<TabItem label="Cloudflare Workers">
+
+No `nodejs_compat` flag and no particular compatibility date are needed.
+
+```bash
+npm install @mmmike/web-push
+npx wrangler secret put VAPID_PRIVATE_KEY   # likewise VAPID_PUBLIC_KEY, VAPID_SUBJECT
+```
+
+Secrets arrive on `env`. Locally, `wrangler dev` reads them from `.dev.vars`:
+
+```ts
+export default {
+	async fetch(request, env) {
+		const vapid = {
+			publicKey: env.VAPID_PUBLIC_KEY,
+			privateKey: env.VAPID_PRIVATE_KEY,
+			subject: env.VAPID_SUBJECT,
+		};
+		// …
+	},
+} satisfies ExportedHandler<Env>;
+```
+
+</TabItem>
+<TabItem label="Deno">
+
+Import through an `npm:` specifier; no install step is needed:
+
+```ts
+import { sendPushNotification } from "npm:@mmmike/web-push/send";
+
+const vapid = {
+	publicKey: Deno.env.get("VAPID_PUBLIC_KEY")!,
+	privateKey: Deno.env.get("VAPID_PRIVATE_KEY")!,
+	subject: Deno.env.get("VAPID_SUBJECT")!,
+};
+```
+
+Run with network and environment access: `deno run --allow-net --allow-env server.ts`.
+
+</TabItem>
+<TabItem label="Bun">
+
+```bash
+bun add @mmmike/web-push
+```
+
+Bun loads `.env` automatically:
+
+```ts
+const vapid = {
+	publicKey: Bun.env.VAPID_PUBLIC_KEY!,
+	privateKey: Bun.env.VAPID_PRIVATE_KEY!,
+	subject: Bun.env.VAPID_SUBJECT!,
+};
+```
+
+</TabItem>
+<TabItem label="Vercel Edge">
+
+In a Next.js route handler, opt into the Edge runtime and read the keys from the project's environment variables:
+
+```ts
+import { sendPushNotification } from "@mmmike/web-push/send";
+
+export const runtime = "edge";
+
+export async function POST(request: Request) {
+	const vapid = {
+		publicKey: process.env.VAPID_PUBLIC_KEY!,
+		privateKey: process.env.VAPID_PRIVATE_KEY!,
+		subject: process.env.VAPID_SUBJECT!,
+	};
+	// …
+}
+```
+
+</TabItem>
+</Tabs>
+
+## In the browser
+
+Import the client helpers from `@mmmike/web-push/client` through your bundler. That entry point carries only the client, about 1 kB. Without a bundler, map it to a CDN with an import map, as the [tutorial's page](/web-push/tutorial/#3-the-page) does.
+
+## Generating the keys
+
+Whatever the runtime, generate the pair once, ahead of time, and store it as a secret:
+
+```ts
+import { generateVapidKeys } from "@mmmike/web-push/vapid";
+
+console.log(await generateVapidKeys());
+```
+
+The subject is a contact address for the push services, either `mailto:` or an `https:` URL.

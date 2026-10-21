@@ -1,0 +1,33 @@
+---
+import Default from "@astrojs/starlight/components/PageTitle.astro";
+import RuntimeSelect from "./RuntimeSelect.astro";
+
+const { runtimePicker } = Astro.locals.starlightRoute.entry.data;
+---
+
+{
+	runtimePicker ? (
+		<div class="title-row">
+			<Default />
+			<RuntimeSelect inline />
+		</div>
+	) : (
+		<Default />
+	)
+}
+
+<style>
+	/* Starlight gives the title a top margin; the row takes it, so both centre on one line. */
+	.title-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem 1.5rem;
+		margin-top: 1rem;
+	}
+
+	.title-row :global(h1) {
+		margin-top: 0;
+	}
+</style>
