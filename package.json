@@ -61,7 +61,7 @@
 		"test:watch": "vp test",
 		"coverage": "vp test run --coverage",
 		"audit": "pnpm audit --audit-level high --ignore-registry-errors",
-		"check": "pnpm run format:check && pnpm run lint && pnpm run lint:types && pnpm run test && pnpm run audit",
+		"check": "pnpm run format:check && pnpm run lint && pnpm run lint:types && pnpm run coverage && pnpm run audit",
 		"check:exports": "attw --pack . --profile esm-only",
 		"check:publint": "publint --strict",
 		"check:sizes": "node scripts/check-sizes.ts",

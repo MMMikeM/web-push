@@ -10,7 +10,7 @@ Zero-dependency Web Push (RFC 8291) for Workers, Deno, Bun, Vercel Edge, Node 22
 
 ## Commands
 
-`pnpm run check` is the gate: `format:check` → `lint` → `lint:types` → `test` → `audit`. Run it before claiming done. `pnpm run check:package` additionally builds and validates the exports map.
+`pnpm run check` is the gate: `format:check` → `lint` → `lint:types` → `coverage` → `audit`. Run it before claiming done. Coverage of `src/` must stay at 100%: a new branch needs a test. `pnpm run check:package` additionally builds and validates the exports map.
 
 ## Docs site
 

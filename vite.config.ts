@@ -44,6 +44,7 @@ export default defineConfig({
 			provider: "v8",
 			include: ["src/**"],
 			reporter: ["text", "html"],
+			thresholds: { 100: true },
 		},
 	},
 	pack: {
