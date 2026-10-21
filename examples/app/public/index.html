@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Web Push demo</title>
+		<script type="importmap">
+			{
+				"imports": {
+					"@mmmike/web-push/client": "https://cdn.jsdelivr.net/npm/@mmmike/web-push@1/dist/client.mjs"
+				}
+			}
+		</script>
+		<script type="module" src="/app.js"></script>
+	</head>
+	<body>
+		<h1>Web Push demo</h1>
+		<button id="toggle" hidden>Turn on notifications</button>
+		<p id="status"></p>
+	</body>
+</html>

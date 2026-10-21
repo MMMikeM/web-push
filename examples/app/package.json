@@ -1,0 +1,20 @@
+{
+	"name": "web-push-app-example",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"keys": "node scripts/generate-keys.ts",
+		"start:node": "node --env-file=.env src/node.ts",
+		"start:bun": "bun src/bun.ts",
+		"start:deno": "deno run --allow-net --allow-env --allow-read --env-file=.env src/deno.ts",
+		"dev:worker": "wrangler dev",
+		"deploy": "wrangler deploy"
+	},
+	"dependencies": {
+		"@mmmike/web-push": "link:../.."
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "^5.20261001.0",
+		"wrangler": "^4.0.0"
+	}
+}

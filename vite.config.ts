@@ -4,7 +4,20 @@ export default defineConfig({
 	fmt: {
 		useTabs: true,
 		printWidth: 100,
-		ignorePatterns: ["dist"],
+		ignorePatterns: [
+			"dist",
+			"docs/.astro",
+			"docs/node_modules",
+			// Generated from src/ on every docs build.
+			"docs/src/content/docs/reference",
+		],
+		overrides: [
+			{
+				// Shown in the docs, whose content column fits about 80 characters.
+				files: ["docs/**/*.md", "docs/**/*.mdx", "examples/**"],
+				options: { printWidth: 80 },
+			},
+		],
 	},
 	lint: {
 		plugins: ["typescript", "unicorn", "oxc", "node", "promise", "vitest", "import", "eslint"],
