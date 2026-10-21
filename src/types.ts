@@ -1,5 +1,6 @@
 /**
- * A push subscription from the browser's PushManager.
+ * A push subscription in transit: what {@link serializeSubscription} produces in
+ * the browser, and what your server stores and sends to.
  */
 export type PushSubscriptionData = {
 	/** The push service endpoint URL */
@@ -19,6 +20,7 @@ export type PushSubscriptionData = {
  * in `rawPayload(...)` instead.
  */
 export type PushPayload = {
+	/** The notification's title, the one required field */
 	title: string;
 	/** Omit for a title-only notification */
 	body?: string;
@@ -44,9 +46,13 @@ export type VapidConfig = {
  * Optional logger interface for debugging.
  */
 export type Logger = {
+	/** Receives each push service response, endpoint and body truncated */
 	debug?: (message: string, data?: Record<string, unknown>) => void;
+	/** Not called yet */
 	info?: (message: string, data?: Record<string, unknown>) => void;
+	/** Not called yet */
 	warn?: (message: string, data?: Record<string, unknown>) => void;
+	/** Not called yet */
 	error?: (message: string, data?: Record<string, unknown>) => void;
 };
 
@@ -83,6 +89,7 @@ export type SendPushBatchResult = {
  * Options for sending a push notification.
  */
 export type SendPushOptions = {
+	/** Receives each push service response at `debug` level, endpoint and body truncated */
 	logger?: Logger;
 	/** TTL in seconds (default: 86400 = 24 hours) */
 	ttl?: number;

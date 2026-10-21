@@ -6,6 +6,8 @@
 
 /**
  * Convert a URL-safe base64 string to a Uint8Array.
+ *
+ * @throws {DOMException} `InvalidCharacterError` when the input isn't valid base64url.
  */
 export const urlBase64ToUint8Array = (base64String: string): Uint8Array<ArrayBuffer> => {
 	if (!base64String) {
@@ -44,6 +46,7 @@ export const uint8ArrayToUrlBase64 = (array: Uint8Array): string => {
  * Generate a new VAPID key pair using ECDSA P-256.
  * Returns keys as URL-safe base64 strings.
  *
+ * @throws {Error} if the platform exports the generated key without its private scalar.
  * @example
  * ```ts
  * const { publicKey, privateKey } = await generateVapidKeys();

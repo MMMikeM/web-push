@@ -16,11 +16,18 @@ export const isPushSupported = (): boolean =>
 
 /**
  * Get the current notification permission status.
+ *
+ * @returns `"default"` until the user has been asked.
+ * @throws {ReferenceError} where there is no `Notification` global, such as on a server.
  */
 export const getNotificationPermission = (): NotificationPermission => Notification.permission;
 
 /**
- * Request permission to show notifications.
+ * Request permission to show notifications, prompting the user if they haven't been asked.
+ *
+ * @returns `"default"` again if the user dismissed the prompt.
+ * @throws {TypeError} in a service worker, where `Notification.requestPermission` doesn't exist.
+ * @throws {ReferenceError} where there is no `Notification` global, such as on a server.
  */
 export const requestNotificationPermission = (): Promise<NotificationPermission> =>
 	Notification.requestPermission();
@@ -284,6 +291,10 @@ const sendJson = async (
  * application/json`. Cross-origin, the server must allow those headers in its CORS
  * preflight; an extension calling a host in its `host_permissions` skips CORS.
  *
+ * @param subscription Serialized with {@link serializeSubscription} for the body.
+ * @param endpoint Defaults to `/api/push/subscribe`, resolved against the page; an
+ * extension passes an absolute URL.
+ * @param init Merged into the upload's request.
  * @throws {Error} if the subscription is missing its `p256dh` or `auth` key.
  * @throws {TypeError} on a network failure.
  * @throws {DOMException} `AbortError` when `init.signal` aborts.
@@ -297,9 +308,11 @@ export const sendSubscriptionToServer = async (
 /**
  * Remove a push subscription from a server endpoint, resolving to whether it answered 2xx.
  *
- * Sends `{ endpoint }`. `init` works as in {@link sendSubscriptionToServer}, with
- * its `method` replacing `DELETE`.
+ * Sends `{ endpoint }` as JSON.
  *
+ * @param subscriptionEndpoint The endpoint to forget, as {@link unsubscribe} resolved it.
+ * @param serverEndpoint Defaults to `/api/push/subscribe`, resolved against the page.
+ * @param init As for {@link sendSubscriptionToServer}, with `method` replacing `DELETE`.
  * @throws {TypeError} on a network failure.
  * @throws {DOMException} `AbortError` when `init.signal` aborts.
  */

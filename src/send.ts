@@ -43,7 +43,9 @@ const parseRetryAfterMs = (retryAfter: string | null): number | null => {
  * (`retryAfter`) and parsed to milliseconds-from-now (`retryAfterMs`).
  */
 export class WebPushError extends Error {
+	/** The push service's HTTP status */
 	readonly statusCode: number;
+	/** The push service's response body */
 	readonly body: string;
 	/**
 	 * The full subscription endpoint, a capability URL: anyone holding it can
@@ -115,7 +117,7 @@ export type RawPushPayload = RawBytes;
 /**
  * Mark a payload as already serialized: the string or bytes are encrypted and
  * delivered verbatim, so your service worker's parsing is the other half of
- * the contract. The README service worker expects `PushPayload` JSON and will
+ * the contract. The example service worker expects `PushPayload` JSON and will
  * throw on anything else — which is also why the send functions take this
  * wrapper rather than a bare string: a misdirected string would type-check,
  * deliver, and only fail inside `event.data.json()` on the device.
@@ -326,7 +328,7 @@ export const sendPushNotification = async (
  * for the whole batch. Aborting `options.signal` stops workers from starting
  * new sends; subscriptions never attempted count toward none of the three.
  *
- * @param payload A `PushPayload` is JSON-serialized; a {@link rawPayload}
+ * @param payload A {@link PushPayload} is JSON-serialized; a {@link rawPayload}
  * wrapper is encrypted and sent verbatim
  * @throws {Error} on caller input — invalid VAPID config, oversized payload,
  * invalid `topic`, `concurrency`, or `timeoutMs` — before anything is sent.

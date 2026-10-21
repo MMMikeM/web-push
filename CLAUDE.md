@@ -14,14 +14,16 @@ Zero-dependency Web Push (RFC 8291) for Workers, Deno, Bun, Vercel Edge, Node 22
 
 ## Documentation
 
-**Every exported function, class, and type in `src/` carries JSDoc.** Re-export statements (`export type { X } from "./y"`) don't.
+**Every exported function, class, and type in `src/` carries JSDoc.** Re-export statements (`export type { X } from "./y"`) don't. **So does every field of an exported object type**: the reference renders each one as a table row, and an undocumented field is an empty cell.
 
 JSDoc says what the caller needs and nothing more:
 
 - Lead with what it does, in one line.
-- `@param` only when the name and type don't already say it — skip `@param subscription The subscription`.
+- `@param` only when the name and type don't already say it — skip `@param subscription The subscription`. A parameter typed by one of the library's own types borrows that type's summary in the reference.
+- `@returns` when the return type alone doesn't say what the values mean, such as the strings of a browser type like `NotificationPermission`.
 - `@throws` whenever it can throw. Callers can't see that from the signature.
 - `@example` on primary entry points only (`sendPushNotification`, `sendPushBatch`, `subscribe`, `generateVapidKeys`).
+- `{@link name}` to refer to another export. The reference turns it into a link; backticks stay plain code.
 - Never restate the type signature in prose. TypeScript already published it.
 
 ## Comments
