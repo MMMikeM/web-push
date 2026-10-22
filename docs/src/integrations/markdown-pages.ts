@@ -109,7 +109,28 @@ const element = (tagName: string, ...children: ElementContent[]): Element => ({
 
 const text = (value: string): Text => ({ type: "text", value });
 
-const toMarkdown = async (html: string): Promise<string | undefined> => {
+// A link from one Markdown copy leads to another, as a full URL, so an agent that
+// follows it stays in Markdown and pasted text still knows its host.
+const linkToMarkdown = (tree: Root, site: Site, pageUrl: URL) => {
+	for (const link of selectAll("a[href]", tree)) {
+		const url = new URL(String(link.properties.href), pageUrl);
+		if (url.origin !== site.home.origin || !url.pathname.startsWith(site.home.pathname)) {
+			continue;
+		}
+		const pathname = url.pathname.slice(site.home.pathname.length);
+		link.properties.href = site.pages.has(pathname)
+			? new URL(markdownPath(pathname) + url.hash, site.home).href
+			: url.href;
+	}
+};
+
+type Site = { home: URL; pages: Set<string> };
+
+const toMarkdown = async (
+	html: string,
+	site: Site,
+	pathname: string,
+): Promise<string | undefined> => {
 	const page = unified().use(rehypeParse).parse(html);
 	const title = select("h1#_top", page);
 	const content = select(".sl-markdown-content", page);
@@ -126,6 +147,7 @@ const toMarkdown = async (html: string): Promise<string | undefined> => {
 	);
 	prepareCodeBlocks(tree);
 	prepareTabs(tree);
+	linkToMarkdown(tree, site, new URL(pathname, site.home));
 	const processor = unified().use(rehypeRemark).use(remarkGfm).use(remarkStringify);
 	return processor.stringify(await processor.run(tree));
 };
@@ -138,22 +160,31 @@ export const markdownPath = (pathname: string) =>
  * Writes `<page>.md` beside each built page, converted from the rendered HTML, so
  * MDX components arrive as their output: code from `?raw` imports, every tab's panel.
  */
-export const markdownPages = (): AstroIntegration => ({
-	name: "markdown-pages",
-	hooks: {
-		"astro:build:done": async ({ dir, pages }) => {
-			const outDir = fileURLToPath(dir);
-			await Promise.all(
-				pages
-					.filter(({ pathname }) => pathname !== "404/")
-					.map(async ({ pathname }) => {
+export const markdownPages = (): AstroIntegration => {
+	let home: URL | undefined;
+	return {
+		name: "markdown-pages",
+		hooks: {
+			"astro:config:done": ({ config }) => {
+				home = config.site ? new URL(config.base.replace(/\/?$/, "/"), config.site) : undefined;
+			},
+			"astro:build:done": async ({ dir, pages }) => {
+				if (!home) {
+					throw new Error("markdownPages() needs `site` set, to write full link URLs");
+				}
+				const outDir = fileURLToPath(dir);
+				const written = pages.filter(({ pathname }) => pathname !== "404/");
+				const site: Site = { home, pages: new Set(written.map(({ pathname }) => pathname)) };
+				await Promise.all(
+					written.map(async ({ pathname }) => {
 						const html = await readFile(`${outDir}${pathname}index.html`, "utf8");
-						const markdown = await toMarkdown(html);
+						const markdown = await toMarkdown(html, site, pathname);
 						if (markdown) {
 							await writeFile(`${outDir}${markdownPath(pathname)}`, markdown);
 						}
 					}),
-			);
+				);
+			},
 		},
-	},
-});
+	};
+};
