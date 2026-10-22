@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://web-push.thelazyweb.dev/sitemap-index.xml

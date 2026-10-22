@@ -8,8 +8,10 @@
 		"directory": "./dist",
 		"binding": "ASSETS",
 		"not_found_handling": "404-page",
-		// The Worker only negotiates page URLs; built assets go straight to the asset server.
-		"run_worker_first": ["/*", "!/_astro/*", "!/pagefind/*"],
+		// The Worker only negotiates page URLs; built assets go straight to the asset server,
+		// the only responses public/_headers reaches. robots.txt skips it so crawler
+		// fetches aren't logged as views.
+		"run_worker_first": ["/*", "!/_astro/*", "!/pagefind/*", "!/robots.txt"],
 	},
 	// Page and Markdown views, logged server-side. Query them with the SQL API:
 	// POST api.cloudflare.com/client/v4/accounts/<id>/analytics_engine/sql
