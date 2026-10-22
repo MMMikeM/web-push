@@ -1,6 +1,6 @@
 ---
 title: Collapse and expire notifications
-description: Replace stale notifications with tag and topic, and let undelivered ones expire with ttl.
+description: Replace stale notifications with tag and topic, and let undelivered ones expire with ttl, so a subscriber only sees the message that still matters.
 sidebar:
   order: 3
 ---

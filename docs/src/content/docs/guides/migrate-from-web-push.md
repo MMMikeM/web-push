@@ -1,6 +1,6 @@
 ---
 title: Migrate from web-push
-description: Move from the web-push package to @mmmike/web-push, keeping your stored subscriptions, VAPID keys and existing service worker, with a mapping of every sendNotification option.
+description: Move from the web-push package to @mmmike/web-push, keeping your stored subscriptions, VAPID keys and service worker, with every option mapped.
 sidebar:
   order: 9
 ---

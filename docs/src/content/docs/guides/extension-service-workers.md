@@ -1,6 +1,6 @@
 ---
 title: Extension service workers
-description: Subscribe from a Chrome extension's service worker, including silent pushes with userVisibleOnly false.
+description: Subscribe to Web Push from a Chrome extension service worker, including silent pushes with userVisibleOnly false, and send to it from your server.
 sidebar:
   order: 6
 ---

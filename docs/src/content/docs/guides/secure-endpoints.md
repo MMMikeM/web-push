@@ -1,6 +1,6 @@
 ---
 title: Secure your endpoints
-description: Treat subscription endpoints as secrets, keep them out of logs, and only push to real push services.
+description: Keep Web Push subscription endpoints out of your logs, send only to real push service hosts, and guard the server routes that trigger a send.
 sidebar:
   order: 7
 ---

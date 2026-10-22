@@ -21,7 +21,7 @@ const PAGES: Page[] = [
 		label: "Send",
 		title: "Send API for encrypting and delivering push messages",
 		description:
-			"Server-side sending: encrypt, sign, and deliver one notification, or fan one out to many subscriptions.",
+			"Send push notifications from the server with sendPushNotification and sendPushBatch, which encrypt, sign and deliver to one subscription or many.",
 		order: 2,
 	},
 	{
@@ -654,7 +654,7 @@ writeFileSync(
 		[
 			...frontmatter(
 				"API overview",
-				"Every export of @mmmike/web-push, the entry points it can be imported from, and what it is for.",
+				"Every export of @mmmike/web-push, the entry point to import it from and what it is for, with links to the full client, send and VAPID API pages.",
 				0,
 			),
 			"Generated from the source's types and JSDoc. Everything can be imported from the package root, `@mmmike/web-push`, or from its entry point, such as `@mmmike/web-push/client`, which carries only that part of the library.",

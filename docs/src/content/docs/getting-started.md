@@ -1,6 +1,6 @@
 ---
 title: Quickstart
-description: Generate VAPID keys, register a service worker, subscribe in the browser, and send from the server.
+description: Generate VAPID keys, register a service worker, subscribe in the browser and send your first push notification from the server, in four steps.
 ---
 
 Four steps: generate VAPID keys once, register a service worker, subscribe in the browser, send from the server.

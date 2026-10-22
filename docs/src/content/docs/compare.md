@@ -1,6 +1,6 @@
 ---
 title: "@mmmike/web-push vs web-push and alternatives"
-description: Why @mmmike/web-push is built on fetch and Web Crypto instead of Node, and how it compares to web-push, @pushforge/builder, @block65/webcrypto-web-push, web-push-neo and @negrel/webpush.
+description: How @mmmike/web-push compares to web-push, PushForge, block65 and the other edge-native packages, and why it runs on fetch and Web Crypto instead of Node.
 sidebar:
   label: How it compares
 head:

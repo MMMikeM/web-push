@@ -1,6 +1,6 @@
 ---
 title: Rotate VAPID keys
-description: Replace your VAPID key pair without losing the subscribers created with the old one.
+description: Replace your VAPID key pair without cutting off subscribers bound to the old key, by sending with both pairs while subscriptions move to the new one.
 sidebar:
   order: 4
 ---

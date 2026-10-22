@@ -12,6 +12,10 @@ import { markdownUrl } from "../src/markdown-path.ts";
 // search engines need and links to a Markdown copy that exists.
 
 const dist = join(dirname(fileURLToPath(import.meta.url)), "../dist");
+
+// Search results cut a description off at about 160 characters, and fill a
+// short one with text from the page.
+const DESCRIPTION = { min: 110, max: 160 };
 const parser = unified().use(rehypeParse);
 
 const sitemapUrls = (): URL[] =>
@@ -45,8 +49,11 @@ const problemsWith = (url: URL): string[] => {
 	if (!title || !textOf(title).trim()) {
 		problems.push("empty <title>");
 	}
-	if (!attr(page, 'meta[name="description"]', "content")) {
-		problems.push("no meta description");
+	const description = attr(page, 'meta[name="description"]', "content") ?? "";
+	if (description.length < DESCRIPTION.min || description.length > DESCRIPTION.max) {
+		problems.push(
+			`description is ${description.length} characters, outside ${DESCRIPTION.min}-${DESCRIPTION.max}`,
+		);
 	}
 	for (const script of selectAll('script[type="application/ld+json"]', page)) {
 		try {
