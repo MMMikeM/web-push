@@ -62,7 +62,7 @@ export type RegistrationOption = {
 /**
  * Where and how {@link subscribe} subscribes. The defaults suit a page.
  *
- * @see {@link https://mmmikem.github.io/web-push/guides/extension-service-workers/ | Extension service workers}
+ * @see {@link https://web-push.thelazyweb.dev/guides/extension-service-workers/ | Extension service workers}
  */
 export type SubscribeOptions = RegistrationOption & {
 	/**
@@ -155,8 +155,8 @@ const hasVisibility = (subscription: PushSubscription, userVisibleOnly: boolean)
  *   userVisibleOnly: false,
  * });
  * ```
- * @see {@link https://mmmikem.github.io/web-push/guides/rotate-vapid-keys/ | Rotate VAPID keys}
- * @see {@link https://mmmikem.github.io/web-push/guides/extension-service-workers/ | Extension service workers}
+ * @see {@link https://web-push.thelazyweb.dev/guides/rotate-vapid-keys/ | Rotate VAPID keys}
+ * @see {@link https://web-push.thelazyweb.dev/guides/extension-service-workers/ | Extension service workers}
  */
 export const subscribe = async (
 	vapidPublicKey: string,
@@ -309,7 +309,7 @@ const sendJson = async (
  * @throws {Error} if the subscription is missing its `p256dh` or `auth` key.
  * @throws {TypeError} on a network failure.
  * @throws {DOMException} `AbortError` when `init.signal` aborts.
- * @see {@link https://mmmikem.github.io/web-push/guides/authenticated-uploads/ | Authenticated uploads}
+ * @see {@link https://web-push.thelazyweb.dev/guides/authenticated-uploads/ | Authenticated uploads}
  */
 export const sendSubscriptionToServer = async (
 	subscription: PushSubscription,
@@ -327,7 +327,7 @@ export const sendSubscriptionToServer = async (
  * @param init As for {@link sendSubscriptionToServer}, with `method` replacing `DELETE`.
  * @throws {TypeError} on a network failure.
  * @throws {DOMException} `AbortError` when `init.signal` aborts.
- * @see {@link https://mmmikem.github.io/web-push/guides/authenticated-uploads/ | Authenticated uploads}
+ * @see {@link https://web-push.thelazyweb.dev/guides/authenticated-uploads/ | Authenticated uploads}
  */
 export const removeSubscriptionFromServer = (
 	subscriptionEndpoint: string,

@@ -19,11 +19,11 @@ A send ends in one of six ways, and only some are worth retrying:
 
 ## Push service statuses
 
-[`WebPushError`](/web-push/reference/send/#webpusherror) carries the push service's `statusCode` and response `body`:
+[`WebPushError`](/reference/send/#webpusherror) carries the push service's `statusCode` and response `body`:
 
 - **429** is rate limiting. Wait and retry.
 - **5xx** is the push service's own fault. Retry with backoff.
-- **401 or 403** usually means the VAPID keys don't match the ones the subscription was created with. See [Rotate VAPID keys](/web-push/guides/rotate-vapid-keys/).
+- **401 or 403** usually means the VAPID keys don't match the ones the subscription was created with. See [Rotate VAPID keys](/guides/rotate-vapid-keys/).
 - **400 or 413** means the request itself is wrong. A retry fails again.
 
 When the push service sends a `Retry-After` header, `retryAfterMs` holds it as milliseconds from now. It is `null` otherwise, so fall back to your own delay.
@@ -54,7 +54,7 @@ Before 1.4.0, a malformed subscription could also throw a `TypeError`, and this 
 
 ## Retrying a batch
 
-[`sendPushBatch`](/web-push/reference/send/#sendpushbatch) never throws for a single subscription; its failures come back in `failed`, keyed by endpoint. Keep a map from endpoint to subscription so you can send the retryable ones again:
+[`sendPushBatch`](/reference/send/#sendpushbatch) never throws for a single subscription; its failures come back in `failed`, keyed by endpoint. Keep a map from endpoint to subscription so you can send the retryable ones again:
 
 ```ts
 const byEndpoint = new Map(

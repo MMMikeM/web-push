@@ -9,7 +9,7 @@ Each subscription is bound to the VAPID public key it was created with. A push s
 
 ## What `subscribe` does for you
 
-When a visitor comes back, [`subscribe`](/web-push/reference/client/#subscribe) compares the existing subscription's key with the one you pass. If they differ, it unsubscribes the stale subscription and creates a new one, reporting `isNew: true`. Upload the result as you always do, and the server has the new subscription. That's why the [tutorial](/web-push/tutorial/) runs `subscribe` on every visit for a visitor who is already subscribed.
+When a visitor comes back, [`subscribe`](/reference/client/#subscribe) compares the existing subscription's key with the one you pass. If they differ, it unsubscribes the stale subscription and creates a new one, reporting `isNew: true`. Upload the result as you always do, and the server has the new subscription. That's why the [tutorial](/tutorial/) runs `subscribe` on every visit for a visitor who is already subscribed.
 
 Subscribers who don't come back are the problem: they keep subscriptions bound to the old key.
 

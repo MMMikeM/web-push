@@ -25,7 +25,7 @@ if (result.status === "subscribed") {
 }
 ```
 
-[`getCurrentSubscription`](/web-push/reference/client/#getcurrentsubscription) and [`unsubscribe`](/web-push/reference/client/#unsubscribe) take the same `{ registration }` option. Given one, each makes its own support check, so skip `isPushSupported()`, which looks for a page's service worker.
+[`getCurrentSubscription`](/reference/client/#getcurrentsubscription) and [`unsubscribe`](/reference/client/#unsubscribe) take the same `{ registration }` option. Given one, each makes its own support check, so skip `isPushSupported()`, which looks for a page's service worker.
 
 ## Rules for extension push subscriptions
 

@@ -11,7 +11,7 @@ npm install @mmmike/web-push
 
 The package is ESM-only, so a dependency tree never ends up with two copies of `WebPushError`, which would break `instanceof` checks against it. `import` works everywhere, and `require()` works on Node 22.12+ via `require(esm)`.
 
-If you're replacing the `web-push` package, [Migrate from web-push](/web-push/guides/migrate-from-web-push/) keeps your stored subscriptions, keys and service worker.
+If you're replacing the `web-push` package, [Migrate from web-push](/guides/migrate-from-web-push/) keeps your stored subscriptions, keys and service worker.
 
 ## 1. Generate VAPID keys
 
@@ -60,7 +60,7 @@ self.addEventListener("notificationclick", (event) => {
 });
 ```
 
-This is the receiving end of [`PushPayload`](/web-push/reference/send/#pushpayload): `title` and `body` become the notification, `tag` [collapses duplicates](/web-push/guides/collapse-notifications/), and `url` opens on click, focusing an already-open tab rather than opening another.
+This is the receiving end of [`PushPayload`](/reference/send/#pushpayload): `title` and `body` become the notification, `tag` [collapses duplicates](/guides/collapse-notifications/), and `url` opens on click, focusing an already-open tab rather than opening another.
 
 ## 3. Subscribe in the browser
 
@@ -79,7 +79,7 @@ enableButton.addEventListener("click", async () => {
 
 Call `subscribe` from a click or another user gesture the first time: Safari and Firefox block a permission prompt that isn't one. Register the service worker on page load, ahead of that click, so the prompt doesn't wait on it. Once permission is granted, `subscribe` no longer prompts, so calling it on later page loads is fine.
 
-[`subscribe`](/web-push/reference/client/#subscribe) prompts for permission if needed and resolves to one of three outcomes:
+[`subscribe`](/reference/client/#subscribe) prompts for permission if needed and resolves to one of three outcomes:
 
 - `{ status: "subscribed", subscription, isNew }`
 - `{ status: "denied" }` when the user declines the prompt
@@ -101,7 +101,7 @@ await sendSubscriptionToServer(
 
 Push needs a secure context (HTTPS or `localhost`) and a registered service worker. Without one, `subscribe` waits on `navigator.serviceWorker.ready` forever, with no error. On iOS, Safari exposes the Push API only to web apps installed to the home screen.
 
-Encrypted-payload push works in Chrome, Edge, Firefox, Opera and Samsung Internet, and in Safari 16+ on macOS 13+ and iOS 16.4+. [`isPushSupported()`](/web-push/reference/client/#ispushsupported) is the runtime check.
+Encrypted-payload push works in Chrome, Edge, Firefox, Opera and Samsung Internet, and in Safari 16+ on macOS 13+ and iOS 16.4+. [`isPushSupported()`](/reference/client/#ispushsupported) is the runtime check.
 
 ## 4. Send from the server
 
@@ -144,19 +144,19 @@ try {
 }
 ```
 
-Read the VAPID keys from wherever you saved them: `env` bindings on a Worker, `process.env` on Node, `Deno.env.get` on Deno. [Runtime setup](/web-push/guides/runtime-setup/) shows each one, along with Bun and Vercel Edge.
+Read the VAPID keys from wherever you saved them: `env` bindings on a Worker, `process.env` on Node, `Deno.env.get` on Deno. [Runtime setup](/guides/runtime-setup/) shows each one, along with Bun and Vercel Edge.
 
 ## Next steps
 
-- [Build a complete app](/web-push/tutorial/) puts these four steps into one app you can run on Node, Bun, Deno or Cloudflare Workers: a notifications toggle, stored subscriptions, and a broadcast route.
+- [Build a complete app](/tutorial/) puts these four steps into one app you can run on Node, Bun, Deno or Cloudflare Workers: a notifications toggle, stored subscriptions, and a broadcast route.
 - Recipes cover single tasks:
-  - [Send to many subscribers](/web-push/guides/send-to-many/)
-  - [Handle errors and retries](/web-push/guides/handle-errors/)
-  - [Collapse and expire notifications](/web-push/guides/collapse-notifications/)
-  - [Rotate VAPID keys](/web-push/guides/rotate-vapid-keys/)
-  - [Upload subscriptions with authentication](/web-push/guides/authenticated-uploads/)
-  - [Subscribe from a Chrome extension's service worker](/web-push/guides/extension-service-workers/)
-  - [Secure your endpoints](/web-push/guides/secure-endpoints/)
-  - [Set up Node, Workers, Deno, Bun or Vercel Edge](/web-push/guides/runtime-setup/)
-  - [Migrate from web-push](/web-push/guides/migrate-from-web-push/)
-- The [API reference](/web-push/reference/) documents every export.
+  - [Send to many subscribers](/guides/send-to-many/)
+  - [Handle errors and retries](/guides/handle-errors/)
+  - [Collapse and expire notifications](/guides/collapse-notifications/)
+  - [Rotate VAPID keys](/guides/rotate-vapid-keys/)
+  - [Upload subscriptions with authentication](/guides/authenticated-uploads/)
+  - [Subscribe from a Chrome extension's service worker](/guides/extension-service-workers/)
+  - [Secure your endpoints](/guides/secure-endpoints/)
+  - [Set up Node, Workers, Deno, Bun or Vercel Edge](/guides/runtime-setup/)
+  - [Migrate from web-push](/guides/migrate-from-web-push/)
+- The [API reference](/reference/) documents every export.

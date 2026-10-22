@@ -35,7 +35,7 @@ The body is always the serialized subscription; `init` can't replace it.
 
 ## Removing, on a different route or method
 
-[`removeSubscriptionFromServer`](/web-push/reference/client/#removesubscriptionfromserver) sends `DELETE` with `{ endpoint }` by default. If your route differs, change the URL and method:
+[`removeSubscriptionFromServer`](/reference/client/#removesubscriptionfromserver) sends `DELETE` with `{ endpoint }` by default. If your route differs, change the URL and method:
 
 ```ts
 const endpoint = await unsubscribe();
@@ -61,8 +61,8 @@ Access-Control-Allow-Methods: POST, DELETE
 Access-Control-Allow-Headers: Content-Type, Authorization
 ```
 
-To send cookies cross-origin, add `credentials: "include"` to `init` and `Access-Control-Allow-Credentials: true` to the response. An [extension](/web-push/guides/extension-service-workers/) calling a host listed in its `host_permissions` skips CORS entirely.
+To send cookies cross-origin, add `credentials: "include"` to `init` and `Access-Control-Allow-Credentials: true` to the response. An [extension](/guides/extension-service-workers/) calling a host listed in its `host_permissions` skips CORS entirely.
 
 ## Storing subscriptions per user
 
-Store subscriptions per user, keyed by endpoint, so one person's phone and laptop are two rows under one user. Pushing to that user is then a [batch](/web-push/guides/send-to-many/) over their rows.
+Store subscriptions per user, keyed by endpoint, so one person's phone and laptop are two rows under one user. Pushing to that user is then a [batch](/guides/send-to-many/) over their rows.

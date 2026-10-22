@@ -33,8 +33,8 @@ export type PushPayload = {
 /**
  * VAPID configuration for sending push notifications.
  *
- * @see {@link https://mmmikem.github.io/web-push/guides/runtime-setup/ | Runtime setup}
- * @see {@link https://mmmikem.github.io/web-push/guides/rotate-vapid-keys/ | Rotate VAPID keys}
+ * @see {@link https://web-push.thelazyweb.dev/guides/runtime-setup/ | Runtime setup}
+ * @see {@link https://web-push.thelazyweb.dev/guides/rotate-vapid-keys/ | Rotate VAPID keys}
  */
 export type VapidConfig = {
 	/** VAPID public key (URL-safe base64) */
@@ -63,7 +63,7 @@ export type Logger = {
  * Options for sending one notification to many subscriptions: everything in
  * {@link SendPushOptions}, plus the concurrency bound.
  *
- * @see {@link https://mmmikem.github.io/web-push/guides/send-to-many/ | Send to many}
+ * @see {@link https://web-push.thelazyweb.dev/guides/send-to-many/ | Send to many}
  */
 export type SendPushBatchOptions = SendPushOptions & {
 	/** Maximum sends in flight at once (default: 100) */
@@ -74,8 +74,8 @@ export type SendPushBatchOptions = SendPushOptions & {
  * The outcome of a batch send, sorted by what to do next: log `delivered`,
  * delete `gone` from your store, inspect `failed`.
  *
- * @see {@link https://mmmikem.github.io/web-push/guides/send-to-many/ | Send to many}
- * @see {@link https://mmmikem.github.io/web-push/guides/handle-errors/ | Handle errors and retries}
+ * @see {@link https://web-push.thelazyweb.dev/guides/send-to-many/ | Send to many}
+ * @see {@link https://web-push.thelazyweb.dev/guides/handle-errors/ | Handle errors and retries}
  */
 export type SendPushBatchResult = {
 	/** How many sends the push service accepted */
@@ -98,7 +98,7 @@ export type SendPushBatchResult = {
 /**
  * Options for sending a push notification.
  *
- * @see {@link https://mmmikem.github.io/web-push/guides/collapse-notifications/ | Collapse and expire notifications}
+ * @see {@link https://web-push.thelazyweb.dev/guides/collapse-notifications/ | Collapse and expire notifications}
  */
 export type SendPushOptions = {
 	/** Receives each push service response at `debug` level, endpoint and body truncated */

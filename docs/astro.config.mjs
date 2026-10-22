@@ -5,18 +5,16 @@ import starlightLlmsTxt from "starlight-llms-txt";
 import { markdownPages } from "./src/integrations/markdown-pages.ts";
 import { project } from "./src/project.ts";
 
-const site = "https://mmmikem.github.io";
-const base = "/web-push";
+const site = "https://web-push.thelazyweb.dev";
 
 const socialImage = {
-	url: `${site}${base}/og.png`,
+	url: `${site}/og.png`,
 	// The card's own text; re-render public/og.png when the home tagline changes.
 	alt: "@mmmike/web-push: The whole Web Push flow, from subscribing in the browser to sending from the server, in one zero-dependency package.",
 };
 
 export default defineConfig({
 	site,
-	base,
 	// The tutorial imports examples/app's files, which sit outside this project.
 	vite: { server: { fs: { allow: [".."] } } },
 	integrations: [
@@ -33,8 +31,8 @@ export default defineConfig({
 				{ tag: "meta", attrs: { name: "twitter:image", content: socialImage.url } },
 				{ tag: "meta", attrs: { name: "twitter:image:alt", content: socialImage.alt } },
 				// The sizes keep Chrome on the SVG: https://evilmartians.com/chronicles/how-to-favicon-in-2021-six-files-that-fit-most-needs
-				{ tag: "link", attrs: { rel: "icon", href: `${base}/favicon.ico`, sizes: "32x32" } },
-				{ tag: "link", attrs: { rel: "apple-touch-icon", href: `${base}/apple-touch-icon.png` } },
+				{ tag: "link", attrs: { rel: "icon", href: "/favicon.ico", sizes: "32x32" } },
+				{ tag: "link", attrs: { rel: "apple-touch-icon", href: "/apple-touch-icon.png" } },
 			],
 			lastUpdated: true,
 			editLink: { baseUrl: `${project.repositoryUrl}/edit/main/docs/` },
@@ -71,7 +69,7 @@ export default defineConfig({
 							["reference/client", "API: browser helpers"],
 							["reference/vapid", "API: VAPID keys and base64url"],
 						]
-							.map(([page, summary]) => `- [${page}.md](${site}${base}/${page}.md): ${summary}`)
+							.map(([page, summary]) => `- [${page}.md](${site}/${page}.md): ${summary}`)
 							.join("\n"),
 					].join("\n\n"),
 					// llms-small.txt leaves the API reference and the tutorial to their .md pages.

@@ -1,6 +1,6 @@
 import { getCollection } from "astro:content";
 import { defineRouteMiddleware, type StarlightRouteData } from "@astrojs/starlight/route-data";
-import { markdownPath } from "./integrations/markdown-pages.ts";
+import { markdownPath } from "./markdown-path.ts";
 import { project } from "./project.ts";
 
 type Head = StarlightRouteData["head"];

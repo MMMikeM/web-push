@@ -34,10 +34,9 @@ const PAGES: Page[] = [
 	},
 ];
 const ROOT = "index";
-// Absolute, so links survive in the per-page Markdown and llms-full.txt, which
-// are read away from the page they were written for. Matches astro.config.mjs.
-const SITE_BASE = "/web-push";
-const SITE_URL = `https://mmmikem.github.io${SITE_BASE}/`;
+// Links are root-absolute, so they survive in the per-page Markdown and
+// llms-full.txt, which are read away from the page they were written for.
+const SITE_URL = "https://web-push.thelazyweb.dev/";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const outDir = join(repoRoot, "docs/src/content/docs/reference");
@@ -137,12 +136,12 @@ const anchor = (name: string) => name.toLowerCase();
 const hrefFor = (name: string) => {
 	const target = home.get(name);
 	const page = target === ROOT ? "" : `${target}/`;
-	return target && `${SITE_BASE}/reference/${page}#${anchor(name)}`;
+	return target && `/reference/${page}#${anchor(name)}`;
 };
 
 // JSDoc links to the docs by full URL, since editors show it away from the site.
 const sitePath = (url: string) =>
-	url.startsWith(SITE_URL) ? `${SITE_BASE}/${url.slice(SITE_URL.length)}` : url;
+	url.startsWith(SITE_URL) ? `/${url.slice(SITE_URL.length)}` : url;
 
 const linkify = (text: string) =>
 	text
@@ -217,7 +216,7 @@ const typeHref = (name: string) => {
 	if (!typeHrefs.has(name)) {
 		const href = exportedFrom.has(name)
 			? hrefFor(name)
-			: domType(name) && `${SITE_BASE}/reference/#${anchor(name)}`;
+			: domType(name) && `/reference/#${anchor(name)}`;
 		typeHrefs.set(name, href);
 	}
 	return typeHrefs.get(name);

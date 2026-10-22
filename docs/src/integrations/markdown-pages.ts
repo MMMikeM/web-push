@@ -9,6 +9,7 @@ import remarkGfm from "remark-gfm";
 import remarkStringify from "remark-stringify";
 import { unified } from "unified";
 import { remove } from "unist-util-remove";
+import { markdownPath } from "../markdown-path.ts";
 
 const NOISE = [
 	".sl-anchor-link",
@@ -151,10 +152,6 @@ const toMarkdown = async (
 	const processor = unified().use(rehypeRemark).use(remarkGfm).use(remarkStringify);
 	return processor.stringify(await processor.run(tree));
 };
-
-/** Where `markdownPages()` writes a page's Markdown copy, relative to the site root. */
-export const markdownPath = (pathname: string) =>
-	pathname === "" ? "index.md" : `${pathname.replace(/\/$/, "")}.md`;
 
 /**
  * Writes `<page>.md` beside each built page, converted from the rendered HTML, so

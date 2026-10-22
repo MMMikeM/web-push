@@ -5,6 +5,14 @@ All notable changes to `@mmmike/web-push` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- The documentation moved to https://web-push.thelazyweb.dev/, which also serves each
+  page as Markdown to requests that send `Accept: text/markdown`. The package's
+  `homepage` and the `@see` links in its JSDoc point there.
+
 ## [1.4.1] - 2026-10-22
 
 ### Fixed

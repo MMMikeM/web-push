@@ -22,7 +22,7 @@ Build an app that turns notifications on and off, remembers who subscribed, and 
 
 ## 1. Get the code and generate keys
 
-The example lives in the library's repository and uses the library from it, so build that first. In your own project, `npm install @mmmike/web-push` instead; [Runtime setup](/web-push/guides/runtime-setup/) shows how to load your keys on each runtime.
+The example lives in the library's repository and uses the library from it, so build that first. In your own project, `npm install @mmmike/web-push` instead; [Runtime setup](/guides/runtime-setup/) shows how to load your keys on each runtime.
 
 ```bash
 git clone https://github.com/MMMikeM/web-push.git
@@ -102,7 +102,7 @@ Three things in it are deliberate:
 
 - **The service worker is registered on load, and `subscribe` runs on a click.** Browsers only show the permission prompt in response to a user gesture, and registering early means the prompt doesn't wait on it.
 - **A visitor who is already subscribed is subscribed again on every visit.** That doesn't prompt. It replaces a subscription bound to an old VAPID key, and the upload is an upsert, so the server always holds the current subscription even if an earlier upload failed. A visitor who turned notifications off stays off, though their permission is still granted.
-- **Turning notifications off removes the server's record too.** [`unsubscribe`](/web-push/reference/client/#unsubscribe) resolves to the endpoint for exactly this, even when the browser fails to unsubscribe.
+- **Turning notifications off removes the server's record too.** [`unsubscribe`](/reference/client/#unsubscribe) resolves to the endpoint for exactly this, even when the browser fails to unsubscribe.
 
 ## 4. The server
 
@@ -125,7 +125,7 @@ Its four routes:
 | `DELETE /api/push/subscribe` | Forgets one, the default route of `removeSubscriptionFromServer`                             |
 | `POST /api/push/broadcast`   | Pushes a payload to every subscriber, deletes the ones that are gone, and reports the counts |
 
-Saving rejects any endpoint that isn't a known push service. The server will later POST to whatever URL a subscription names, and a subscription comes from a browser you don't control; [Secure your endpoints](/web-push/guides/secure-endpoints/) explains why that matters.
+Saving rejects any endpoint that isn't a known push service. The server will later POST to whatever URL a subscription names, and a subscription comes from a browser you don't control; [Secure your endpoints](/guides/secure-endpoints/) explains why that matters.
 
 ## 5. Run it
 
@@ -208,8 +208,8 @@ The response counts what happened: `delivered` were accepted by their push servi
 The example keeps each part small. A real deployment usually wants:
 
 - **A durable store.** A database table keyed by endpoint, instead of memory or a KV listing that reads every key.
-- **Subscriptions tied to users,** so you can push to one person's devices rather than everyone. See [Authenticated uploads](/web-push/guides/authenticated-uploads/).
-- **Retries for `failed`,** sorted by error type. See [Handle errors and retries](/web-push/guides/handle-errors/).
-- **Sending in pages** once the subscriber list is large. See [Send to many](/web-push/guides/send-to-many/).
-- **A plan for rotating keys.** See [Rotate VAPID keys](/web-push/guides/rotate-vapid-keys/).
+- **Subscriptions tied to users,** so you can push to one person's devices rather than everyone. See [Authenticated uploads](/guides/authenticated-uploads/).
+- **Retries for `failed`,** sorted by error type. See [Handle errors and retries](/guides/handle-errors/).
+- **Sending in pages** once the subscriber list is large. See [Send to many](/guides/send-to-many/).
+- **A plan for rotating keys.** See [Rotate VAPID keys](/guides/rotate-vapid-keys/).
 - **Real authentication on the broadcast route,** rather than one shared token.

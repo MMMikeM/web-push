@@ -1,0 +1,14 @@
+{
+	"name": "web-push-docs",
+	"compatibility_date": "2026-10-01",
+	"main": "worker/index.ts",
+	"routes": [{ "pattern": "web-push.thelazyweb.dev", "custom_domain": true }],
+	"workers_dev": false,
+	"assets": {
+		"directory": "./dist",
+		"binding": "ASSETS",
+		"not_found_handling": "404-page",
+		// The Worker only negotiates page URLs; built assets go straight to the asset server.
+		"run_worker_first": ["/*", "!/_astro/*", "!/pagefind/*"],
+	},
+}

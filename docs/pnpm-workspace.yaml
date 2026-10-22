@@ -2,6 +2,9 @@
 # lockfile or the `pnpm audit` in its release gate.
 allowBuilds:
   esbuild: true
+  # Its postinstall only fetches the per-platform binary when the optional
+  # dependency that already provides it is missing.
+  workerd: false
 
 # 7 days, as in the library root
 minimumReleaseAge: 10080

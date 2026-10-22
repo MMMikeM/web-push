@@ -5,7 +5,7 @@ sidebar:
   order: 1
 ---
 
-[`sendPushBatch`](/web-push/reference/send/#sendpushbatch) sends one notification to a list of subscriptions through a pool of workers, so ten thousand subscribers never become ten thousand open sockets:
+[`sendPushBatch`](/reference/send/#sendpushbatch) sends one notification to a list of subscriptions through a pool of workers, so ten thousand subscribers never become ten thousand open sockets:
 
 ```ts
 import { sendPushBatch } from "@mmmike/web-push/send";
@@ -28,7 +28,7 @@ A failed send never rejects the batch. Every subscription lands in one of three 
 
 - **`delivered`** counts the sends the push service accepted.
 - **`gone`** lists the endpoints that answered 404 or 410: the browser unsubscribed, or the subscription expired. Delete them; they will never work again.
-- **`failed`** holds every other send, each with its `endpoint` and `error`. Most are worth retrying; [Handle errors and retries](/web-push/guides/handle-errors/) sorts them.
+- **`failed`** holds every other send, each with its `endpoint` and `error`. Most are worth retrying; [Handle errors and retries](/guides/handle-errors/) sorts them.
 
 ## What throws instead
 
@@ -36,7 +36,7 @@ Mistakes in your own input throw before anything is sent, rather than appearing 
 
 ## Concurrency and other batch options
 
-The optional fourth argument takes everything [`sendPushNotification`](/web-push/reference/send/#sendpushnotification) does, plus `concurrency`:
+The optional fourth argument takes everything [`sendPushNotification`](/reference/send/#sendpushnotification) does, plus `concurrency`:
 
 ```ts
 await sendPushBatch(subscriptions, payload, vapid, {
@@ -48,7 +48,7 @@ await sendPushBatch(subscriptions, payload, vapid, {
 
 - **`concurrency`** bounds the sends in flight. Lower it on platforms that cap outbound connections.
 - **`signal`** stops the pool from starting new sends when it aborts. Subscriptions it never reached appear in none of the three results, so compare `delivered + gone.length + failed.length` with the number you passed in.
-- **`ttl`** and **`topic`** apply to every message in the batch. [Collapse and expire notifications](/web-push/guides/collapse-notifications/) explains both.
+- **`ttl`** and **`topic`** apply to every message in the batch. [Collapse and expire notifications](/guides/collapse-notifications/) explains both.
 
 The VAPID token is signed once per push service rather than once per message, since it's scoped to the push service's origin. It's signed again at half its lifetime, so a batch that runs longer than `vapidExpiration` never sends an expired token. Each message still gets its own encryption keys, as [RFC 8291 §3.1](https://www.rfc-editor.org/rfc/rfc8291#section-3.1) requires.
 

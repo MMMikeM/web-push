@@ -25,7 +25,7 @@ import { generateVapidKeys } from "@mmmike/web-push/vapid";
 const { publicKey, privateKey } = await generateVapidKeys();
 ```
 
-**2. Subscribe in the browser.** Save [the quickstart's service worker](https://mmmikem.github.io/web-push/getting-started/#2-add-a-service-worker) as `/sw.js`, then:
+**2. Subscribe in the browser.** Save [the quickstart's service worker](https://web-push.thelazyweb.dev/getting-started/#2-add-a-service-worker) as `/sw.js`, then:
 
 ```typescript
 import { subscribe, sendSubscriptionToServer } from "@mmmike/web-push/client";
@@ -56,7 +56,7 @@ const delivered = await sendPushNotification(
 if (!delivered) await store.delete(subscription.endpoint);
 ```
 
-To send one notification to a list of subscribers, `sendPushBatch` caps how many sends run at once and sorts the results into delivered, gone and failed. See [sending to many](https://mmmikem.github.io/web-push/guides/send-to-many/).
+To send one notification to a list of subscribers, `sendPushBatch` caps how many sends run at once and sorts the results into delivered, gone and failed. See [sending to many](https://web-push.thelazyweb.dev/guides/send-to-many/).
 
 ## Specs and size
 
@@ -68,15 +68,15 @@ To send one notification to a list of subscribers, `sendPushBatch` caps how many
 
 [`web-push`](https://www.npmjs.com/package/web-push) is the established choice, and on Node it works well. Elsewhere it runs on each runtime's emulation of Node, and on Deno, Supabase and Cloudflare Workers that emulation has broken it before being fixed. It also brings 16 packages: a minimal Worker that sends with it uploads about 49 kB gzipped and starts about 14 ms slower, where one using this package uploads about 4 kB. And it stops at the server.
 
-[The full comparison](https://mmmikem.github.io/web-push/compare/) has the measurements and the bug history, and sets this package against the edge-native alternatives too. The [migration guide](https://mmmikem.github.io/web-push/guides/migrate-from-web-push/) keeps your stored subscriptions, keys and service worker.
+[The full comparison](https://web-push.thelazyweb.dev/compare/) has the measurements and the bug history, and sets this package against the edge-native alternatives too. The [migration guide](https://web-push.thelazyweb.dev/guides/migrate-from-web-push/) keeps your stored subscriptions, keys and service worker.
 
 ## Docs
 
-- The [quickstart](https://mmmikem.github.io/web-push/getting-started/) goes from VAPID keys to a first notification.
-- [Build a complete app](https://mmmikem.github.io/web-push/tutorial/) walks through one app that runs on Node, Bun, Deno or Cloudflare Workers.
-- The [recipes](https://mmmikem.github.io/web-push/guides/send-to-many/) cover sending to many, handling errors, rotating keys, extension service workers, and [securing endpoints](https://mmmikem.github.io/web-push/guides/secure-endpoints/).
-- The [API reference](https://mmmikem.github.io/web-push/reference/) is generated from the JSDoc.
-- For LLMs, there's [`llms.txt`](https://mmmikem.github.io/web-push/llms.txt) and a Markdown copy of every page.
+- The [quickstart](https://web-push.thelazyweb.dev/getting-started/) goes from VAPID keys to a first notification.
+- [Build a complete app](https://web-push.thelazyweb.dev/tutorial/) walks through one app that runs on Node, Bun, Deno or Cloudflare Workers.
+- The [recipes](https://web-push.thelazyweb.dev/guides/send-to-many/) cover sending to many, handling errors, rotating keys, extension service workers, and [securing endpoints](https://web-push.thelazyweb.dev/guides/secure-endpoints/).
+- The [API reference](https://web-push.thelazyweb.dev/reference/) is generated from the JSDoc.
+- For LLMs, there's [`llms.txt`](https://web-push.thelazyweb.dev/llms.txt) and a Markdown copy of every page.
 
 ## License
 

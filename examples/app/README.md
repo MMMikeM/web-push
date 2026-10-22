@@ -2,7 +2,7 @@
 
 A page with a notifications toggle, a server that stores subscriptions, and a route that pushes to every subscriber. The server is one fetch handler (`src/app.ts`) with an entry point per runtime: Node (`src/node.ts`), Bun (`src/bun.ts`), Deno (`src/deno.ts`), and Cloudflare Workers (`src/worker.ts`).
 
-The [tutorial](https://mmmikem.github.io/web-push/tutorial/) walks through every file.
+The [tutorial](https://web-push.thelazyweb.dev/tutorial/) walks through every file.
 
 ## Run it
 

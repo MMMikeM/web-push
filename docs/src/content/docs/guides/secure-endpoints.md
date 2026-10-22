@@ -9,7 +9,7 @@ A subscription endpoint is a capability URL: anyone holding it, with the subscri
 
 ## Keep endpoints out of logs
 
-[`WebPushError`](/web-push/reference/send/#webpusherror) carries the full endpoint so you can act on it, but its `toJSON` truncates the endpoint and the response body. A structured logger that serializes the error therefore never stores a URL that can push. If you log fields by hand, log `statusCode` and `retryAfterMs`, not `endpoint`.
+[`WebPushError`](/reference/send/#webpusherror) carries the full endpoint so you can act on it, but its `toJSON` truncates the endpoint and the response body. A structured logger that serializes the error therefore never stores a URL that can push. If you log fields by hand, log `statusCode` and `retryAfterMs`, not `endpoint`.
 
 Treat your subscriptions table the same way you treat session tokens.
 
@@ -26,7 +26,7 @@ If a hostile client registers `https://internal-service.local/hooks` as its "pus
 | Firefox                   | `*.push.services.mozilla.com` |
 | Safari on macOS and iOS   | `*.push.apple.com`            |
 
-The [tutorial's server](/web-push/tutorial/#4-the-server) does this in `isPushServiceEndpoint`.
+The [tutorial's server](/tutorial/#4-the-server) does this in `isPushServiceEndpoint`.
 
 These hosts are as of August 2026. Browsers can change push services, and smaller ones run their own (Samsung Internet, for example), so log the subscriptions you reject rather than dropping them silently.
 

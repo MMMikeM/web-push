@@ -23,11 +23,11 @@ The VAPID keys are passed on each call instead of set globally, so one process c
 - **Node 22.12 or later.** `web-push` supports Node 16 and up; this package's `engines` field asks for 22.12.
 - **ESM only.** There is no CommonJS build. Node 22.12 and later can still load it from CommonJS with `require("@mmmike/web-push/send")`, because `require(esm)` is on by default from that version.
 - **Your VAPID keys work as they are.** `web-push`'s `generateVAPIDKeys` returns a base64url 65-byte uncompressed public key and a base64url 32-byte private key, which is the format this package reads and writes. Keep the same pair and existing subscriptions stay valid.
-- **Key generation is async.** `generateVAPIDKeys()` returns the keys directly; [`generateVapidKeys()`](/web-push/reference/vapid/#generatevapidkeys) returns a promise, because Web Crypto's key generation is async. Add an `await`.
+- **Key generation is async.** `generateVAPIDKeys()` returns the keys directly; [`generateVapidKeys()`](/reference/vapid/#generatevapidkeys) returns a promise, because Web Crypto's key generation is async. Add an `await`.
 
 ## Keeping your service worker with `rawPayload`
 
-If your service worker reads its own payload format, such as `icon`, `badge`, or `actions`, keep sending exactly what you sent before. Wrap the string you were passing to `web-push` in [`rawPayload`](/web-push/reference/send/#rawpayload), and it's encrypted and delivered byte for byte:
+If your service worker reads its own payload format, such as `icon`, `badge`, or `actions`, keep sending exactly what you sent before. Wrap the string you were passing to `web-push` in [`rawPayload`](/reference/send/#rawpayload), and it's encrypted and delivered byte for byte:
 
 ```ts
 import { rawPayload, sendPushNotification } from "@mmmike/web-push/send";
@@ -43,14 +43,14 @@ There's deliberately no bare-string form. A string passed by mistake would type-
 
 ## Options
 
-`web-push`'s `sendNotification` takes its options as the third argument. Here the VAPID keys are the third argument and the options, [`SendPushOptions`](/web-push/reference/send/#sendpushoptions), are the fourth.
+`web-push`'s `sendNotification` takes its options as the third argument. Here the VAPID keys are the third argument and the options, [`SendPushOptions`](/reference/send/#sendpushoptions), are the fourth.
 
 | `web-push` option | `@mmmike/web-push`                                                                                                                   |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `vapidDetails`    | The third argument, `{ subject, publicKey, privateKey }`                                                                             |
 | `TTL`             | `ttl`, in seconds. The default is 24 hours where `web-push`'s is four weeks.                                                         |
 | `urgency`         | `urgency`, the same four values. `web-push` sends `normal` when unset; this package leaves the header out.                           |
-| `topic`           | `topic`, the same 32-character limit. [`topicFromString`](/web-push/reference/send/#topicfromstring) derives one from any string.    |
+| `topic`           | `topic`, the same 32-character limit. [`topicFromString`](/reference/send/#topicfromstring) derives one from any string.             |
 | `timeout`         | `timeoutMs`. `web-push`'s is a socket idle timeout with no default; `timeoutMs` bounds the whole request and defaults to 30 seconds. |
 | `contentEncoding` | No equivalent. Every send uses `aes128gcm`; the draft `aesgcm` encoding isn't supported.                                             |
 | `headers`         | No equivalent.                                                                                                                       |
@@ -63,5 +63,5 @@ There's deliberately no bare-string form. A string passed by mistake would type-
 ## Behaviours that differ
 
 - **The default TTL is 24 hours, where `web-push`'s is four weeks.** If you relied on `web-push`'s default, pass `{ ttl: 2419200 }`.
-- **A gone subscription resolves `false` instead of throwing.** A 404 or 410 means delete the subscription. Other push service errors throw a [`WebPushError`](/web-push/reference/send/#webpusherror), as `web-push` throws its own error.
-- **Sending many at once has its own function.** Replace a loop over `sendNotification` with [`sendPushBatch`](/web-push/guides/send-to-many/), which bounds concurrency and sorts the results.
+- **A gone subscription resolves `false` instead of throwing.** A 404 or 410 means delete the subscription. Other push service errors throw a [`WebPushError`](/reference/send/#webpusherror), as `web-push` throws its own error.
+- **Sending many at once has its own function.** Replace a loop over `sendNotification` with [`sendPushBatch`](/guides/send-to-many/), which bounds concurrency and sorts the results.
