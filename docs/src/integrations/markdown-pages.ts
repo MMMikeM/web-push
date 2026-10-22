@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import type { AstroIntegration } from "astro";
-import type { Element, ElementContent, Root } from "hast";
+import type { Element, ElementContent, Root, Text } from "hast";
 import { matches, select, selectAll } from "hast-util-select";
 import rehypeParse from "rehype-parse";
 import rehypeRemark from "rehype-remark";
@@ -35,16 +35,36 @@ const prepareCodeBlocks = (tree: Root) => {
 		const code = select("code", frame);
 		const language = pre?.properties.dataLanguage;
 		if (code) {
-			// An empty line holds a lone "\n" to keep its height.
-			const lines = selectAll(".ec-line", code).map((line) => textOf(line).replace(/\n$/, ""));
-			code.children = [{ type: "text", value: lines.join("\n") }];
-			code.properties.className = typeof language === "string" ? [`language-${language}`] : [];
+			const lines = selectAll(".ec-line", code);
+			const isDiff = lines.some((line) => matches(".ins, .del", line));
+			const source = lines.map((line) => (isDiff ? diffLine(line) : lineText(line)));
+			code.children = [text(source.join("\n"))];
+			code.properties.className = isDiff
+				? ["language-diff"]
+				: typeof language === "string"
+					? [`language-${language}`]
+					: [];
 		}
 		const title = select("figcaption .title", frame);
 		const titleText = title?.children.find((child) => child.type === "text")?.value.trim();
 		frame.tagName = "div";
-		frame.children = [...(titleText ? [paragraph(`\`${titleText}\``)] : []), ...(pre ? [pre] : [])];
+		frame.children = [
+			...(titleText ? [element("p", element("code", text(titleText)))] : []),
+			...(pre ? [pre] : []),
+		];
 	}
+};
+
+// An empty line holds a lone "\n" to keep its height.
+const lineText = (line: Element) => textOf(line).replace(/\n$/, "");
+
+// Expressive Code moves a diff's +/- markers into line classes, so the text alone
+// prints removed and added lines the same. This puts back the "- " column the
+// source wrote, which Expressive Code strips as the block's common indentation.
+const diffLine = (line: Element) => {
+	const marker = matches(".ins", line) ? "+" : matches(".del", line) ? "-" : " ";
+	const content = lineText(line);
+	return content === "" ? marker.trim() : `${marker} ${content}`;
 };
 
 // Tabs become a list: each runtime's label, then its panel.
@@ -63,17 +83,31 @@ const prepareTabs = (tree: Root) => {
 			type: "element",
 			tagName: "li",
 			properties: {},
-			children: [paragraph(`**${labels[index] ?? ""}**`), panel],
+			children: [element("p", element("strong", text(labels[index] ?? ""))), panel],
 		}));
 	}
 };
 
-const paragraph = (markdown: string): Element => ({
+// A splash page's tagline and action links sit in its hero, outside the content.
+const heroOf = (page: Root): ElementContent[] => {
+	const tagline = select(".hero .tagline", page);
+	const actions = selectAll(".hero .actions a", page);
+	return [
+		...(tagline ? [element("p", ...tagline.children)] : []),
+		...(actions.length > 0
+			? [element("ul", ...actions.map((action) => element("li", action)))]
+			: []),
+	];
+};
+
+const element = (tagName: string, ...children: ElementContent[]): Element => ({
 	type: "element",
-	tagName: "p",
+	tagName,
 	properties: {},
-	children: [{ type: "text", value: markdown }],
+	children,
 });
+
+const text = (value: string): Text => ({ type: "text", value });
 
 const toMarkdown = async (html: string): Promise<string | undefined> => {
 	const page = unified().use(rehypeParse).parse(html);
@@ -82,7 +116,10 @@ const toMarkdown = async (html: string): Promise<string | undefined> => {
 	if (!title || !content) {
 		return undefined;
 	}
-	const tree: Root = { type: "root", children: [title, ...(content.children as ElementContent[])] };
+	const tree: Root = {
+		type: "root",
+		children: [title, ...heroOf(page), ...(content.children as ElementContent[])],
+	};
 	remove(
 		tree,
 		(node) => node.type === "comment" || NOISE.some((selector) => matches(selector, node)),
@@ -90,10 +127,11 @@ const toMarkdown = async (html: string): Promise<string | undefined> => {
 	prepareCodeBlocks(tree);
 	prepareTabs(tree);
 	const processor = unified().use(rehypeRemark).use(remarkGfm).use(remarkStringify);
-	const markdown = processor.stringify(await processor.run(tree));
-	// The code titles and tab labels above were written as Markdown already.
-	return markdown.replaceAll("\\`", "`").replaceAll("\\*\\*", "**");
+	return processor.stringify(await processor.run(tree));
 };
+
+const markdownPath = (pathname: string) =>
+	pathname === "" ? "index.md" : `${pathname.replace(/\/$/, "")}.md`;
 
 /**
  * Writes `<page>.md` beside each built page, converted from the rendered HTML, so
@@ -106,12 +144,12 @@ export const markdownPages = (): AstroIntegration => ({
 			const outDir = fileURLToPath(dir);
 			await Promise.all(
 				pages
-					.filter(({ pathname }) => pathname !== "" && pathname !== "404/")
+					.filter(({ pathname }) => pathname !== "404/")
 					.map(async ({ pathname }) => {
 						const html = await readFile(`${outDir}${pathname}index.html`, "utf8");
 						const markdown = await toMarkdown(html);
 						if (markdown) {
-							await writeFile(`${outDir}${pathname.replace(/\/$/, "")}.md`, markdown);
+							await writeFile(`${outDir}${markdownPath(pathname)}`, markdown);
 						}
 					}),
 			);
