@@ -1,10 +1,8 @@
 ---
 import Default from "@astrojs/starlight/components/PageTitle.astro";
-import { markdownHref } from "../routeData.ts";
 import RuntimeSelect from "./RuntimeSelect.astro";
 
-const { id, entry } = Astro.locals.starlightRoute;
-const { runtimePicker } = entry.data;
+const { runtimePicker } = Astro.locals.starlightRoute.entry.data;
 ---
 
 {
@@ -17,12 +15,6 @@ const { runtimePicker } = entry.data;
 		<Default />
 	)
 }
-
-{/* Fetch tools convert a page to Markdown and drop its <head>, so the alternate link
-	never reaches an agent; a link in the body does. */}
-<p class="markdown-copy" data-pagefind-ignore>
-	<a href={markdownHref(id)} type="text/markdown">Markdown version of this page</a>
-</p>
 
 <style>
 	/* Starlight gives the title a top margin; the row takes it, so both centre on one line. */
@@ -37,18 +29,5 @@ const { runtimePicker } = entry.data;
 
 	.title-row :global(h1) {
 		margin-top: 0;
-	}
-
-	.markdown-copy {
-		margin-top: 0.5rem;
-		font-size: var(--sl-text-xs);
-	}
-
-	.markdown-copy a {
-		color: var(--sl-color-gray-3);
-	}
-
-	.markdown-copy a:hover {
-		color: var(--sl-color-white);
 	}
 </style>

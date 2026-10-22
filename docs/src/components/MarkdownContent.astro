@@ -1,5 +1,7 @@
 ---
 import Default from "@astrojs/starlight/components/MarkdownContent.astro";
+import { markdownUrl } from "../markdown-path.ts";
+import { homeUrl } from "../project.ts";
 
 // Starlight scrolls a wide table by making it a block, which also stops it
 // spanning the column; a wrapper scrolls instead, so the table can stay a table.
@@ -9,6 +11,40 @@ const wrapTables = (html: string) =>
 		.replaceAll("</table>", "</table></div>");
 
 const content = wrapTables(await Astro.slots.render("default"));
+
+const { id, entry } = Astro.locals.starlightRoute;
+const markdownCopy =
+	Astro.site && entry.id !== "404" ? markdownUrl(id, homeUrl(Astro.site)) : undefined;
 ---
 
-<Default><Fragment set:html={content} /></Default>
+{/* Fetch tools convert a page to Markdown and drop its <head>, so the alternate link
+	never reaches an agent; a link in the body does. It sits outside the content,
+	which is all the page's own Markdown copy takes. */}
+{
+	markdownCopy && (
+		<p class="markdown-copy" data-pagefind-ignore>
+			<a href={markdownCopy} type="text/markdown">
+				Markdown version of this page
+			</a>
+		</p>
+	)
+}
+
+<Default>
+	<Fragment set:html={content} />
+</Default>
+
+<style>
+	.markdown-copy {
+		margin-bottom: 1.5rem;
+		font-size: var(--sl-text-xs);
+	}
+
+	.markdown-copy a {
+		color: var(--sl-color-gray-3);
+	}
+
+	.markdown-copy a:hover {
+		color: var(--sl-color-white);
+	}
+</style>

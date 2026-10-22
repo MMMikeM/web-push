@@ -1,7 +1,7 @@
 import { getCollection } from "astro:content";
 import { defineRouteMiddleware, type StarlightRouteData } from "@astrojs/starlight/route-data";
-import { markdownPath } from "./markdown-path.ts";
-import { project } from "./project.ts";
+import { markdownUrl } from "./markdown-path.ts";
+import { homeUrl, project } from "./project.ts";
 
 type Head = StarlightRouteData["head"];
 type JsonLd = Record<string, unknown>;
@@ -9,9 +9,6 @@ type JsonLd = Record<string, unknown>;
 const NOT_FOUND_ID = "404";
 
 const author = { "@type": "Person", name: project.author };
-
-const homeUrl = (site: URL) =>
-	new URL(`${import.meta.env.BASE_URL.replace(/\/$/, "")}/`, site).href;
 
 let pageTitles: Promise<Map<string, string>> | undefined;
 const pageTitle = async (id: string) => {
@@ -38,13 +35,9 @@ const setOpenGraphType = (head: Head, type: string) => {
 	}
 };
 
-/** The site path of a page's Markdown copy, for the alternate link and the hint under its title. */
-export const markdownHref = (id: string) =>
-	`${import.meta.env.BASE_URL.replace(/\/$/, "")}/${markdownPath(id)}`;
-
-const markdownTwin = (id: string): Head[number] => ({
+const markdownTwin = (home: string, id: string): Head[number] => ({
 	tag: "link",
-	attrs: { rel: "alternate", type: "text/markdown", href: markdownHref(id) },
+	attrs: { rel: "alternate", type: "text/markdown", href: markdownUrl(id, home) },
 });
 
 const jsonLd = (graph: JsonLd[]): Head[number] => ({
@@ -139,14 +132,17 @@ export const onRequest = defineRouteMiddleware(async (context) => {
 	const home = homeUrl(context.site);
 	if (route.id === "") {
 		setOpenGraphType(route.head, "website");
-		route.head.push(markdownTwin(route.id), jsonLd([websiteNode(home, route), softwareNode(home)]));
+		route.head.push(
+			markdownTwin(home, route.id),
+			jsonLd([websiteNode(home, route), softwareNode(home)]),
+		);
 		return;
 	}
 	const url =
 		headAttribute(route.head, (attrs) => attrs.rel === "canonical", "href") ??
 		new URL(context.url.pathname, context.site).href;
 	route.head.push(
-		markdownTwin(route.id),
+		markdownTwin(home, route.id),
 		jsonLd([articleNode(home, url, route), await breadcrumbNode(home, url, route)]),
 	);
 });
