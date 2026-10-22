@@ -35,6 +35,17 @@ const setOpenGraphType = (head: Head, type: string) => {
 	}
 };
 
+// Search results cut a title off at about 60 characters, which " | @mmmike/web-push"
+// alone takes 19 of. Past that, the page's own title is the part worth keeping.
+const MAX_TITLE_LENGTH = 60;
+
+const fitTitle = (head: Head, pageTitle: string) => {
+	const title = head.find(({ tag }) => tag === "title");
+	if (title?.content && title.content.length > MAX_TITLE_LENGTH) {
+		title.content = pageTitle;
+	}
+};
+
 const markdownTwin = (home: string, id: string): Head[number] => ({
 	tag: "link",
 	attrs: { rel: "alternate", type: "text/markdown", href: markdownUrl(id, home) },
@@ -130,6 +141,7 @@ export const onRequest = defineRouteMiddleware(async (context) => {
 		return;
 	}
 	const home = homeUrl(context.site);
+	fitTitle(route.head, route.entry.data.title);
 	if (route.id === "") {
 		setOpenGraphType(route.head, "website");
 		route.head.push(
