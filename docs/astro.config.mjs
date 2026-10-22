@@ -1,8 +1,10 @@
 // @ts-check
+import sitemap from "@astrojs/sitemap";
 import starlight from "@astrojs/starlight";
 import { defineConfig } from "astro/config";
 import starlightLlmsTxt from "starlight-llms-txt";
 import { markdownPages } from "./src/integrations/markdown-pages.ts";
+import { lastModified } from "./src/last-modified.ts";
 import { project } from "./src/project.ts";
 
 const site = "https://web-push.thelazyweb.dev";
@@ -97,5 +99,12 @@ export default defineConfig({
 			],
 		}),
 		markdownPages(),
+		// Replaces the sitemap Starlight adds when none is configured.
+		sitemap({
+			serialize: (item) => {
+				const lastmod = lastModified(new URL(item.url).pathname);
+				return lastmod ? { ...item, lastmod } : item;
+			},
+		}),
 	],
 });
