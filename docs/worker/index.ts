@@ -48,6 +48,12 @@ const route = async (
 	// Every page URL ends in a slash; anything else is an asset or a redirect to a page.
 	if (!url.pathname.endsWith("/")) {
 		const response = await env.ASSETS.fetch(request);
+		// The asset server adds a page's trailing slash with a temporary 307; a
+		// 301 tells search engines the slashed URL is the one to index.
+		const location = response.status === 307 && response.headers.get("location");
+		if (location) {
+			return { response: Response.redirect(new URL(location, url).href, 301) };
+		}
 		return { response, served: isAgentFile(url.pathname) ? "file" : undefined };
 	}
 	const markdownUrl = new URL(`/${markdownPath(url.pathname.slice(1))}`, url);
