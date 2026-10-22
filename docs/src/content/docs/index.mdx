@@ -36,6 +36,8 @@ const delivered = await sendPushNotification(
 if (!delivered) await store.delete(subscription.endpoint);
 ```
 
+`publicKey` and `privateKey` are a VAPID key pair, which the [VAPID key generator](/generate-vapid-keys/) makes in your browser.
+
 <CardGrid>
 	<Card title="All four pieces" icon="puzzle">
 		VAPID key generation, a copy-paste service worker, the client subscribe
