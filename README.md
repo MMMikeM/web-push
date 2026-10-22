@@ -62,7 +62,7 @@ To send one notification to a list of subscribers, `sendPushBatch` caps how many
 
 - **[RFC 8291](https://www.rfc-editor.org/rfc/rfc8291) and [RFC 8292](https://www.rfc-editor.org/rfc/rfc8292#section-3).** `aes128gcm` encryption and VAPID. There's no dependency tree to audit, the crypto is one file ([`src/encrypt.ts`](https://github.com/MMMikeM/web-push/blob/main/src/encrypt.ts)), and [a test](https://github.com/MMMikeM/web-push/blob/main/test/rfc8291-vector.test.ts) pins its output byte-for-byte to [RFC 8291's Appendix A test vector](https://www.rfc-editor.org/rfc/rfc8291#appendix-A).
 - **Browsers.** Chrome, Edge, Firefox, Opera and Samsung Internet, Safari 16+ on macOS 13+, and Safari on iOS 16.4+ for web apps added to the home screen.
-- **Small.** Minified and gzipped per subpath entry, 1.2 kB for the browser client and 3.1 kB for the server. The size badge measures the whole package, ~3.9 kB.
+- **Small.** Minified and gzipped per subpath entry, 1.2 kB for the browser client and 3.1 kB for the server. The size badge measures the whole package, ~4.0 kB.
 
 ## Coming from `web-push`?
 
