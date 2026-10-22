@@ -38,13 +38,13 @@ const setOpenGraphType = (head: Head, type: string) => {
 	}
 };
 
-const markdownTwin = (home: string, id: string): Head[number] => ({
+/** The site path of a page's Markdown copy, for the alternate link and the hint under its title. */
+export const markdownHref = (id: string) =>
+	`${import.meta.env.BASE_URL.replace(/\/$/, "")}/${markdownPath(id)}`;
+
+const markdownTwin = (id: string): Head[number] => ({
 	tag: "link",
-	attrs: {
-		rel: "alternate",
-		type: "text/markdown",
-		href: new URL(markdownPath(id), home).pathname,
-	},
+	attrs: { rel: "alternate", type: "text/markdown", href: markdownHref(id) },
 });
 
 const jsonLd = (graph: JsonLd[]): Head[number] => ({
@@ -139,17 +139,14 @@ export const onRequest = defineRouteMiddleware(async (context) => {
 	const home = homeUrl(context.site);
 	if (route.id === "") {
 		setOpenGraphType(route.head, "website");
-		route.head.push(
-			markdownTwin(home, route.id),
-			jsonLd([websiteNode(home, route), softwareNode(home)]),
-		);
+		route.head.push(markdownTwin(route.id), jsonLd([websiteNode(home, route), softwareNode(home)]));
 		return;
 	}
 	const url =
 		headAttribute(route.head, (attrs) => attrs.rel === "canonical", "href") ??
 		new URL(context.url.pathname, context.site).href;
 	route.head.push(
-		markdownTwin(home, route.id),
+		markdownTwin(route.id),
 		jsonLd([articleNode(home, url, route), await breadcrumbNode(home, url, route)]),
 	);
 });
