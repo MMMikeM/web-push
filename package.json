@@ -1,7 +1,7 @@
 {
 	"name": "@mmmike/web-push",
 	"version": "1.4.0-beta.1",
-	"description": "Zero-dependency Web Push (RFC 8291) for Cloudflare Workers, Deno, Bun, Node.js, and browsers — client subscribe + server send + VAPID.",
+	"description": "The whole Web Push flow, from subscribing in the browser to sending from the server, in one zero-dependency package.",
 	"keywords": [
 		"bun",
 		"cloudflare-workers",
@@ -16,7 +16,7 @@
 		"web-push",
 		"webpush"
 	],
-	"homepage": "https://github.com/MMMikeM/web-push#readme",
+	"homepage": "https://mmmikem.github.io/web-push/",
 	"bugs": {
 		"url": "https://github.com/MMMikeM/web-push/issues"
 	},

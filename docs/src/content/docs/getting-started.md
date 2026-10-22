@@ -9,7 +9,7 @@ Four steps: generate VAPID keys once, register a service worker, subscribe in th
 npm install @mmmike/web-push
 ```
 
-The package is ESM-only. `import` works everywhere, and `require()` works on Node 22.12+ via `require(esm)`.
+The package is ESM-only, so a dependency tree never ends up with two copies of `WebPushError`, which would break `instanceof` checks against it. `import` works everywhere, and `require()` works on Node 22.12+ via `require(esm)`.
 
 ## 1. Generate VAPID keys
 
@@ -97,7 +97,9 @@ await sendSubscriptionToServer(
 );
 ```
 
-Push needs a secure context (HTTPS or `localhost`). On iOS, Safari exposes the Push API only to web apps installed to the home screen.
+Push needs a secure context (HTTPS or `localhost`) and a registered service worker. Without one, `subscribe` waits on `navigator.serviceWorker.ready` forever, with no error. On iOS, Safari exposes the Push API only to web apps installed to the home screen.
+
+Encrypted-payload push works in Chrome, Edge, Firefox, Opera and Samsung Internet, and in Safari 16+ on macOS 13+ and iOS 16.4+. [`isPushSupported()`](/web-push/reference/client/#ispushsupported) is the runtime check.
 
 ## 4. Send from the server
 

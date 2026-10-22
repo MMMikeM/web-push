@@ -34,6 +34,7 @@ export default defineConfig({
 					items: [
 						{ label: "Quickstart", slug: "getting-started" },
 						{ label: "Build a complete app", slug: "tutorial" },
+						{ label: "How it compares", slug: "compare" },
 					],
 				},
 				{ label: "Recipes", items: [{ autogenerate: { directory: "guides" } }] },
