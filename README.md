@@ -7,7 +7,7 @@
 [![CI](https://github.com/MMMikeM/web-push/actions/workflows/ci.yml/badge.svg)](https://github.com/MMMikeM/web-push/actions/workflows/ci.yml)
 [![license](https://img.shields.io/npm/l/%40mmmike%2Fweb-push)](https://github.com/MMMikeM/web-push/blob/main/LICENSE)
 
-Adding push notifications to a site is usually two jobs. A library handles sending, and the browser half is left to you: asking for permission, subscribing, getting the subscription to your server, and a service worker pieced together from blog posts. If you send from a Cloudflare Worker, the usual library won't build without a compatibility flag.
+Adding push notifications to a site is usually two jobs. A library handles sending, and the browser half is left to you: asking for permission, replacing a subscription made with an old VAPID key, serialising the subscription for your server (`getKey()` returns `ArrayBuffer`s, which JSON can't hold), and a service worker pieced together from blog posts. If you send from a Cloudflare Worker, the usual library runs only on Cloudflare's Node compatibility layer.
 
 This package does both halves. It's built on `fetch` and the Web Crypto API instead of `node:crypto`, so the server side runs as-is on Node, Bun, Deno and Cloudflare Workers.
 
@@ -56,16 +56,17 @@ const delivered = await sendPushNotification(
 if (!delivered) await store.delete(subscription.endpoint);
 ```
 
-To send one notification to a list of subscribers, see [sending to many](https://mmmikem.github.io/web-push/guides/send-to-many/).
+To send one notification to a list of subscribers, `sendPushBatch` caps how many sends run at once and sorts the results into delivered, gone and failed. See [sending to many](https://mmmikem.github.io/web-push/guides/send-to-many/).
 
 ## Specs and size
 
-- **RFC 8291 and RFC 8292.** `aes128gcm` encryption and VAPID, pinned byte-for-byte against RFC 8291's own test vector.
+- **[RFC 8291](https://www.rfc-editor.org/rfc/rfc8291) and [RFC 8292](https://www.rfc-editor.org/rfc/rfc8292#section-3).** `aes128gcm` encryption and VAPID. There's no dependency tree to audit, the crypto is one file ([`src/encrypt.ts`](https://github.com/MMMikeM/web-push/blob/main/src/encrypt.ts)), and [a test](https://github.com/MMMikeM/web-push/blob/main/test/rfc8291-vector.test.ts) pins its output byte-for-byte to [RFC 8291's Appendix A test vector](https://www.rfc-editor.org/rfc/rfc8291#appendix-A).
+- **Browsers.** Chrome, Edge, Firefox, Opera and Samsung Internet, Safari 16+ on macOS 13+, and Safari on iOS 16.4+ for web apps added to the home screen.
 - **Small.** Minified and gzipped per subpath entry, 1.2 kB for the browser client and 3.1 kB for the server. The size badge measures the whole package, ~3.9 kB.
 
 ## Coming from `web-push`?
 
-[`web-push`](https://www.npmjs.com/package/web-push) is the established choice, and on Node it works well. Bun and Deno run it on their built-in Node compatibility. On Cloudflare Workers it fails to build without the `nodejs_compat` flag, and with the flag it ships about 51 kB gzipped of polyfills, where this package uploads about 3 kB. It also stops at the server.
+[`web-push`](https://www.npmjs.com/package/web-push) is the established choice, and on Node it works well. Bun and Deno run it on their built-in Node compatibility. Cloudflare Workers runs it through `nodejs_compat`, which is on by default from the 2026-08-04 compatibility date; a Worker with an older date fails to build it without the flag. With the layer on and wrangler's default unminified build, a Worker that sends with `web-push` uploads about 49 kB gzipped, where this package uploads about 4 kB. It also stops at the server.
 
 [The full comparison](https://mmmikem.github.io/web-push/compare/) shows those build failures and sets this package against the edge-native alternatives too. The [migration guide](https://mmmikem.github.io/web-push/guides/migrate-from-web-push/) keeps your stored subscriptions, keys and service worker.
 

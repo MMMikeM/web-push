@@ -1,13 +1,17 @@
 ---
-title: "@mmmike/web-push"
-description: The whole Web Push flow, from subscribing in the browser to sending from the server, in one zero-dependency package.
+title: Web Push for Cloudflare Workers, Deno, Bun and Node
+description: Subscribe in the browser and send VAPID-signed, RFC 8291 encrypted push notifications from Cloudflare Workers, Deno, Bun or Node, with one zero-dependency package.
 template: splash
 hero:
+  title: "@mmmike/web-push"
   tagline: The whole Web Push flow, from subscribing in the browser to sending from the server, in one zero-dependency package.
   actions:
     - text: Get started
       link: /web-push/getting-started/
       icon: right-arrow
+    - text: Build a complete app
+      link: /web-push/tutorial/
+      variant: secondary
     - text: API reference
       link: /web-push/reference/
       variant: minimal
@@ -15,8 +19,21 @@ hero:
 
 import { Card, CardGrid } from "@astrojs/starlight/components";
 
+`@mmmike/web-push` is a TypeScript library for Web Push notifications. It generates the VAPID keys, subscribes the browser, and encrypts and sends each notification with `fetch` and Web Crypto, so the server code runs unchanged on Cloudflare Workers, Deno, Bun and Node 22.12+.
+
 ```bash
 npm install @mmmike/web-push
+```
+
+```ts
+import { sendPushNotification } from "@mmmike/web-push/send";
+
+const delivered = await sendPushNotification(
+	subscription,
+	{ title: "New message", body: "Ada replied to your post", url: "/inbox" },
+	{ publicKey, privateKey, subject: "mailto:you@example.com" },
+);
+if (!delivered) await store.delete(subscription.endpoint);
 ```
 
 <CardGrid>
@@ -29,11 +46,15 @@ npm install @mmmike/web-push
 		Deno, Node, and the browser, with no polyfill or compat layer.
 	</Card>
 	<Card title="Ratified specs" icon="approve-check">
-		RFC 8291 `aes128gcm` encryption and RFC 8292 VAPID, pinned byte-for-byte
-		against RFC 8291's Appendix A test vector.
+		[RFC 8291](https://www.rfc-editor.org/rfc/rfc8291) `aes128gcm` encryption
+		and [RFC 8292](https://www.rfc-editor.org/rfc/rfc8292#section-3) VAPID,
+		pinned byte-for-byte against RFC 8291's [Appendix A test
+		vector](https://www.rfc-editor.org/rfc/rfc8291#appendix-A).
 	</Card>
 	<Card title="Small" icon="seti:zip">
 		Zero dependencies, and each entry point is tree-shakeable on its own, so the
 		browser bundle carries only the client.
 	</Card>
 </CardGrid>
+
+Coming from `web-push`? [How it compares](/web-push/compare/) sets this package against `web-push` and the edge-native alternatives, and the [migration guide](/web-push/guides/migrate-from-web-push/) maps each `sendNotification` option to its equivalent here.

@@ -1,15 +1,17 @@
 {
 	"name": "@mmmike/web-push",
 	"version": "1.4.0-beta.1",
-	"description": "The whole Web Push flow, from subscribing in the browser to sending from the server, in one zero-dependency package.",
+	"description": "Subscribe in the browser and send VAPID-signed, RFC 8291 encrypted push notifications from Cloudflare Workers, Deno, Bun or Node, with one zero-dependency package.",
 	"keywords": [
 		"bun",
 		"cloudflare-workers",
 		"deno",
 		"edge-runtime",
+		"nodejs",
 		"notifications",
 		"push-notifications",
 		"rfc8291",
+		"rfc8292",
 		"service-worker",
 		"vapid",
 		"web-crypto",
