@@ -4,11 +4,10 @@ type DataPoint = { indexes: string[]; blobs: string[]; doubles: number[] };
 
 type Env = {
 	ASSETS: { fetch: (request: Request) => Promise<Response> };
-	// Optional, so `wrangler dev` without the binding still serves.
-	VIEWS?: { writeDataPoint: (point: DataPoint) => void };
+	VIEWS: { writeDataPoint: (point: DataPoint) => void };
 };
 
-/** What answered a request: a page as HTML, a page negotiated to Markdown, or a `.md`/`.txt` file. */
+/** How a request was answered: a page as HTML, a page negotiated to Markdown, or a `.md`/`.txt` file. */
 type Served = "html" | "markdown" | "file";
 
 /** The `q` an `Accept` header gives a media type: 1 when listed bare, 0 when absent. */
@@ -39,62 +38,82 @@ const withHeaders = (response: Response, headers: Record<string, string>): Respo
 	return copy;
 };
 
+const isAgentFile = (pathname: string) => pathname.endsWith(".md") || pathname.endsWith(".txt");
+
+const route = async (
+	request: Request,
+	env: Env,
+	url: URL,
+): Promise<{ response: Response; served?: Served }> => {
+	// Every page URL ends in a slash; anything else is an asset or a redirect to a page.
+	if (!url.pathname.endsWith("/")) {
+		const response = await env.ASSETS.fetch(request);
+		return { response, served: isAgentFile(url.pathname) ? "file" : undefined };
+	}
+	const markdownUrl = new URL(`/${markdownPath(url.pathname.slice(1))}`, url);
+
+	if (prefersMarkdown(request.headers.get("accept"))) {
+		const markdown = await env.ASSETS.fetch(new Request(markdownUrl, request));
+		// A 304 confirms the Markdown copy the agent already holds.
+		if (markdown.ok || markdown.status === 304) {
+			const response = withHeaders(markdown, {
+				"Content-Type": "text/markdown; charset=utf-8",
+				Vary: "Accept",
+			});
+			return { response, served: "markdown" };
+		}
+	}
+
+	const page = await env.ASSETS.fetch(request);
+	const isHtml = page.headers.get("content-type")?.startsWith("text/html");
+	if (page.status !== 304 && !(page.ok && isHtml)) {
+		return { response: page, served: "html" };
+	}
+	const response = withHeaders(page, {
+		Link: `<${markdownUrl.pathname}>; rel="alternate"; type="text/markdown"`,
+		Vary: "Accept",
+	});
+	return { response, served: "html" };
+};
+
+// Analytics Engine caps a data point's blobs at 16 KB, and these headers are
+// whatever the client sent.
+const MAX_HEADER_LENGTH = 1024;
+const headerOf = (request: Request, name: string) =>
+	(request.headers.get(name) ?? "").slice(0, MAX_HEADER_LENGTH);
+
 // Server-side, so pages ship no analytics script. Bots stay in: which agents
 // read the Markdown is the question, so queries filter by user agent instead.
-// writeDataPoint doesn't block the response; never await it.
-const logView = (env: Env, request: Request, response: Response, served: Served): void => {
-	if (!env.VIEWS || request.method !== "GET") {
+// Errors aren't views, which keeps out probes for /wp-admin/ or /robots.txt.
+const logView = (env: Env, request: Request, url: URL, response: Response, served: Served) => {
+	if (request.method !== "GET" || response.status >= 400) {
 		return;
 	}
 	const { cf } = request as Request & { cf?: { country?: string } };
-	env.VIEWS.writeDataPoint({
-		indexes: [served],
-		blobs: [
-			new URL(request.url).pathname,
-			served,
-			request.headers.get("user-agent") ?? "",
-			request.headers.get("accept") ?? "",
-			request.headers.get("referer") ?? "",
-			cf?.country ?? "",
-		],
-		doubles: [response.status],
-	});
+	try {
+		env.VIEWS.writeDataPoint({
+			indexes: [served],
+			blobs: [
+				url.pathname,
+				headerOf(request, "user-agent"),
+				headerOf(request, "accept"),
+				headerOf(request, "referer"),
+				cf?.country ?? "",
+			],
+			doubles: [response.status],
+		});
+	} catch {
+		// A view that can't be recorded must not cost the visitor the page.
+	}
 };
-
-const isAgentFile = (pathname: string) => pathname.endsWith(".md") || pathname.endsWith(".txt");
 
 export default {
 	async fetch(request: Request, env: Env): Promise<Response> {
 		const url = new URL(request.url);
-		// Every page URL ends in a slash; anything else is an asset or a redirect to a page.
-		if (!url.pathname.endsWith("/")) {
-			const response = await env.ASSETS.fetch(request);
-			if (isAgentFile(url.pathname)) {
-				logView(env, request, response, "file");
-			}
-			return response;
+		const { response, served } = await route(request, env, url);
+		if (served) {
+			logView(env, request, url, response, served);
 		}
-		const markdownUrl = new URL(`/${markdownPath(url.pathname.slice(1))}`, url);
-
-		if (prefersMarkdown(request.headers.get("accept"))) {
-			const markdown = await env.ASSETS.fetch(new Request(markdownUrl, request));
-			if (markdown.ok) {
-				logView(env, request, markdown, "markdown");
-				return withHeaders(markdown, {
-					"Content-Type": "text/markdown; charset=utf-8",
-					Vary: "Accept",
-				});
-			}
-		}
-
-		const page = await env.ASSETS.fetch(request);
-		logView(env, request, page, "html");
-		if (!page.ok || !page.headers.get("content-type")?.startsWith("text/html")) {
-			return page;
-		}
-		return withHeaders(page, {
-			Link: `<${markdownUrl.pathname}>; rel="alternate"; type="text/markdown"`,
-			Vary: "Accept",
-		});
+		return response;
 	},
 };
