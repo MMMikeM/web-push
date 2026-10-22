@@ -79,3 +79,8 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # After the deploy, so the engines crawl what just went live. The site is
+      # already up either way, so a failed ping only warns.
+      - run: node docs/scripts/indexnow.ts
+        continue-on-error: true
