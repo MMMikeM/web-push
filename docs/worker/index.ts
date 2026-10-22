@@ -1,4 +1,4 @@
-import { markdownPath } from "../src/markdown-path.ts";
+import { markdownPath, pagePathOf } from "../src/markdown-path.ts";
 
 type DataPoint = { indexes: string[]; blobs: string[]; doubles: number[] };
 
@@ -40,6 +40,17 @@ const withHeaders = (response: Response, headers: Record<string, string>): Respo
 
 const isAgentFile = (pathname: string) => pathname.endsWith(".md") || pathname.endsWith(".txt");
 
+// The asset server sends these without a charset, and with `nosniff` a browser
+// then reads their UTF-8 as Windows-1252. A Markdown copy also names its page
+// as canonical, so search engines index the page rather than the copy.
+const agentFileHeaders = (url: URL): Record<string, string> =>
+	url.pathname.endsWith(".md")
+		? {
+				"Content-Type": "text/markdown; charset=utf-8",
+				Link: `<${new URL(pagePathOf(url.pathname), url).href}>; rel="canonical"`,
+			}
+		: { "Content-Type": "text/plain; charset=utf-8" };
+
 const route = async (
 	request: Request,
 	env: Env,
@@ -54,7 +65,13 @@ const route = async (
 		if (location) {
 			return { response: Response.redirect(new URL(location, url).href, 301) };
 		}
-		return { response, served: isAgentFile(url.pathname) ? "file" : undefined };
+		if (!isAgentFile(url.pathname)) {
+			return { response };
+		}
+		if (!response.ok && response.status !== 304) {
+			return { response, served: "file" };
+		}
+		return { response: withHeaders(response, agentFileHeaders(url)), served: "file" };
 	}
 	const markdownUrl = new URL(`/${markdownPath(url.pathname.slice(1))}`, url);
 
