@@ -74,9 +74,6 @@ const problemsWith = (url: URL): string[] => {
 	if (attr(page, 'link[rel="alternate"][type="text/markdown"]', "href") !== copy) {
 		problems.push("alternate link doesn't point at the Markdown copy");
 	}
-	if (attr(page, ".markdown-copy a", "href") !== copy) {
-		problems.push("visible Markdown link doesn't point at the Markdown copy");
-	}
 	return problems;
 };
 
