@@ -32,6 +32,9 @@ export type PushPayload = {
 
 /**
  * VAPID configuration for sending push notifications.
+ *
+ * @see {@link https://mmmikem.github.io/web-push/guides/runtime-setup/ | Runtime setup}
+ * @see {@link https://mmmikem.github.io/web-push/guides/rotate-vapid-keys/ | Rotate VAPID keys}
  */
 export type VapidConfig = {
 	/** VAPID public key (URL-safe base64) */
@@ -59,6 +62,8 @@ export type Logger = {
 /**
  * Options for sending one notification to many subscriptions: everything in
  * {@link SendPushOptions}, plus the concurrency bound.
+ *
+ * @see {@link https://mmmikem.github.io/web-push/guides/send-to-many/ | Send to many}
  */
 export type SendPushBatchOptions = SendPushOptions & {
 	/** Maximum sends in flight at once (default: 100) */
@@ -68,6 +73,9 @@ export type SendPushBatchOptions = SendPushOptions & {
 /**
  * The outcome of a batch send, sorted by what to do next: log `delivered`,
  * delete `gone` from your store, inspect `failed`.
+ *
+ * @see {@link https://mmmikem.github.io/web-push/guides/send-to-many/ | Send to many}
+ * @see {@link https://mmmikem.github.io/web-push/guides/handle-errors/ | Handle errors and retries}
  */
 export type SendPushBatchResult = {
 	/** How many sends the push service accepted */
@@ -87,6 +95,8 @@ export type SendPushBatchResult = {
 
 /**
  * Options for sending a push notification.
+ *
+ * @see {@link https://mmmikem.github.io/web-push/guides/collapse-notifications/ | Collapse and expire notifications}
  */
 export type SendPushOptions = {
 	/** Receives each push service response at `debug` level, endpoint and body truncated */
@@ -101,12 +111,15 @@ export type SendPushOptions = {
 	 * Kept separate from `ttl`, which controls only message retention.
 	 */
 	vapidExpiration?: number;
-	/** Delivery priority (RFC 8030 §5.3). Omit to let the push service decide. */
+	/**
+	 * Delivery priority ({@link https://www.rfc-editor.org/rfc/rfc8030#section-5.3 | RFC 8030 §5.3}).
+	 * Omit to let the push service decide.
+	 */
 	urgency?: "very-low" | "low" | "normal" | "high";
 	/**
-	 * Collapse key (RFC 8030 §5.4): a later push with the same topic replaces
-	 * this one while it is still undelivered. Max 32 URL-safe base64 characters;
-	 * derive one from an arbitrary string with `topicFromString`.
+	 * Collapse key ({@link https://www.rfc-editor.org/rfc/rfc8030#section-5.4 | RFC 8030 §5.4}): a
+	 * later push with the same topic replaces this one while it is still undelivered. Max 32
+	 * URL-safe base64 characters; derive one from an arbitrary string with {@link topicFromString}.
 	 */
 	topic?: string;
 	/** Aborts in-flight sends; a batch also stops starting new ones. */
