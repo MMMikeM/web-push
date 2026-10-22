@@ -12,8 +12,6 @@ head:
 
 Both send the same standard notifications. `web-push` is built on Node's `crypto` and `https` modules, and `@mmmike/web-push` on `fetch` and Web Crypto, which Cloudflare Workers, Deno, Bun, Node and browsers each implement natively. Subscriptions and VAPID keys work with either, so switching keeps the ones you've stored.
 
-## At a glance
-
 | Package                                                                                    | Node APIs | Sends | Browser helpers | Encryption            | Deps  |
 | ------------------------------------------------------------------------------------------ | --------- | ----- | --------------- | --------------------- | ----- |
 | **`@mmmike/web-push`**                                                                     | none      | ✓     | ✓               | `aes128gcm`           | **0** |
@@ -28,9 +26,9 @@ Both send the same standard notifications. `web-push` is built on Node's `crypto
 ## Which to use
 
 - **On Node, with `web-push` already working:** it's the established choice and works well there. Switching gets you the browser helpers, batches and the error model, and drops 16 packages from your tree. The [migration guide](/guides/migrate-from-web-push/) keeps your stored subscriptions, keys and service worker.
-- **On Workers, Deno, Bun, Netlify or Supabase:** `web-push` runs on each runtime's emulation of Node, and this package needs none. [Why that matters](/compare/#why-node-emulation-matters) is below.
-- **On Vercel Edge, or Workers with Node compatibility off:** `web-push` doesn't run there; this package does.
-- **Choosing between the Web Crypto packages:** two of them only build the request for you to send, none has browser helpers or batches, and `@pushforge/builder` still uses the draft `aesgcm` encryption. There are [notes on each](/compare/#the-other-packages) at the end.
+- **On Workers, Deno, Bun, Netlify or Supabase:** `web-push` runs on each runtime's [emulation of Node](/compare/#node-emulation), and this package needs none.
+- **On Vercel Edge, or Workers with Node compatibility off:** `web-push` fails there, at build time or on its first send.
+- **Choosing between the Web Crypto packages:** two of them only build the request for you to send, none has browser helpers or batches, and `@pushforge/builder` still uses the draft `aesgcm` encryption.
 
 ## Coming from web-push
 
@@ -54,9 +52,9 @@ Downloads are npm's count for the week of 12 to 18 October 2026.
 | Weekly downloads          | ~9.3k                                                                                                                       | ~6.6M                                             |
 | GitHub stars              | 2                                                                                                                           | 3.6k                                              |
 
-## Why Node emulation matters
+## Node emulation
 
-Outside Node, `web-push` runs because the runtime emulates Node's `crypto` and `https` modules. On Cloudflare Workers that makes a much larger Worker, on Vercel Edge it fails, and on several runtimes the emulation has broken it before being fixed.
+Outside Node, `web-push` runs because the runtime emulates Node's `crypto` and `https` modules.
 
 ### On Cloudflare Workers
 
@@ -87,7 +85,7 @@ Each of these broke `web-push` until the runtime fixed it:
 | Cloudflare Workers | [Request headers were sent as `ttl: TTL, 60`](https://github.com/cloudflare/workerd/issues/4880)                                       | August 2025  |
 | Cloudflare Workers | [Requests to URLs with a query string were never sent](https://github.com/cloudflare/workerd/issues/5077), which Windows endpoints use | October 2025 |
 
-On Workers, `web-push`'s `proxy` option still throws. This package calls `fetch` and `crypto.subtle`, which each runtime implements itself, so a gap in a runtime's Node emulation doesn't reach it.
+On Workers, `web-push`'s `proxy` option still throws. This package calls `fetch` and `crypto.subtle`, which each runtime implements itself, so none of these bugs affected it.
 
 ### Older Workers compatibility dates
 
