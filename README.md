@@ -7,9 +7,9 @@
 [![CI](https://github.com/MMMikeM/web-push/actions/workflows/ci.yml/badge.svg)](https://github.com/MMMikeM/web-push/actions/workflows/ci.yml)
 [![license](https://img.shields.io/npm/l/%40mmmike%2Fweb-push)](https://github.com/MMMikeM/web-push/blob/main/LICENSE)
 
-Adding push notifications to a site is usually two jobs. A library handles sending, and the browser half is left to you: asking for permission, replacing a subscription made with an old VAPID key, serialising the subscription for your server (`getKey()` returns `ArrayBuffer`s, which JSON can't hold), and a service worker pieced together from blog posts. If you send from a Cloudflare Worker, the usual library runs only on Cloudflare's Node compatibility layer.
+Adding push notifications to a site is usually two jobs. A library handles sending, and the browser half is left to you: asking for permission, replacing a subscription made with an old VAPID key, serialising the subscription for your server (`getKey()` returns `ArrayBuffer`s, which JSON can't hold), and a service worker pieced together from blog posts. The usual library is also built on Node's `crypto` and `https`, so outside Node it runs on each runtime's emulation of Node.
 
-This package does both halves. It's built on `fetch` and the Web Crypto API instead of `node:crypto`, so the server side runs as-is on Node, Bun, Deno and Cloudflare Workers.
+This package does both halves. It's built on `fetch` and the Web Crypto API, which Node, Bun, Deno and Cloudflare Workers each implement natively, so the server side runs the same on all of them with no Node emulation underneath.
 
 ```bash
 npm install @mmmike/web-push
@@ -66,9 +66,9 @@ To send one notification to a list of subscribers, `sendPushBatch` caps how many
 
 ## Coming from `web-push`?
 
-[`web-push`](https://www.npmjs.com/package/web-push) is the established choice, and on Node it works well. Bun and Deno run it on their built-in Node compatibility. Cloudflare Workers runs it through `nodejs_compat`, which is on by default from the 2026-08-04 compatibility date; a Worker with an older date fails to build it without the flag. With the layer on and wrangler's default unminified build, a Worker that sends with `web-push` uploads about 49 kB gzipped, where this package uploads about 4 kB. It also stops at the server.
+[`web-push`](https://www.npmjs.com/package/web-push) is the established choice, and on Node it works well. Elsewhere it runs on each runtime's emulation of Node, and on Deno, Supabase and Cloudflare Workers that emulation has broken it before being fixed. It also brings 16 packages: a minimal Worker that sends with it uploads about 49 kB gzipped and starts about 14 ms slower, where one using this package uploads about 4 kB. And it stops at the server.
 
-[The full comparison](https://mmmikem.github.io/web-push/compare/) shows those build failures and sets this package against the edge-native alternatives too. The [migration guide](https://mmmikem.github.io/web-push/guides/migrate-from-web-push/) keeps your stored subscriptions, keys and service worker.
+[The full comparison](https://mmmikem.github.io/web-push/compare/) has the measurements and the bug history, and sets this package against the edge-native alternatives too. The [migration guide](https://mmmikem.github.io/web-push/guides/migrate-from-web-push/) keeps your stored subscriptions, keys and service worker.
 
 ## Docs
 

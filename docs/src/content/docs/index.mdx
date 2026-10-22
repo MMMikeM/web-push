@@ -41,9 +41,10 @@ if (!delivered) await store.delete(subscription.endpoint);
 		VAPID key generation, a copy-paste service worker, the client subscribe
 		helpers, and the server send, one at a time or fanned out to a list.
 	</Card>
-	<Card title="No Node built-ins" icon="rocket">
-		If it has `fetch` and `crypto.subtle`, it works: Cloudflare Workers, Bun,
-		Deno, Node, and the browser, with no polyfill or compat layer.
+	<Card title="No Node emulation" icon="rocket">
+		Built on `fetch` and Web Crypto, which Cloudflare Workers, Bun, Deno, Node
+		and browsers each implement natively, so no runtime's copy of Node sits
+		underneath it.
 	</Card>
 	<Card title="Ratified specs" icon="approve-check">
 		[RFC 8291](https://www.rfc-editor.org/rfc/rfc8291) `aes128gcm` encryption
