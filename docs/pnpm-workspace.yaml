@@ -19,3 +19,6 @@ overrides:
   nanoid@<3.3.18: ^3.3.18
   source-map-js@<1.2.2: ^1.2.2
   tinypool@<2.1.2: ~2.1.2
+  # GHSA-rj75-hqrm-r3gf: expressive-code 0.44.3 moves to postcss-nested 7 for
+  # the same fix.
+  postcss-nested@<7: ^7.0.2
