@@ -5,6 +5,32 @@ All notable changes to `@mmmike/web-push` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-10-22
+
+### Fixed
+
+- `sendPushBatch` re-signs each push service's VAPID token at half its lifetime. It
+  used one token for the whole batch, so a batch that outlasted `vapidExpiration` sent
+  expired tokens and filled `failed` with 401s and 403s.
+- A `null` row in `sendPushBatch` lands in `failed` with an empty `endpoint` and a plain
+  `Error`. It used to reject the whole batch while the other workers kept sending.
+  Delete it from your own data, not by endpoint.
+- A fractional `timeoutMs` is rounded up and a fractional `ttl` rounded down, since
+  Node threw on the first and push services expect whole seconds in the `TTL` header.
+- A `timeoutMs` over 2^31 - 1, which Node fired after 1 ms, and a `NaN` or negative
+  `timeoutMs` or `ttl` now throw before sending. `sendPushBatch` throws once instead of
+  filling `failed`.
+- A delivered or gone send no longer waits on the response body unless a `logger` is
+  set, so a slow body can't time out a message the push service already accepted.
+
+### Security
+
+- Push service responses are read up to 4 KB, then the stream is cancelled.
+  `WebPushError.body` holds at most that much. Endpoints come from subscribers, and a
+  hostile one could stream an unbounded body into memory on every send.
+- The per-message ECDH key pair is generated non-extractable. Only its public half is
+  ever exported.
+
 ## [1.4.0] - 2026-10-22
 
 ### Added
