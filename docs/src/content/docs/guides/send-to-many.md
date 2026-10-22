@@ -32,7 +32,7 @@ A failed send never rejects the batch. Every subscription lands in one of three 
 
 ## What throws instead
 
-Mistakes in your own input throw before anything is sent, rather than appearing ten thousand times in `failed`: a bad VAPID config, a payload over the 3,993-byte limit, an invalid `topic`, or an invalid `concurrency` or `timeoutMs`.
+Mistakes in your own input throw before anything is sent, rather than appearing ten thousand times in `failed`: a bad VAPID config, a payload over the 3,993-byte limit, an invalid `topic`, or an invalid `ttl`, `concurrency` or `timeoutMs`.
 
 ## Concurrency and other batch options
 
@@ -50,7 +50,7 @@ await sendPushBatch(subscriptions, payload, vapid, {
 - **`signal`** stops the pool from starting new sends when it aborts. Subscriptions it never reached appear in none of the three results, so compare `delivered + gone.length + failed.length` with the number you passed in.
 - **`ttl`** and **`topic`** apply to every message in the batch. [Collapse and expire notifications](/web-push/guides/collapse-notifications/) explains both.
 
-The VAPID token is signed once per push service rather than once per message, since it's scoped to the push service's origin. Each message still gets its own encryption keys, as [RFC 8291 §3.1](https://www.rfc-editor.org/rfc/rfc8291#section-3.1) requires.
+The VAPID token is signed once per push service rather than once per message, since it's scoped to the push service's origin. It's signed again at half its lifetime, so a batch that runs longer than `vapidExpiration` never sends an expired token. Each message still gets its own encryption keys, as [RFC 8291 §3.1](https://www.rfc-editor.org/rfc/rfc8291#section-3.1) requires.
 
 ## Sending to large subscriber lists
 

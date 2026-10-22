@@ -84,7 +84,9 @@ export type SendPushBatchResult = {
 	gone: string[];
 	/**
 	 * Sends that did not deliver, each with its error. A plain `Error` means the
-	 * subscription itself is malformed: delete it. A `WebPushError` is a
+	 * subscription itself is malformed: delete it. A row that isn't an object at
+	 * all, such as `null`, has an empty `endpoint`, so find it in your own data
+	 * rather than deleting by endpoint. A `WebPushError` is a
 	 * push-service rejection carrying `statusCode` and `retryAfterMs`; a 401 or
 	 * 403 usually means the subscription was made with a different VAPID key. A
 	 * `TypeError` (the network) or a `TimeoutError` is worth retrying, and the
@@ -101,7 +103,7 @@ export type SendPushBatchResult = {
 export type SendPushOptions = {
 	/** Receives each push service response at `debug` level, endpoint and body truncated */
 	logger?: Logger;
-	/** TTL in seconds (default: 86400 = 24 hours) */
+	/** TTL in seconds, 0 or more, rounded down to a whole second (default: 86400 = 24 hours) */
 	ttl?: number;
 	/**
 	 * VAPID JWT expiration in seconds from now (default: 43200 = 12 hours). RFC 8292
@@ -125,9 +127,10 @@ export type SendPushOptions = {
 	/** Aborts in-flight sends; a batch also stops starting new ones. */
 	signal?: AbortSignal;
 	/**
-	 * Per-request timeout in milliseconds (default: 30000). Without one, a push
-	 * service that accepts the connection and never responds holds its pool
-	 * slot for as long as the platform allows.
+	 * Per-request timeout in milliseconds, at most 2^31 - 1 and rounded up to a
+	 * whole millisecond (default: 30000). Without one, a push service that
+	 * accepts the connection and never responds holds its pool slot for as long
+	 * as the platform allows.
 	 */
 	timeoutMs?: number;
 };

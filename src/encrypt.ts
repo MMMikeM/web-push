@@ -219,9 +219,10 @@ export const encryptPayload = async (
 	p256dhKey: string,
 	authSecret: string,
 ): Promise<Uint8Array<ArrayBuffer>> => {
+	// Public keys are always exportable; `false` locks only the private half.
 	const serverKeyPair = await crypto.subtle.generateKey(
 		{ name: "ECDH", namedCurve: "P-256" },
-		true,
+		false,
 		["deriveBits"],
 	);
 	const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));

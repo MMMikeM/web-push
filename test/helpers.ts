@@ -206,6 +206,10 @@ export const decryptAes128gcm = async (
 	);
 };
 
+/** The `t=` JWT of a `vapid t=…, k=…` Authorization header. */
+export const vapidJwtFromAuthorization = (authorization: string): string =>
+	authorization.slice("vapid t=".length).split(", k=")[0];
+
 /** Decode a base64url JWT segment to a parsed JSON object. */
 export const decodeJwtSegment = (segment: string): Record<string, unknown> => {
 	const bytes = urlBase64ToUint8Array(segment);

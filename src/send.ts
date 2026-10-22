@@ -48,7 +48,7 @@ const parseRetryAfterMs = (retryAfter: string | null): number | null => {
 export class WebPushError extends Error {
 	/** The push service's HTTP status */
 	readonly statusCode: number;
-	/** The push service's response body */
+	/** The push service's response body, cut off after its first 4 KB */
 	readonly body: string;
 	/**
 	 * The full subscription endpoint, a capability URL: anyone holding it can
@@ -189,11 +189,38 @@ const pushServiceOrigin = (endpoint: string): string => {
 const isSubscriptionGone = (status: number): boolean => status === 404 || status === 410;
 
 const DEFAULT_TIMEOUT_MS = 30000;
+const DEFAULT_TTL_S = 86400;
+const DEFAULT_VAPID_EXPIRATION_S = 43200;
+
+// setTimeout's ceiling, which AbortSignal.timeout shares: Node fires anything
+// larger after 1ms, and throws on fractions, hence the rounding up.
+const MAX_TIMEOUT_MS = 2 ** 31 - 1;
+const wholeTimeoutMs = (timeoutMs: number): number => Math.ceil(timeoutMs);
+
+/** RFC 8030 §5.2: `TTL` is delta-seconds, a non-negative integer. */
+const wholeTtl = (ttl: number): number => Math.floor(ttl);
 
 const assertValidTimeout = (timeoutMs: number): void => {
-	if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
-		throw new Error("timeoutMs must be a positive number of milliseconds");
+	const wholeMs = wholeTimeoutMs(timeoutMs);
+	if (Number.isNaN(wholeMs) || wholeMs < 1 || wholeMs > MAX_TIMEOUT_MS) {
+		throw new Error(`timeoutMs must be from 1 to ${MAX_TIMEOUT_MS} milliseconds`);
 	}
+};
+
+const assertValidTtl = (ttl: number | undefined): void => {
+	if (ttl !== undefined && (!Number.isSafeInteger(wholeTtl(ttl)) || ttl < 0)) {
+		throw new Error("ttl must be a number of seconds, 0 or more");
+	}
+};
+
+const assertValidSendOptions = ({
+	topic,
+	ttl,
+	timeoutMs = DEFAULT_TIMEOUT_MS,
+}: SendPushOptions): void => {
+	assertValidTopic(topic);
+	assertValidTtl(ttl);
+	assertValidTimeout(timeoutMs);
 };
 
 const requestSignal = (signal: AbortSignal | undefined, timeoutMs: number): AbortSignal =>
@@ -225,6 +252,41 @@ const buildPushHeaders = ({
 	return headers;
 };
 
+/**
+ * Push services answer in a few hundred bytes. The endpoint is chosen by the
+ * subscriber, so without a cap a hostile one could stream an unbounded body
+ * into memory on every send.
+ */
+const MAX_RESPONSE_BODY_BYTES = 4096;
+
+const readBodyPrefix = async (response: Response): Promise<string> => {
+	if (!response.body) {
+		return "";
+	}
+	const reader = response.body.getReader();
+	const decoder = new TextDecoder();
+	let text = "";
+	let bytesRead = 0;
+	while (bytesRead < MAX_RESPONSE_BODY_BYTES) {
+		// oxlint-disable-next-line no-await-in-loop -- a stream yields its chunks in order
+		const { done, value } = await reader.read();
+		if (done) {
+			return text + decoder.decode();
+		}
+		text += decoder.decode(value.subarray(0, MAX_RESPONSE_BODY_BYTES - bytesRead), {
+			stream: true,
+		});
+		bytesRead += value.length;
+	}
+	// The status is already known, so a cancel that fails can't change the outcome.
+	// Skipping the decoder's flush drops a character cut at the cap instead of
+	// ending the text on U+FFFD.
+	reader.cancel().catch(ignore);
+	return text;
+};
+
+const ignore = (): void => {};
+
 const postToPushService = async (
 	subscription: PushSubscriptionData,
 	payloadBytes: Uint8Array,
@@ -232,7 +294,14 @@ const postToPushService = async (
 	vapidPublicKey: string,
 	options: SendPushOptions,
 ): Promise<boolean> => {
-	const { logger, ttl = 86400, urgency, topic, signal, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
+	const {
+		logger,
+		ttl = DEFAULT_TTL_S,
+		urgency,
+		topic,
+		signal,
+		timeoutMs = DEFAULT_TIMEOUT_MS,
+	} = options;
 
 	const encryptedPayload = await encryptPayload(
 		payloadBytes,
@@ -242,12 +311,20 @@ const postToPushService = async (
 
 	const response = await fetch(subscription.endpoint, {
 		method: "POST",
-		headers: buildPushHeaders({ jwt, vapidPublicKey, ttl, urgency, topic }),
+		headers: buildPushHeaders({ jwt, vapidPublicKey, ttl: wholeTtl(ttl), urgency, topic }),
 		body: encryptedPayload,
-		signal: requestSignal(signal, timeoutMs),
+		signal: requestSignal(signal, wholeTimeoutMs(timeoutMs)),
 	});
 
-	const responseText = await response.text();
+	// A delivered or gone send is settled by its status. Waiting on the body
+	// would let a slow one time out a message the push service already accepted.
+	const settled = response.ok || isSubscriptionGone(response.status);
+	if (settled && !logger?.debug) {
+		response.body?.cancel().catch(ignore);
+		return response.ok;
+	}
+
+	const responseText = await readBodyPrefix(response);
 
 	logger?.debug?.("Push response", {
 		endpoint: subscription.endpoint.slice(0, 50),
@@ -256,12 +333,8 @@ const postToPushService = async (
 		body: responseText.slice(0, 200),
 	});
 
-	if (response.ok) {
-		return true;
-	}
-
-	if (isSubscriptionGone(response.status)) {
-		return false;
+	if (settled) {
+		return response.ok;
 	}
 
 	throw new WebPushError(
@@ -290,7 +363,7 @@ const postToPushService = async (
  * @throws {DOMException} `TimeoutError` after `timeoutMs`
  * @throws the `signal`'s abort reason when it aborts: an `AbortError` `DOMException`
  * unless you passed `abort()` a reason of your own
- * @throws {Error} on invalid input: VAPID config, payload size, `topic`,
+ * @throws {Error} on invalid input: VAPID config, payload size, `topic`, `ttl`,
  * `timeoutMs`, or a non-`https:` endpoint
  * @example
  * ```ts
@@ -306,8 +379,7 @@ export const sendPushNotification = async (
 	vapid: VapidConfig,
 	options: SendPushOptions = {},
 ): Promise<boolean> => {
-	assertValidTopic(options.topic);
-	assertValidTimeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+	assertValidSendOptions(options);
 
 	// Reject bad input *before* signing the VAPID JWT — no point paying for an
 	// ECDSA signature on a request we'll refuse.
@@ -321,7 +393,7 @@ export const sendPushNotification = async (
 		subject: vapid.subject,
 		publicKey: vapid.publicKey,
 		privateKey: vapid.privateKey,
-		expiration: options.vapidExpiration ?? 43200,
+		expiration: options.vapidExpiration ?? DEFAULT_VAPID_EXPIRATION_S,
 	});
 
 	return postToPushService(subscription, payloadBytes, jwt, vapid.publicKey, options);
@@ -334,14 +406,15 @@ export const sendPushNotification = async (
  * sends the push service accepted, endpoints it reported gone (404/410) come
  * back in `gone` for deletion, and every other failed send comes back in
  * `failed` with its error. One VAPID JWT is signed per push-service origin
- * rather than per message, since the token is scoped to the origin and valid
- * for the whole batch. Aborting `options.signal` stops workers from starting
- * new sends; subscriptions never attempted count toward none of the three.
+ * rather than per message, since the token is scoped to the origin, and
+ * re-signed at half its lifetime, so a batch that outlasts `vapidExpiration`
+ * never sends an expired one. Aborting `options.signal` stops workers from
+ * starting new sends; subscriptions never attempted count toward none of the three.
  *
  * @param payload A {@link PushPayload} is JSON-serialized; a {@link rawPayload}
  * wrapper is encrypted and sent verbatim
  * @throws {Error} on caller input — invalid VAPID config, oversized payload,
- * invalid `topic`, `concurrency`, or `timeoutMs` — before anything is sent.
+ * invalid `topic`, `ttl`, `concurrency`, or `timeoutMs` — before anything is sent.
  * A non-`https:` endpoint is per-subscription data and lands in `failed`.
  * @example
  * ```ts
@@ -362,19 +435,19 @@ export const sendPushBatch = async (
 	if (!Number.isInteger(concurrency) || concurrency < 1) {
 		throw new Error("concurrency must be a positive integer");
 	}
-	assertValidTopic(sendOptions.topic);
-	assertValidTimeout(sendOptions.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+	assertValidSendOptions(sendOptions);
 
 	const payloadBytes = encodePayload(payload);
 	assertPayloadWithinLimit(payloadBytes);
 
+	const vapidExpiration = sendOptions.vapidExpiration ?? DEFAULT_VAPID_EXPIRATION_S;
 	const vapidJwtFor = (audience: string): Promise<string> =>
 		createVapidJwt({
 			audience,
 			subject: vapid.subject,
 			publicKey: vapid.publicKey,
 			privateKey: vapid.privateKey,
-			expiration: sendOptions.vapidExpiration ?? 43200,
+			expiration: vapidExpiration,
 		});
 
 	// Sign a throwaway token so a bad VAPID config (subject, expiration, key
@@ -383,14 +456,17 @@ export const sendPushBatch = async (
 
 	// Caching the promise, not the token, so concurrent workers hitting the
 	// same origin share one signature instead of racing to sign their own.
-	const jwtByOrigin = new Map<string, Promise<string>>();
+	const jwtByOrigin = new Map<string, { jwt: Promise<string>; refreshAt: number }>();
 	const cachedJwtFor = (origin: string): Promise<string> => {
 		const cached = jwtByOrigin.get(origin);
-		if (cached) {
-			return cached;
+		if (cached && Date.now() < cached.refreshAt) {
+			return cached.jwt;
 		}
+		// The JWT's `exp` counts from the whole second it was signed in, so the
+		// refresh does too; counting from now could land it after `exp`.
+		const signedAtMs = Math.floor(Date.now() / 1000) * 1000;
 		const jwt = vapidJwtFor(origin);
-		jwtByOrigin.set(origin, jwt);
+		jwtByOrigin.set(origin, { jwt, refreshAt: signedAtMs + (vapidExpiration * 1000) / 2 });
 		return jwt;
 	};
 
@@ -398,8 +474,13 @@ export const sendPushBatch = async (
 	const gone: string[] = [];
 	const failed: SendPushBatchResult["failed"] = [];
 
-	const sendOne = async (subscription: PushSubscriptionData): Promise<void> => {
+	// Rows are often cast from a database or JSON, so a null one has to land in
+	// `failed` rather than reject the whole batch.
+	const sendOne = async (subscription: PushSubscriptionData | null | undefined): Promise<void> => {
 		try {
+			if (!subscription) {
+				throw new Error("Invalid subscription: not an object");
+			}
 			validatePushInputs(payloadBytes, ...subscriptionKeys(subscription));
 			const jwt = await cachedJwtFor(pushServiceOrigin(subscription.endpoint));
 			const accepted = await postToPushService(
@@ -415,7 +496,7 @@ export const sendPushBatch = async (
 				gone.push(subscription.endpoint);
 			}
 		} catch (error) {
-			failed.push({ endpoint: subscription.endpoint, error });
+			failed.push({ endpoint: subscription?.endpoint ?? "", error });
 		}
 	};
 

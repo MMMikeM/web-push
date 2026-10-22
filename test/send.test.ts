@@ -10,6 +10,7 @@ import {
 	headersOf,
 	makeClientKeys,
 	stubFetch,
+	vapidJwtFromAuthorization,
 	verifyJwtSignature,
 } from "./helpers";
 
@@ -30,9 +31,17 @@ const subscription = (): PushSubscriptionData => ({
 	keys: { p256dh: client.p256dh, auth: client.auth },
 });
 
-/** The `t=` JWT of the `vapid t=…, k=…` Authorization header. */
+const stubResponse = (response: Response): void => {
+	vi.stubGlobal(
+		"fetch",
+		vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(
+			async () => response,
+		),
+	);
+};
+
 const vapidJwtOf = (mock: ReturnType<typeof stubFetch>): string =>
-	headersOf(mock).Authorization.slice("vapid t=".length).split(", k=")[0];
+	vapidJwtFromAuthorization(headersOf(mock).Authorization);
 
 const vapidClaimsOf = (mock: ReturnType<typeof stubFetch>): { aud: string; exp: number } =>
 	decodeJwtSegment(vapidJwtOf(mock).split(".")[1]) as { aud: string; exp: number };
@@ -125,6 +134,70 @@ describe("sendPushNotification — status handling", () => {
 		expect(err.message).toMatch(/rate limit/i);
 	});
 
+	it("keeps only the first 4 KB of an endless error body, then cancels the stream", async () => {
+		let cancelled = false;
+		const endless = new ReadableStream<Uint8Array>({
+			pull: (controller) => controller.enqueue(new Uint8Array(1000).fill(0x78)),
+			cancel: () => {
+				cancelled = true;
+			},
+		});
+		vi.stubGlobal(
+			"fetch",
+			vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(
+				async () => new Response(endless, { status: 500 }),
+			),
+		);
+
+		const err = await sendPushNotification(subscription(), payload, vapid).catch((e) => e);
+		expect(err).toBeInstanceOf(WebPushError);
+		expect(err.body).toBe("x".repeat(4096));
+		expect(cancelled).toBe(true);
+	});
+
+	it("still throws the WebPushError when cancelling the rest of the body fails", async () => {
+		const failingCancel = new ReadableStream<Uint8Array>({
+			pull: (controller) => controller.enqueue(new Uint8Array(1000).fill(0x78)),
+			cancel: () => {
+				throw new Error("connection reset");
+			},
+		});
+		stubResponse(new Response(failingCancel, { status: 500 }));
+
+		const err = await sendPushNotification(subscription(), payload, vapid).catch((e) => e);
+		expect(err).toBeInstanceOf(WebPushError);
+		expect(err.statusCode).toBe(500);
+	});
+
+	it("drops a character the 4 KB cut splits, rather than ending the body on U+FFFD", async () => {
+		const body = new TextEncoder().encode(`${"x".repeat(4095)}é`);
+		stubResponse(new Response(body, { status: 500 }));
+
+		const err = await sendPushNotification(subscription(), payload, vapid).catch((e) => e);
+		expect(err.body).toBe("x".repeat(4095));
+	});
+
+	it("gives an empty body for an error response that has none", async () => {
+		stubResponse(new Response(null, { status: 503 }));
+
+		const err = await sendPushNotification(subscription(), payload, vapid).catch((e) => e);
+		expect(err).toBeInstanceOf(WebPushError);
+		expect(err.body).toBe("");
+	});
+
+	it("returns once a 201 arrives, without waiting on a body that never ends", async () => {
+		let cancelled = false;
+		const hanging = new ReadableStream<Uint8Array>({
+			cancel: () => {
+				cancelled = true;
+			},
+		});
+		stubResponse(new Response(hanging, { status: 201 }));
+
+		await expect(sendPushNotification(subscription(), payload, vapid)).resolves.toBe(true);
+		expect(cancelled).toBe(true);
+	});
+
 	it("throws WebPushError with the status on other server errors", async () => {
 		stubFetch(500, "Internal Server Error");
 		const err = await sendPushNotification(subscription(), payload, vapid).catch((e) => e);
@@ -195,12 +268,29 @@ describe("sendPushNotification — abort & timeout", () => {
 		).rejects.toThrow(/aborted/i);
 	});
 
-	it("rejects a non-positive timeoutMs before sending", async () => {
+	it.each([0, -1, 3e9, Number.NaN])(
+		"rejects timeoutMs %s before sending, since AbortSignal.timeout takes at most 2^31 - 1 ms",
+		async (timeoutMs) => {
+			const mock = stubFetch(201);
+			await expect(
+				sendPushNotification(subscription(), payload, vapid, { timeoutMs }),
+			).rejects.toThrow("timeoutMs must be from 1 to 2147483647 milliseconds");
+			expect(mock).not.toHaveBeenCalled();
+		},
+	);
+
+	it("rounds a fractional timeoutMs up, where Node's AbortSignal.timeout would throw", async () => {
 		const mock = stubFetch(201);
 		await expect(
-			sendPushNotification(subscription(), payload, vapid, { timeoutMs: 0 }),
-		).rejects.toThrow("timeoutMs must be a positive number of milliseconds");
-		expect(mock).not.toHaveBeenCalled();
+			sendPushNotification(subscription(), payload, vapid, { timeoutMs: 1500.5 }),
+		).resolves.toBe(true);
+		expect(mock).toHaveBeenCalledTimes(1);
+	});
+
+	it("accepts the largest timeoutMs AbortSignal.timeout honours", async () => {
+		const mock = stubFetch(201);
+		await sendPushNotification(subscription(), payload, vapid, { timeoutMs: 2 ** 31 - 1 });
+		expect((mock.mock.calls[0][1] as RequestInit).signal?.aborted).toBe(false);
 	});
 });
 
@@ -216,6 +306,23 @@ describe("sendPushNotification — options", () => {
 		await sendPushNotification(subscription(), payload, vapid, { ttl: 0 });
 		expect(headersOf(mock).TTL).toBe("0");
 	});
+
+	it("rounds a fractional ttl down to whole delta-seconds", async () => {
+		const mock = stubFetch(201);
+		await sendPushNotification(subscription(), payload, vapid, { ttl: 59.9 });
+		expect(headersOf(mock).TTL).toBe("59");
+	});
+
+	it.each([-1, Number.NaN, 1e21])(
+		"rejects ttl %s before sending: TTL is delta-seconds (RFC 8030 §5.2)",
+		async (ttl) => {
+			const mock = stubFetch(201);
+			await expect(sendPushNotification(subscription(), payload, vapid, { ttl })).rejects.toThrow(
+				"ttl must be a number of seconds, 0 or more",
+			);
+			expect(mock).not.toHaveBeenCalled();
+		},
+	);
 
 	it("logs the response via logger.debug", async () => {
 		stubFetch(201);
