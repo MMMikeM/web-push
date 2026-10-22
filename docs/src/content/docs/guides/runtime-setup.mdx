@@ -91,14 +91,14 @@ const vapid = {
 </TabItem>
 <TabItem label="Vercel Edge">
 
-In a Next.js route handler, opt into the Edge runtime and read the keys from the project's environment variables:
+In a Vercel Function such as `api/push.ts`, opt into the Edge runtime with `config` and read the keys from the project's environment variables:
 
 ```ts
 import { sendPushNotification } from "@mmmike/web-push/send";
 
-export const runtime = "edge";
+export const config = { runtime: "edge" };
 
-export async function POST(request: Request) {
+export default async function handler(request: Request) {
 	const vapid = {
 		publicKey: process.env.VAPID_PUBLIC_KEY!,
 		privateKey: process.env.VAPID_PRIVATE_KEY!,
@@ -107,6 +107,8 @@ export async function POST(request: Request) {
 	// …
 }
 ```
+
+Next.js 16.3 and later [no longer support `runtime = "edge"`](https://vercel.com/docs/functions/runtimes/edge) in route handlers, which run on Node.js instead. The library works there unchanged; follow the Node tab.
 
 </TabItem>
 </Tabs>

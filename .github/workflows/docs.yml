@@ -1,6 +1,10 @@
 name: docs
 
 on:
+  # Stable release tags only: the docs describe what `npm install` gives, so
+  # neither main nor a prerelease tag deploys.
+  push:
+    tags: ["v*", "!v*-*"]
   workflow_dispatch:
 
 permissions:
@@ -19,6 +23,8 @@ jobs:
         with:
           # The build runs third-party build scripts; keep the token out of .git/config.
           persist-credentials: false
+          # Full history, for each page's last-updated date.
+          fetch-depth: 0
 
       # Installs from docs/'s own lockfile; its build generates the API
       # reference from ../src before running astro build.

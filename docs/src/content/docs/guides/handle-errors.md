@@ -1,7 +1,8 @@
 ---
-title: Handle errors and retries
-description: Tell retryable failures from permanent ones, back off by Retry-After, and retry a batch's failures.
+title: Handle push errors and retries (404, 410, 429)
+description: Tell retryable failures from permanent ones, delete subscriptions that return 404 or 410, back off by Retry-After on a 429, and retry a batch's failures.
 sidebar:
+  label: Handle errors and retries
   order: 2
 ---
 
@@ -48,6 +49,8 @@ const retryDelayMs = (error: unknown, attempt: number): number =>
 ```
 
 An `AbortError` only happens when your own `signal` aborts, so it isn't retried here.
+
+Before 1.4.0, a malformed subscription could also throw a `TypeError`, and this check would retry it forever. Upgrade before relying on it.
 
 ## Retrying a batch
 

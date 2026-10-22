@@ -13,14 +13,19 @@ this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the root and `/client`. `getCurrentSubscription` and `unsubscribe` take it in place of
   `Pick<SubscribeOptions, "registration">`, and `SubscribeOptions` extends it. The shape
   is unchanged, so existing calls still compile.
+- A documentation site at https://mmmikem.github.io/web-push/, with guides, a tutorial,
+  and an API reference generated from the JSDoc, which now covers every field and every
+  error a function can throw. The package's `homepage` points to it.
 
 ### Changed
 
-- `subscribe` throws on a `vapidPublicKey` that isn't a 65-byte P-256 public key before
-  prompting or touching the existing subscription.
+- `subscribe` checks `vapidPublicKey` first and throws if it isn't a 65-byte P-256
+  public key, even where push is unsupported, so a bad key never prompts the user or
+  touches the existing subscription.
 - A malformed subscription (unparseable endpoint, missing or non-base64url keys, a
-  `p256dh` off the curve) makes the send functions throw a plain `Error` instead of a
-  `TypeError` or `DOMException`, so a `TypeError` now means the network alone.
+  `p256dh` off the curve) gives a plain `Error` instead of a `TypeError` or
+  `DOMException`. `sendPushNotification` throws it, and `sendPushBatch` files it under
+  `failed`. A `TypeError` now means the network alone.
 
 ## [1.4.0-beta.1] - 2026-10-20
 
