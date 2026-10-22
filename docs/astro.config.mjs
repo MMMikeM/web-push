@@ -3,10 +3,20 @@ import starlight from "@astrojs/starlight";
 import { defineConfig } from "astro/config";
 import starlightLlmsTxt from "starlight-llms-txt";
 import { markdownPages } from "./src/integrations/markdown-pages.ts";
+import { project } from "./src/project.ts";
+
+const site = "https://mmmikem.github.io";
+const base = "/web-push";
+
+const socialImage = {
+	url: `${site}${base}/og.png`,
+	// The card's own text; re-render public/og.png when the home tagline changes.
+	alt: "@mmmike/web-push: The whole Web Push flow, from subscribing in the browser to sending from the server, in one zero-dependency package.",
+};
 
 export default defineConfig({
-	site: "https://mmmikem.github.io",
-	base: "/web-push",
+	site,
+	base,
 	// The tutorial imports examples/app's files, which sit outside this project.
 	vite: { server: { fs: { allow: [".."] } } },
 	integrations: [
@@ -15,10 +25,26 @@ export default defineConfig({
 			description:
 				"Zero-dependency Web Push (RFC 8291) for Workers, Deno, Bun, Node, and browsers.",
 			customCss: ["./src/styles/reference.css"],
+			head: [
+				{ tag: "meta", attrs: { property: "og:image", content: socialImage.url } },
+				{ tag: "meta", attrs: { property: "og:image:width", content: "1200" } },
+				{ tag: "meta", attrs: { property: "og:image:height", content: "630" } },
+				{ tag: "meta", attrs: { property: "og:image:alt", content: socialImage.alt } },
+				{ tag: "meta", attrs: { name: "twitter:image", content: socialImage.url } },
+				{ tag: "meta", attrs: { name: "twitter:image:alt", content: socialImage.alt } },
+				// The sizes keep Chrome on the SVG: https://evilmartians.com/chronicles/how-to-favicon-in-2021-six-files-that-fit-most-needs
+				{ tag: "link", attrs: { rel: "icon", href: `${base}/favicon.ico`, sizes: "32x32" } },
+				{ tag: "link", attrs: { rel: "apple-touch-icon", href: `${base}/apple-touch-icon.png` } },
+			],
+			lastUpdated: true,
+			editLink: { baseUrl: `${project.repositoryUrl}/edit/main/docs/` },
+			routeMiddleware: "./src/routeData.ts",
 			// The header's runtime menu sits beside the theme switcher.
 			components: {
 				ThemeSelect: "./src/components/ThemeSelect.astro",
 				PageTitle: "./src/components/PageTitle.astro",
+				MarkdownContent: "./src/components/MarkdownContent.astro",
+				Footer: "./src/components/Footer.astro",
 			},
 			social: [{ icon: "github", label: "GitHub", href: "https://github.com/MMMikeM/web-push" }],
 			plugins: [

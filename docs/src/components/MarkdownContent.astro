@@ -1,0 +1,14 @@
+---
+import Default from "@astrojs/starlight/components/MarkdownContent.astro";
+
+// Starlight scrolls a wide table by making it a block, which also stops it
+// spanning the column; a wrapper scrolls instead, so the table can stay a table.
+const wrapTables = (html: string) =>
+	html
+		.replaceAll(/<table(?=[\s>])/g, '<div class="table-scroll"><table')
+		.replaceAll("</table>", "</table></div>");
+
+const content = wrapTables(await Astro.slots.render("default"));
+---
+
+<Default><Fragment set:html={content} /></Default>

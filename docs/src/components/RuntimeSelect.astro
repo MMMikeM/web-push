@@ -116,7 +116,8 @@ const RUNTIMES = ["Node", "Bun", "Deno", "Cloudflare Workers", "Vercel Edge"];
 		border: 1px solid var(--sl-color-gray-5);
 		border-radius: 0.5rem;
 		background-color: var(--sl-color-gray-6);
-		font-size: var(--sl-text-sm);
+		/* Below 16px, iOS zooms the page when the menu takes focus. */
+		font-size: var(--sl-text-base);
 		transition: border-color 0.15s ease;
 	}
 
@@ -136,7 +137,8 @@ const RUNTIMES = ["Node", "Bun", "Deno", "Cloudflare Workers", "Vercel Edge"];
 	.inline-control select {
 		/* Size to the chosen runtime rather than the longest; others fall back to that. */
 		field-sizing: content;
-		padding-block: 0.375rem;
+		min-height: 2.75rem;
+		padding-block: 0;
 		border: 0;
 		outline: none;
 		background: transparent;

@@ -34,6 +34,10 @@
 	width: 100%;
 }
 
+.sl-markdown-content .table-scroll {
+	overflow-x: auto;
+}
+
 /*
  * Parameter and field tables get a fixed name column, so it lines up from one
  * table to the next. Prose tables keep sizing columns to their content.
