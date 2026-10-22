@@ -249,7 +249,7 @@ describe("sendPushNotification — options", () => {
 		stubFetch(201);
 		await expect(
 			sendPushNotification(subscription(), payload, vapid, { vapidExpiration: 90000 }),
-		).rejects.toThrow("VAPID JWT expiration must be between 1 and 86400 seconds (24 hours)");
+		).rejects.toThrow("VAPID JWT expiration must be a whole number of seconds from 1 to 86400");
 	});
 
 	it("sets Urgency and Topic headers when provided", async () => {

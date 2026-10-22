@@ -26,6 +26,12 @@ this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `p256dh` off the curve) gives a plain `Error` instead of a `TypeError` or
   `DOMException`. `sendPushNotification` throws it, and `sendPushBatch` files it under
   `failed`. A `TypeError` now means the network alone.
+- A malformed VAPID key, whether not URL-safe base64 or not a valid P-256 key pair, makes
+  `createVapidJwt`, `sendPushNotification` and `sendPushBatch` throw a plain `Error`
+  instead of a `DOMException`. `subscribe` does the same for a `vapidPublicKey` that
+  isn't URL-safe base64.
+- `vapidExpiration` must be a whole number of seconds. `NaN` and fractions now throw
+  before sending; `NaN` used to be signed into a JWT the push service then rejected.
 
 ## [1.4.0-beta.1] - 2026-10-20
 

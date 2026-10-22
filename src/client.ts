@@ -87,10 +87,17 @@ const isPermissionGranted = async (): Promise<boolean> =>
 // A key that can't be a P-256 public key (a missing env var, the private key
 // pasted by mistake) must fail before the existing subscription is touched:
 // otherwise it is torn down and the browser then refuses the replacement.
+const INVALID_VAPID_PUBLIC_KEY = "vapidPublicKey must be a 65-byte uncompressed P-256 public key";
+
 const decodeVapidPublicKey = (vapidPublicKey: string): Uint8Array<ArrayBuffer> => {
-	const key = urlBase64ToUint8Array(vapidPublicKey);
+	let key: Uint8Array<ArrayBuffer>;
+	try {
+		key = urlBase64ToUint8Array(vapidPublicKey);
+	} catch (cause) {
+		throw new Error(INVALID_VAPID_PUBLIC_KEY, { cause });
+	}
 	if (key.length !== 65 || key[0] !== 0x04) {
-		throw new Error("vapidPublicKey must be a 65-byte uncompressed P-256 public key");
+		throw new Error(INVALID_VAPID_PUBLIC_KEY);
 	}
 	return key;
 };

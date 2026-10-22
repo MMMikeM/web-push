@@ -98,16 +98,25 @@ export type VapidJwtOptions = {
 const encodeJwtSegment = (segment: object): string =>
 	uint8ArrayToUrlBase64(new TextEncoder().encode(JSON.stringify(segment)));
 
+const decodeVapidKey = (value: string, name: string): Uint8Array<ArrayBuffer> => {
+	try {
+		return urlBase64ToUint8Array(value);
+	} catch (cause) {
+		throw new Error(`VAPID ${name} is not URL-safe base64`, { cause });
+	}
+};
+
 /**
  * Rebuild the ECDSA signing key from the raw VAPID key pair. Web Crypto has no
  * "raw" import for private keys, so the P-256 point is split into the JWK
  * coordinates it does accept.
  *
- * @throws {Error} if either key is the wrong length or encoding.
+ * @throws {Error} if either key is the wrong length or encoding, or the pair
+ * isn't a valid P-256 key.
  */
-const importSigningKey = (publicKey: string, privateKey: string): Promise<CryptoKey> => {
-	const publicKeyArray = urlBase64ToUint8Array(publicKey);
-	const privateKeyArray = urlBase64ToUint8Array(privateKey);
+const importSigningKey = async (publicKey: string, privateKey: string): Promise<CryptoKey> => {
+	const publicKeyArray = decodeVapidKey(publicKey, "public key");
+	const privateKeyArray = decodeVapidKey(privateKey, "private key");
 	if (publicKeyArray.length !== 65 || publicKeyArray[0] !== 0x04) {
 		throw new Error("VAPID public key must be a 65-byte uncompressed P-256 point");
 	}
@@ -122,23 +131,31 @@ const importSigningKey = (publicKey: string, privateKey: string): Promise<Crypto
 		y: uint8ArrayToUrlBase64(publicKeyArray.slice(33)),
 		d: uint8ArrayToUrlBase64(privateKeyArray),
 	};
-	return crypto.subtle.importKey("jwk", jwk, { name: "ECDSA", namedCurve: "P-256" }, false, [
-		"sign",
-	]);
+	try {
+		return await crypto.subtle.importKey(
+			"jwk",
+			jwk,
+			{ name: "ECDSA", namedCurve: "P-256" },
+			false,
+			["sign"],
+		);
+	} catch (cause) {
+		throw new Error("VAPID keys are not a valid P-256 key pair", { cause });
+	}
 };
 
 /**
  * Create a VAPID JWT for authenticating with push services.
  *
- * @throws {Error} if the expiration is outside 1–86400 seconds, the subject is
+ * @throws {Error} if the expiration isn't a whole number from 1 to 86400 seconds, the subject is
  * not a `mailto:`/`https://` URI, or either key is malformed.
  */
 export const createVapidJwt = async (options: VapidJwtOptions): Promise<string> => {
 	const { audience, subject, publicKey, privateKey, expiration = 43200 } = options;
 
 	// VAPID JWT lifetime is capped at 24h (RFC 8292 §2); services reject longer.
-	if (expiration <= 0 || expiration > 86400) {
-		throw new Error("VAPID JWT expiration must be between 1 and 86400 seconds (24 hours)");
+	if (!Number.isInteger(expiration) || expiration < 1 || expiration > 86400) {
+		throw new Error("VAPID JWT expiration must be a whole number of seconds from 1 to 86400");
 	}
 	// RFC 8292 §2.1: the subject must be a contact URI (mailto: or https:).
 	if (!/^(mailto:|https:\/\/)/.test(subject)) {

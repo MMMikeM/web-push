@@ -265,6 +265,7 @@ describe("subscribe", () => {
 	it.each([
 		{ problem: "an empty key", key: "" },
 		{ problem: "a private key", key: uint8ArrayToUrlBase64(new Uint8Array(32)) },
+		{ problem: "a key that isn't base64url", key: "not base64url!" },
 	])("rejects $problem before prompting or touching the existing subscription", async ({ key }) => {
 		const existing = subscriptionBoundTo(randomVapidKey());
 		const { NotificationStub, pushManager } = setupPushEnv({

@@ -188,8 +188,24 @@ describe("createVapidJwt", () => {
 				privateKey,
 				expiration: 86401,
 			}),
-		).rejects.toThrow("VAPID JWT expiration must be between 1 and 86400 seconds (24 hours)");
+		).rejects.toThrow("VAPID JWT expiration must be a whole number of seconds from 1 to 86400");
 	});
+
+	it.each([Number.NaN, 0.5, 3600.5])(
+		"rejects an expiration that isn't a whole number (%s)",
+		async (expiration) => {
+			const { publicKey, privateKey } = await generateVapidKeys();
+			await expect(
+				createVapidJwt({
+					audience: "https://example.com",
+					subject: "mailto:a@b.com",
+					publicKey,
+					privateKey,
+					expiration,
+				}),
+			).rejects.toThrow("VAPID JWT expiration must be a whole number of seconds from 1 to 86400");
+		},
+	);
 
 	it.each([0, -3600])("rejects a non-positive expiration (%i)", async (expiration) => {
 		const { publicKey, privateKey } = await generateVapidKeys();
@@ -201,7 +217,7 @@ describe("createVapidJwt", () => {
 				privateKey,
 				expiration,
 			}),
-		).rejects.toThrow("VAPID JWT expiration must be between 1 and 86400 seconds (24 hours)");
+		).rejects.toThrow("VAPID JWT expiration must be a whole number of seconds from 1 to 86400");
 	});
 
 	it("accepts an expiration of exactly 24 hours (86400s)", async () => {
@@ -275,6 +291,58 @@ describe("createVapidJwt", () => {
 				privateKey: uint8ArrayToUrlBase64(new Uint8Array(10)),
 			}),
 		).rejects.toThrow("VAPID private key must be a 32-byte P-256 scalar");
+	});
+
+	it.each([
+		{
+			problem: "a public key off the P-256 curve",
+			key: "public" as const,
+			bytes: () => Uint8Array.of(0x04, ...new Uint8Array(64).fill(1)),
+		},
+		{ problem: "a zero private key", key: "private" as const, bytes: () => new Uint8Array(32) },
+	])("rejects $problem with a plain Error, not a DOMException", async ({ key, bytes }) => {
+		const pair = await generateVapidKeys();
+		await expect(
+			createVapidJwt({
+				audience: "https://example.com",
+				subject: "mailto:a@b.com",
+				publicKey: key === "public" ? uint8ArrayToUrlBase64(bytes()) : pair.publicKey,
+				privateKey: key === "private" ? uint8ArrayToUrlBase64(bytes()) : pair.privateKey,
+			}),
+		).rejects.toMatchObject({
+			name: "Error",
+			message: "VAPID keys are not a valid P-256 key pair",
+		});
+	});
+
+	it("rejects a non-base64url public key with a plain Error", async () => {
+		const { privateKey } = await generateVapidKeys();
+		await expect(
+			createVapidJwt({
+				audience: "https://example.com",
+				subject: "mailto:a@b.com",
+				publicKey: "not base64url!",
+				privateKey,
+			}),
+		).rejects.toMatchObject({
+			name: "Error",
+			message: "VAPID public key is not URL-safe base64",
+		});
+	});
+
+	it("rejects a non-base64url private key with a plain Error", async () => {
+		const { publicKey } = await generateVapidKeys();
+		await expect(
+			createVapidJwt({
+				audience: "https://example.com",
+				subject: "mailto:a@b.com",
+				publicKey,
+				privateKey: "not base64url!",
+			}),
+		).rejects.toMatchObject({
+			name: "Error",
+			message: "VAPID private key is not URL-safe base64",
+		});
 	});
 
 	it("fails verification against a different public key", async () => {

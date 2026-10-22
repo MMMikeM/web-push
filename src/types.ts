@@ -95,8 +95,9 @@ export type SendPushOptions = {
 	ttl?: number;
 	/**
 	 * VAPID JWT expiration in seconds from now (default: 43200 = 12 hours). RFC 8292
-	 * caps it at 24 hours, so a value outside 1–86400 throws an `Error` before any
-	 * request is made, and {@link sendPushBatch} throws it once for the whole batch.
+	 * caps it at 24 hours, so anything but a whole number from 1 to 86400 throws an
+	 * `Error` before any request is made, and {@link sendPushBatch} throws it once for
+	 * the whole batch.
 	 * Kept separate from `ttl`, which controls only message retention.
 	 */
 	vapidExpiration?: number;
