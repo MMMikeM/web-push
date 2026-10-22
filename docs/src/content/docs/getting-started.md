@@ -11,6 +11,8 @@ npm install @mmmike/web-push
 
 The package is ESM-only, so a dependency tree never ends up with two copies of `WebPushError`, which would break `instanceof` checks against it. `import` works everywhere, and `require()` works on Node 22.12+ via `require(esm)`.
 
+Replacing the `web-push` package? [Migrate from web-push](/web-push/guides/migrate-from-web-push/) keeps your stored subscriptions, keys and service worker.
+
 ## 1. Generate VAPID keys
 
 Run this once as a script and save the pair as secrets:
@@ -58,7 +60,7 @@ self.addEventListener("notificationclick", (event) => {
 });
 ```
 
-This is the receiving end of [`PushPayload`](/web-push/reference/send/#pushpayload): `title` and `body` become the notification, `tag` collapses duplicates, and `url` opens on click, focusing an already-open tab rather than opening another.
+This is the receiving end of [`PushPayload`](/web-push/reference/send/#pushpayload): `title` and `body` become the notification, `tag` [collapses duplicates](/web-push/guides/collapse-notifications/), and `url` opens on click, focusing an already-open tab rather than opening another.
 
 ## 3. Subscribe in the browser
 
@@ -142,10 +144,19 @@ try {
 }
 ```
 
-Read the VAPID keys from wherever you saved them: `env` bindings on a Worker, `process.env` on Node, `Deno.env.get` on Deno.
+Read the VAPID keys from wherever you saved them: `env` bindings on a Worker, `process.env` on Node, `Deno.env.get` on Deno. [Runtime setup](/web-push/guides/runtime-setup/) shows each one, along with Bun and Vercel Edge.
 
 ## Next steps
 
-- [Build a complete app](/web-push/tutorial/) puts these four steps into one app you can run on Node or Cloudflare Workers: a notifications toggle, stored subscriptions, and a broadcast route.
-- [Recipes](/web-push/guides/send-to-many/) cover single tasks: sending to many, retries, collapsing notifications, rotating keys, and authenticated uploads.
+- [Build a complete app](/web-push/tutorial/) puts these four steps into one app you can run on Node, Bun, Deno or Cloudflare Workers: a notifications toggle, stored subscriptions, and a broadcast route.
+- Recipes cover single tasks:
+  - [Send to many subscribers](/web-push/guides/send-to-many/)
+  - [Handle errors and retries](/web-push/guides/handle-errors/)
+  - [Collapse and expire notifications](/web-push/guides/collapse-notifications/)
+  - [Rotate VAPID keys](/web-push/guides/rotate-vapid-keys/)
+  - [Upload subscriptions with authentication](/web-push/guides/authenticated-uploads/)
+  - [Subscribe from a Chrome extension's service worker](/web-push/guides/extension-service-workers/)
+  - [Secure your endpoints](/web-push/guides/secure-endpoints/)
+  - [Set up Node, Workers, Deno, Bun or Vercel Edge](/web-push/guides/runtime-setup/)
+  - [Migrate from web-push](/web-push/guides/migrate-from-web-push/)
 - The [API reference](/web-push/reference/) documents every export.

@@ -28,6 +28,6 @@ Subscribers who don't come back are the problem: they keep subscriptions bound t
 
 4. **Retire the old pair** once few subscriptions still use it. Delete those that remain, or let them fail with a 401 or 403 and delete them then.
 
-## The gap
+## Browsers that don't report a subscription's key
 
 Some browsers don't report which key a subscription was created with (`subscription.options.applicationServerKey` is `null`). With nothing to compare, `subscribe` keeps the existing subscription, so it stays on the old key even after the visitor returns. Those subscriptions only move when the old pair is retired: a 401 or 403 after rotating means this is what happened, though nothing in the error says so.

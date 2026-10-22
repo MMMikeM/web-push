@@ -41,6 +41,9 @@ const parseRetryAfterMs = (retryAfter: string | null): number | null => {
  * other than 404/410 ("gone"), which resolve to `false` instead. Carries the
  * status, response body, endpoint, and the `Retry-After` header both verbatim
  * (`retryAfter`) and parsed to milliseconds-from-now (`retryAfterMs`).
+ *
+ * @see {@link https://mmmikem.github.io/web-push/guides/handle-errors/ | Handle errors and retries}
+ * @see {@link https://mmmikem.github.io/web-push/guides/secure-endpoints/ | Secure your endpoints}
  */
 export class WebPushError extends Error {
 	/** The push service's HTTP status */
@@ -121,6 +124,8 @@ export type RawPushPayload = RawBytes;
  * throw on anything else — which is also why the send functions take this
  * wrapper rather than a bare string: a misdirected string would type-check,
  * deliver, and only fail inside `event.data.json()` on the device.
+ *
+ * @see {@link https://mmmikem.github.io/web-push/guides/migrate-from-web-push/ | Migrate from web-push}
  */
 export const rawPayload = (payload: string | Uint8Array): RawPushPayload =>
 	new RawBytes(typeof payload === "string" ? new TextEncoder().encode(payload) : payload);
@@ -142,6 +147,9 @@ const encodePayload = (payload: PushPayload | RawPushPayload): Uint8Array =>
  * a conditional pass-through would make near-identical inputs produce
  * unrelated wire values. Set {@link SendPushOptions.topic} directly when you
  * need an exact header value.
+ *
+ * @see {@link https://mmmikem.github.io/web-push/guides/collapse-notifications/ | Collapse and expire notifications}
+ * @see {@link https://www.rfc-editor.org/rfc/rfc8030#section-5.4 | RFC 8030 §5.4}
  */
 export const topicFromString = async (input: string): Promise<string> => {
 	const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
@@ -289,6 +297,8 @@ const postToPushService = async (
  * const delivered = await sendPushNotification(subscription, payload, vapid);
  * if (!delivered) await removeFromStore(subscription.endpoint);
  * ```
+ * @see {@link https://mmmikem.github.io/web-push/guides/handle-errors/ | Handle errors and retries}
+ * @see {@link https://mmmikem.github.io/web-push/guides/collapse-notifications/ | Collapse and expire notifications}
  */
 export const sendPushNotification = async (
 	subscription: PushSubscriptionData,
@@ -339,6 +349,8 @@ export const sendPushNotification = async (
  * await removeFromStore(gone);
  * for (const { endpoint, error } of failed) console.warn("push failed", endpoint, error);
  * ```
+ * @see {@link https://mmmikem.github.io/web-push/guides/send-to-many/ | Send to many}
+ * @see {@link https://mmmikem.github.io/web-push/guides/handle-errors/ | Handle errors and retries}
  */
 export const sendPushBatch = async (
 	subscriptions: readonly PushSubscriptionData[],

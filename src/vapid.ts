@@ -52,6 +52,8 @@ export const uint8ArrayToUrlBase64 = (array: Uint8Array): string => {
  * const { publicKey, privateKey } = await generateVapidKeys();
  * console.log({ publicKey, privateKey });
  * ```
+ * @see {@link https://mmmikem.github.io/web-push/guides/runtime-setup/ | Runtime setup}
+ * @see {@link https://mmmikem.github.io/web-push/guides/rotate-vapid-keys/ | Rotate VAPID keys}
  */
 export const generateVapidKeys = async (): Promise<{
 	publicKey: string;

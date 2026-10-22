@@ -5,27 +5,31 @@ import { format } from "oxfmt";
 import { API, SignatureKind, SymbolFlags, TypeFlags, TypeFormatFlags } from "typescript/sync";
 import type { Checker, Signature, Symbol, Type } from "typescript/sync";
 
-type Page = { name: string; title: string; description: string; order: number };
+type Page = { name: string; label: string; title: string; description: string; order: number };
 
 const PAGES: Page[] = [
 	{
 		name: "client",
-		title: "Client",
+		label: "Client",
+		title: "Client API for subscribing to push notifications",
 		description:
 			"Browser helpers: feature detection, the permission prompt, subscribing, and syncing the subscription with your server.",
 		order: 1,
 	},
 	{
 		name: "send",
-		title: "Send",
+		label: "Send",
+		title: "Send API for encrypting and delivering push messages",
 		description:
 			"Server-side sending: encrypt, sign, and deliver one notification, or fan one out to many subscriptions.",
 		order: 2,
 	},
 	{
 		name: "vapid",
-		title: "VAPID",
-		description: "VAPID key generation, JWT signing, and the base64url codec they share.",
+		label: "VAPID",
+		title: "VAPID API for generating keys and signing JWTs",
+		description:
+			"Generate VAPID keys and sign RFC 8292 VAPID JWTs with Web Crypto, on the server or in the browser, plus the base64url helpers for converting keys.",
 		order: 3,
 	},
 ];
@@ -33,6 +37,7 @@ const ROOT = "index";
 // Absolute, so links survive in the per-page Markdown and llms-full.txt, which
 // are read away from the page they were written for. Matches astro.config.mjs.
 const SITE_BASE = "/web-push";
+const SITE_URL = `https://mmmikem.github.io${SITE_BASE}/`;
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const outDir = join(repoRoot, "docs/src/content/docs/reference");
@@ -135,12 +140,21 @@ const hrefFor = (name: string) => {
 	return target && `${SITE_BASE}/reference/${page}#${anchor(name)}`;
 };
 
+// JSDoc links to the docs by full URL, since editors show it away from the site.
+const sitePath = (url: string) =>
+	url.startsWith(SITE_URL) ? `${SITE_BASE}/${url.slice(SITE_URL.length)}` : url;
+
 const linkify = (text: string) =>
-	text.replace(/\{@link\s+([\w.]+)(?:[\s|]+([^}]+))?\}/g, (_, name: string, label?: string) => {
-		const href = hrefFor(name.split(".")[0] ?? name);
-		const shown = label?.trim() ?? `\`${name}\``;
-		return href ? `[${shown}](${href})` : shown;
-	});
+	text
+		.replace(
+			/\{@link\s+(https?:\/\/[^\s|}]+)(?:[\s|]+([^}]+))?\}/g,
+			(_, url: string, label?: string) => `[${label?.trim() ?? url}](${sitePath(url)})`,
+		)
+		.replace(/\{@link\s+([\w.]+)(?:[\s|]+([^}]+))?\}/g, (_, name: string, label?: string) => {
+			const href = hrefFor(name.split(".")[0] ?? name);
+			const shown = label?.trim() ?? `\`${name}\``;
+			return href ? `[${shown}](${href})` : shown;
+		});
 
 type JSDocHost = { jsDoc?: readonly { getText(): string }[]; parent?: JSDocHost };
 
@@ -398,6 +412,7 @@ const commonSections = (name: string, symbol: Symbol, returnType?: string) => {
 				]
 			: [];
 	const examples = tagsOf(symbol, "example").map(fenced);
+	const seeAlso = tagsOf(symbol, "see").map((text) => `- ${linkify(text).replaceAll("\n", " ")}`);
 	const otherSubpaths = (exportedFrom.get(name) ?? [])
 		.filter((module) => module !== ROOT && module !== home.get(name))
 		.map((module) => `\`${importPath(module)}\``);
@@ -407,6 +422,7 @@ const commonSections = (name: string, symbol: Symbol, returnType?: string) => {
 			...returns,
 			...(throws.length ? ["**Throws**", "", ...throws] : []),
 			...(examples.length ? ["", "**Example**", "", ...examples] : []),
+			...(seeAlso.length ? ["", "**See also**", "", ...seeAlso] : []),
 			...(otherSubpaths.length ? ["", `Also exported from ${otherSubpaths.join(" and ")}.`] : []),
 			"",
 		],
@@ -535,12 +551,16 @@ const renderEntries = (page: string) => {
 	});
 };
 
-const frontmatter = (title: string, description: string, order: number) => [
+// Generated and gitignored, so there is no file to edit and no history to date.
+const frontmatter = (title: string, description: string, order: number, label?: string) => [
 	"---",
 	`title: ${JSON.stringify(title)}`,
 	`description: ${JSON.stringify(description)}`,
+	"editUrl: false",
+	"lastUpdated: false",
 	"sidebar:",
 	`  order: ${order}`,
+	...(label ? [`  label: ${JSON.stringify(label)}`] : []),
 	"---",
 	"",
 ];
@@ -558,7 +578,7 @@ const overviewRow = (name: string, symbol: Symbol) =>
 	`| [\`${name}\`](${hrefFor(name)}) | ${tableCell(linkify(overviewSummary(symbol)))} |`;
 
 const entryTitle = (module: string) =>
-	PAGES.find((page) => page.name === module)?.title ?? "Package root only";
+	PAGES.find((page) => page.name === module)?.label ?? "Package root only";
 
 const overviewSections = KINDS.flatMap((kind) => {
 	const byEntryPoint = [...PAGES.map((page) => page.name), ROOT].flatMap((module) => {
@@ -618,7 +638,7 @@ mkdirSync(outDir, { recursive: true });
 const pageContents = PAGES.map((page) => ({
 	page,
 	lines: [
-		...frontmatter(page.title, page.description, page.order),
+		...frontmatter(page.title, page.description, page.order, page.label),
 		`Import from \`${importPath(page.name)}\`, or from the package root, \`${importPath(ROOT)}\`.`,
 		"",
 		...renderEntries(page.name),

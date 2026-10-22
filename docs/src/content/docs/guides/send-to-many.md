@@ -34,7 +34,7 @@ A failed send never rejects the batch. Every subscription lands in one of three 
 
 Mistakes in your own input throw before anything is sent, rather than appearing ten thousand times in `failed`: a bad VAPID config, a payload over the 3,993-byte limit, an invalid `topic`, or an invalid `concurrency` or `timeoutMs`.
 
-## Tuning
+## Concurrency and other batch options
 
 The optional fourth argument takes everything [`sendPushNotification`](/web-push/reference/send/#sendpushnotification) does, plus `concurrency`:
 
@@ -48,10 +48,11 @@ await sendPushBatch(subscriptions, payload, vapid, {
 
 - **`concurrency`** bounds the sends in flight. Lower it on platforms that cap outbound connections.
 - **`signal`** stops the pool from starting new sends when it aborts. Subscriptions it never reached appear in none of the three results, so compare `delivered + gone.length + failed.length` with the number you passed in.
+- **`ttl`** and **`topic`** apply to every message in the batch. [Collapse and expire notifications](/web-push/guides/collapse-notifications/) explains both.
 
-The VAPID token is signed once per push service rather than once per message, since it's scoped to the push service's origin. Each message still gets its own encryption keys, as RFC 8291 requires.
+The VAPID token is signed once per push service rather than once per message, since it's scoped to the push service's origin. Each message still gets its own encryption keys, as [RFC 8291 §3.1](https://www.rfc-editor.org/rfc/rfc8291#section-3.1) requires.
 
-## Large lists
+## Sending to large subscriber lists
 
 `sendPushBatch` takes an array, so it holds every subscription in memory at once. For a large list, read it from your database a page at a time and send each page as its own batch:
 

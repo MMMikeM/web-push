@@ -15,7 +15,7 @@ Treat your subscriptions table the same way you treat session tokens.
 
 ## Only push to real push services
 
-The send functions POST to whatever endpoint a subscription names, and the subscription came from a browser. The library rejects endpoints that aren't `https:`, as RFC 8030 §3 requires, but it can't know which hosts are genuine push services.
+The send functions POST to whatever endpoint a subscription names, and the subscription came from a browser. The library rejects endpoints that aren't `https:`, as [RFC 8030 §3](https://www.rfc-editor.org/rfc/rfc8030#section-3) requires, but it can't know which hosts are genuine push services.
 
 If a hostile client registers `https://internal-service.local/hooks` as its "push endpoint", your server becomes a proxy into networks it can reach and the attacker can't. Where that matters, allowlist the real push hosts when you save a subscription:
 
