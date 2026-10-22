@@ -11,4 +11,7 @@
 		// The Worker only negotiates page URLs; built assets go straight to the asset server.
 		"run_worker_first": ["/*", "!/_astro/*", "!/pagefind/*"],
 	},
+	// Page and Markdown views, logged server-side. Query them with the SQL API:
+	// POST api.cloudflare.com/client/v4/accounts/<id>/analytics_engine/sql
+	"analytics_engine_datasets": [{ "binding": "VIEWS", "dataset": "web_push_docs_views" }],
 }
