@@ -55,6 +55,7 @@ export default defineConfig({
 						"Every page is also served as Markdown, at its URL with `.md` in place of the trailing slash (the home page at `index.md`). The key pages:",
 						[
 							["getting-started", "Quickstart: keys, service worker, subscribe, send"],
+							["generate-vapid-keys", "Generate a VAPID key pair, and where each key goes"],
 							["tutorial", "Build a complete app on Node, Bun, Deno, or Cloudflare Workers"],
 							["compare", "How it compares to web-push and the edge-native alternatives"],
 							["guides/runtime-setup", "Install and load VAPID keys on each runtime"],
@@ -86,6 +87,7 @@ export default defineConfig({
 					label: "Start here",
 					items: [
 						{ label: "Quickstart", slug: "getting-started" },
+						{ label: "VAPID key generator", slug: "generate-vapid-keys" },
 						{ label: "Build a complete app", slug: "tutorial" },
 						{ label: "How it compares", slug: "compare" },
 					],

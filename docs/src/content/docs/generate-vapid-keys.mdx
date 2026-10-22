@@ -1,0 +1,35 @@
+---
+title: VAPID key generator
+description: Generate a VAPID key pair for Web Push in your browser. Web Crypto makes the keys on this page, and nothing here sends them anywhere.
+---
+
+import VapidKeyGenerator from "../../components/VapidKeyGenerator.astro";
+
+A VAPID key pair identifies your server to the push services, so they accept pushes for your subscribers. The generator on this page runs [`generateVapidKeys()`](/reference/vapid/#generatevapidkeys) in your browser on Web Crypto, and nothing on the page sends the keys anywhere.
+
+<VapidKeyGenerator />
+
+## Where each key goes
+
+- **The public key** goes to the browser, as the `vapidPublicKey` you pass to [`subscribe`](/reference/client/#subscribe). It's safe to ship in your page's code.
+- **The private key** stays on your server, in a secret store or an environment variable. Anyone who holds it can send pushes to every subscription made with the public key.
+- **The subject**, a `mailto:` or `https:` URL, isn't part of the pair. Push services use it to contact you about your traffic, and "Copy as .env" fills in a placeholder for it.
+
+Keep one pair per application. Each subscription is tied to the public key it was made with, so changing the pair later means [rotating the keys](/guides/rotate-vapid-keys/).
+
+## Generate them in code
+
+The same function, run once as a script:
+
+```ts
+import { generateVapidKeys } from "@mmmike/web-push/vapid";
+
+const { publicKey, privateKey } = await generateVapidKeys();
+console.log(`VAPID_PUBLIC_KEY=${publicKey}\nVAPID_PRIVATE_KEY=${privateKey}`);
+```
+
+[Runtime setup](/guides/runtime-setup/) covers loading the keys on each runtime.
+
+## Keys from web-push
+
+`web-push` stores keys in the same format, a URL-safe base64 65-byte public key and 32-byte private key, so a pair made by either library works in the other. [Migrate from web-push](/guides/migrate-from-web-push/) covers the rest of the switch.

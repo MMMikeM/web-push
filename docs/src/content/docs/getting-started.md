@@ -24,7 +24,7 @@ const { publicKey, privateKey } = await generateVapidKeys();
 console.log({ publicKey, privateKey });
 ```
 
-The public key goes to the browser; the private key never leaves your server.
+The public key goes to the browser; the private key never leaves your server. The [VAPID key generator](/generate-vapid-keys/) makes a pair in your browser instead.
 
 ## 2. Add a service worker
 
