@@ -71,10 +71,7 @@ export default defineConfig({
 							["reference/client", "API: browser helpers"],
 							["reference/vapid", "API: VAPID keys and base64url"],
 						]
-							.map(
-								([page, summary]) =>
-									`- [${page}.md](https://mmmikem.github.io/web-push/${page}.md): ${summary}`,
-							)
+							.map(([page, summary]) => `- [${page}.md](${site}${base}/${page}.md): ${summary}`)
 							.join("\n"),
 					].join("\n\n"),
 					// llms-small.txt leaves the API reference and the tutorial to their .md pages.

@@ -18,9 +18,9 @@ head:
 ## Which to use
 
 - **On Node, with `web-push` already working:** it's the established choice and works well there. Switching gets you the browser half, batches and the error model, and drops 16 packages from your tree. The [migration guide](/web-push/guides/migrate-from-web-push/) keeps your stored subscriptions, keys and service worker.
-- **On Workers, Deno, Bun, Netlify or Supabase:** `web-push` runs on each runtime's emulation of Node, and this package needs none. [Why that matters](#runtimes-that-emulate-node) is below.
+- **On Workers, Deno, Bun, Netlify or Supabase:** `web-push` runs on each runtime's emulation of Node, and this package needs none. [Why that matters](/web-push/compare/#runtimes-that-emulate-node) is below.
 - **On Vercel Edge, or Workers with Node compatibility off:** `web-push` doesn't run there; this package does.
-- **Choosing between the edge-native packages:** of those [compared below](#compared-with-the-edge-native-packages), two only build the request for you to send, none has a browser half, and `@pushforge/builder` still uses the draft `aesgcm` encryption.
+- **Choosing between the edge-native packages:** of those [compared below](/web-push/compare/#compared-with-the-edge-native-packages), two only build the request for you to send, none has a browser half, and `@pushforge/builder` still uses the draft `aesgcm` encryption.
 
 ## Runtimes that emulate Node
 

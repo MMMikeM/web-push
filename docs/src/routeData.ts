@@ -1,5 +1,6 @@
 import { getCollection } from "astro:content";
 import { defineRouteMiddleware, type StarlightRouteData } from "@astrojs/starlight/route-data";
+import { markdownPath } from "./integrations/markdown-pages.ts";
 import { project } from "./project.ts";
 
 type Head = StarlightRouteData["head"];
@@ -37,13 +38,12 @@ const setOpenGraphType = (head: Head, type: string) => {
 	}
 };
 
-/** Mirrors `markdownPages()`, which writes a twin for every page but 404, the home page's as `index.md`. */
 const markdownTwin = (home: string, id: string): Head[number] => ({
 	tag: "link",
 	attrs: {
 		rel: "alternate",
 		type: "text/markdown",
-		href: new URL(`${id === "" ? "index" : id}.md`, home).pathname,
+		href: new URL(markdownPath(id), home).pathname,
 	},
 });
 

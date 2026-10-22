@@ -130,7 +130,8 @@ const toMarkdown = async (html: string): Promise<string | undefined> => {
 	return processor.stringify(await processor.run(tree));
 };
 
-const markdownPath = (pathname: string) =>
+/** Where `markdownPages()` writes a page's Markdown copy, relative to the site root. */
+export const markdownPath = (pathname: string) =>
 	pathname === "" ? "index.md" : `${pathname.replace(/\/$/, "")}.md`;
 
 /**
