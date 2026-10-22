@@ -23,6 +23,8 @@ export default defineConfig({
 			description:
 				"Zero-dependency Web Push (RFC 8291) for Workers, Deno, Bun, Node, and browsers.",
 			customCss: ["./src/styles/reference.css"],
+			// One dark theme, so code reads the same in light and dark mode.
+			expressiveCode: { themes: ["material-theme-palenight"] },
 			head: [
 				{ tag: "meta", attrs: { property: "og:image", content: socialImage.url } },
 				{ tag: "meta", attrs: { property: "og:image:width", content: "1200" } },
