@@ -11,7 +11,7 @@ npm install @mmmike/web-push
 
 The package is ESM-only, so a dependency tree never ends up with two copies of `WebPushError`, which would break `instanceof` checks against it. `import` works everywhere, and `require()` works on Node 22.12+ via `require(esm)`.
 
-Replacing the `web-push` package? [Migrate from web-push](/web-push/guides/migrate-from-web-push/) keeps your stored subscriptions, keys and service worker.
+If you're replacing the `web-push` package, [Migrate from web-push](/web-push/guides/migrate-from-web-push/) keeps your stored subscriptions, keys and service worker.
 
 ## 1. Generate VAPID keys
 

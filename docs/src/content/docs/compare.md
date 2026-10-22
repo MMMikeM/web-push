@@ -8,11 +8,11 @@ head:
     content: "@mmmike/web-push vs web-push and alternatives"
 ---
 
-`@mmmike/web-push` is built on `fetch` and Web Crypto, the standard APIs that Cloudflare Workers, Deno, Bun, Node and browsers each implement natively. Nothing sits between your code and the platform, so it runs the same everywhere, and it carries no dependencies. On top of the send, you get:
+`@mmmike/web-push` is built on `fetch` and Web Crypto, the standard APIs that Cloudflare Workers, Deno, Bun, Node and browsers each implement natively. Nothing sits between your code and the platform, so it behaves the same on each of them, and it carries no dependencies. On top of the send, you get:
 
 - **The browser half**: subscribing, permission handling, replacing a subscription made with an old VAPID key, and uploading it to your server.
 - **Batches** with bounded concurrency, sorted into delivered, gone and failed.
-- **An error model you can act on**: 404 and 410 come back as "gone" rather than as errors, `Retry-After` is parsed for you, each request has a timeout and takes an `AbortSignal`, and bad payloads, topics and endpoints are rejected before anything is sent.
+- **Error handling**: 404 and 410 resolve as "gone", `Retry-After` is parsed for you, each request has a timeout and takes an `AbortSignal`, and bad payloads, topics and endpoints are rejected before anything is sent.
 - **Output pinned byte-for-byte** to the [RFC 8291 test vector](https://www.rfc-editor.org/rfc/rfc8291#appendix-A), in [one crypto file](https://github.com/MMMikeM/web-push/blob/main/src/encrypt.ts) with [a test](https://github.com/MMMikeM/web-push/blob/main/test/rfc8291-vector.test.ts) to audit.
 
 ## Which to use
@@ -34,7 +34,7 @@ head:
 | Cloudflare Workers | [Request headers were sent as `ttl: TTL, 60`](https://github.com/cloudflare/workerd/issues/4880)                                       | August 2025  |
 | Cloudflare Workers | [Requests to URLs with a query string were never sent](https://github.com/cloudflare/workerd/issues/5077), which Windows endpoints use | October 2025 |
 
-All of these are fixed, and `web-push` runs on these runtimes today. On Workers its `proxy` option still throws. This package calls `fetch` and `crypto.subtle`, which each runtime implements as its own API rather than as a copy of Node's, so a gap in a runtime's Node emulation doesn't reach it.
+All of these are fixed, and `web-push` runs on these runtimes today. On Workers its `proxy` option still throws. This package calls `fetch` and `crypto.subtle`, which each runtime implements itself, so a gap in a runtime's Node emulation doesn't reach it.
 
 ## On Cloudflare Workers
 
@@ -47,7 +47,7 @@ From the [2026-08-04 compatibility date](https://developers.cloudflare.com/worke
 | Startup, measured locally | 22.5 ms                    | 8.6 ms                   | 9.1 ms       |
 | With `no_nodejs_compat`   | fails to build (28 errors) | builds, 4.21 KiB gzipped | —            |
 
-The difference is `web-push`'s dependency tree (bn.js, asn1.js, jws, http_ece and others). Node compatibility itself costs nothing in a Worker that doesn't import Node modules: this package's Worker is the same size with it on or off. Both are far inside Cloudflare's limits, and once loaded, encrypting and signing a message takes about the same time with either. The startup figures come from `wrangler check startup` on an M-series Mac; Cloudflare's machines differ.
+The difference is `web-push`'s dependency tree (bn.js, asn1.js, jws, http_ece and others). Node compatibility itself adds nothing to a Worker that doesn't import Node modules, and this package's Worker is the same size with it on or off. Both are far inside Cloudflare's limits, and once loaded, encrypting and signing a message takes about the same time with either. The startup figures come from `wrangler check startup` on an M-series Mac; Cloudflare's machines differ.
 
 ### Older compatibility dates
 
@@ -115,4 +115,4 @@ These also use Web Crypto instead of Node's `crypto`, so none of them needs Node
 | Latest release            | 1.4.0, October 2026                       | 2.0.5, April 2026                                                        | 2.0.0, September 2026                                                                      | 0.1.2, March 2026                                            | 0.5.0, June 2025                                    |
 | Weekly downloads          | ~9.3k                                     | ~52k                                                                     | ~73k                                                                                       | ~3.9k                                                        | JSR only                                            |
 
-`@pushforge/builder` encrypts with the draft `aesgcm` scheme, putting the salt and DH key in `Encryption` and `Crypto-Key` headers instead of [RFC 8291's binary header block](https://www.rfc-editor.org/rfc/rfc8291#section-4). `@block65/webcrypto-web-push` moved to `aes128gcm` and the [RFC 8292 `vapid` scheme](https://www.rfc-editor.org/rfc/rfc8292#section-3) in 2.0.0; its README says to stay on 1.x if you need `aesgcm`. `web-push-neo` is a TypeScript fork of `web-push` that keeps its API shape. `@negrel/webpush` is published on JSR only, where its maintainer leaves Node off the list of supported runtimes, and its README says it "hasn't been reviewed by crypto experts".
+`@pushforge/builder` encrypts with the draft `aesgcm` scheme, putting the salt and DH key in `Encryption` and `Crypto-Key` headers instead of [RFC 8291's binary header block](https://www.rfc-editor.org/rfc/rfc8291#section-4). `@block65/webcrypto-web-push` moved to `aes128gcm` and the [RFC 8292 `vapid` scheme](https://www.rfc-editor.org/rfc/rfc8292#section-3) in 2.0.0; its README says to stay on 1.x if you need `aesgcm`. `web-push-neo` is a TypeScript fork of `web-push` that keeps its API. `@negrel/webpush` is published on JSR only, where its maintainer leaves Node off the list of supported runtimes, and its README says it "hasn't been reviewed by crypto experts".

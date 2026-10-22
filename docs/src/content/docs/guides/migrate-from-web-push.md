@@ -5,7 +5,7 @@ sidebar:
   order: 9
 ---
 
-Your stored subscriptions, VAPID keys, and service worker all carry over. The send call changes shape:
+Your stored subscriptions, VAPID keys, and service worker all carry over. Only the send call changes:
 
 ```diff lang="ts"
 - import webpush from "web-push";
@@ -25,9 +25,9 @@ The VAPID keys are passed on each call instead of set globally, so one process c
 - **Your VAPID keys work as they are.** `web-push`'s `generateVAPIDKeys` returns a base64url 65-byte uncompressed public key and a base64url 32-byte private key, which is the format this package reads and writes. Keep the same pair and existing subscriptions stay valid.
 - **Key generation is async.** `generateVAPIDKeys()` returns the keys directly; [`generateVapidKeys()`](/web-push/reference/vapid/#generatevapidkeys) returns a promise, because Web Crypto's key generation is async. Add an `await`.
 
-## Keep your service worker: `rawPayload`
+## Keeping your service worker with `rawPayload`
 
-If your service worker reads its own payload shape, such as `icon`, `badge`, or `actions`, keep sending exactly what you sent before. Wrap the string you were passing to `web-push` in [`rawPayload`](/web-push/reference/send/#rawpayload), and it's encrypted and delivered byte for byte:
+If your service worker reads its own payload format, such as `icon`, `badge`, or `actions`, keep sending exactly what you sent before. Wrap the string you were passing to `web-push` in [`rawPayload`](/web-push/reference/send/#rawpayload), and it's encrypted and delivered byte for byte:
 
 ```ts
 import { rawPayload, sendPushNotification } from "@mmmike/web-push/send";
@@ -60,8 +60,8 @@ There's deliberately no bare-string form. A string passed by mistake would type-
 | No equivalent     | `vapidExpiration`, the VAPID token's lifetime in seconds (default 12 hours, at most 24)                                              |
 | No equivalent     | `logger`, which receives each push service response                                                                                  |
 
-## Three behaviours that differ
+## Behaviours that differ
 
-- **The default TTL is 24 hours, not four weeks.** If you relied on `web-push`'s default, pass `{ ttl: 2419200 }`.
+- **The default TTL is 24 hours, where `web-push`'s is four weeks.** If you relied on `web-push`'s default, pass `{ ttl: 2419200 }`.
 - **A gone subscription resolves `false` instead of throwing.** A 404 or 410 means delete the subscription. Other push service errors throw a [`WebPushError`](/web-push/reference/send/#webpusherror), as `web-push` throws its own error.
 - **Sending many at once has its own function.** Replace a loop over `sendNotification` with [`sendPushBatch`](/web-push/guides/send-to-many/), which bounds concurrency and sorts the results.
