@@ -17,7 +17,7 @@ Zero-dependency Web Push (RFC 8291) for Workers, Deno, Bun, Vercel Edge, Node 22
 `docs/` is an Astro Starlight site, a separate project with its own `pnpm-workspace.yaml` and lockfile, so its dependencies never reach the library's lockfile or the `audit` in its release gate. Install and build from inside it (`pnpm --dir docs build`). The root formatter covers it, except the generated reference pages.
 
 - **The API reference is generated, not written.** `docs/scripts/generate-reference.ts` reads `src/` through TypeScript 7.1's API (a beta, hence the release-age exclusions in `docs/pnpm-workspace.yaml`) and writes `src/content/docs/reference/`, which is gitignored. Change the JSDoc, not the output.
-- **The build fails on an export without JSDoc.**
+- **The build fails on an export without JSDoc**, and `scripts/check-dist.ts` fails it on a built page missing its canonical, metadata, JSON-LD or Markdown copy.
 - **The tutorial shows `examples/app` as it is.** `tutorial.mdx` imports the example's files with `?raw`, so changing the example changes the tutorial; keep its prose in step.
 - **Links are root-absolute: `/guides/handle-errors/`, never `../handle-errors/`.** The same Markdown is served per page (`<page>.md`) and bundled into `llms-full.txt`, where relative links resolve against the wrong URL.
 - **It deploys to a Cloudflare Worker at `web-push.thelazyweb.dev`**, from `docs.yml` on stable release tags. `docs/worker/` serves each page's Markdown copy to requests that send `Accept: text/markdown`.

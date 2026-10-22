@@ -5,7 +5,7 @@
 	"scripts": {
 		"reference": "node scripts/generate-reference.ts",
 		"dev": "pnpm run reference && astro dev",
-		"build": "pnpm run reference && astro build",
+		"build": "pnpm run reference && astro build && node scripts/check-dist.ts",
 		"preview": "astro preview"
 	},
 	"devDependencies": {
