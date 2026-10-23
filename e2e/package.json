@@ -6,12 +6,14 @@
 		"conformance:node": "node conformance/run.ts",
 		"conformance:deno": "deno run conformance/run.ts",
 		"conformance:bun": "bun conformance/run.ts",
-		"conformance:workers": "node conformance/workers.ts"
+		"conformance:workers": "node conformance/workers.ts",
+		"browsers": "node browsers/deliver.ts"
 	},
 	"dependencies": {
 		"@mmmike/web-push": "link:.."
 	},
 	"devDependencies": {
+		"playwright": "1.64.1",
 		"wrangler": "4.151.0"
 	},
 	"packageManager": "pnpm@12.14.0"

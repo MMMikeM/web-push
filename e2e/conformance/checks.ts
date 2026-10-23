@@ -280,8 +280,8 @@ export const report = (results: CheckResult[], runtime: string): string => {
 	const failed = results.filter(({ passed }) => !passed).length;
 	lines.push(
 		failed === 0
-			? `${results.length} checks passed on ${runtime}`
-			: `${failed} of ${results.length} checks failed on ${runtime}`,
+			? `${results.length} of ${results.length} passed on ${runtime}`
+			: `${failed} of ${results.length} failed on ${runtime}`,
 	);
 	return lines.join("\n");
 };

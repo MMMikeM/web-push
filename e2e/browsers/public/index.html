@@ -1,0 +1,22 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>web-push delivery test</title>
+<script type="module">
+	import { serializeSubscription, subscribe } from "/dist/client.mjs";
+
+	const received = [];
+	navigator.serviceWorker.addEventListener("message", (event) => received.push(event.data));
+	navigator.serviceWorker.startMessages();
+
+	window.e2e = {
+		received,
+		subscribe: async (vapidPublicKey) => {
+			await navigator.serviceWorker.register("/sw.js");
+			const result = await subscribe(vapidPublicKey);
+			if (result.status !== "subscribed") {
+				throw new Error(`subscribe returned ${result.status}`);
+			}
+			return serializeSubscription(result.subscription);
+		},
+	};
+</script>

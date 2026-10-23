@@ -1,0 +1,42 @@
+name: browsers
+
+# Real delivery through Google's and Mozilla's push services. Those are on the
+# network and fail on their own now and then, so this never gates a push:
+# it runs daily, on release tags, and by hand.
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chrome, firefox]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - run: pnpm ci
+      - run: pnpm run build
+      - run: pnpm --dir e2e install --frozen-lockfile
+
+      # The runner image already has Google Chrome, which is the one with
+      # credentials for Google's push service.
+      - if: matrix.browser == 'firefox'
+        run: pnpm --dir e2e exec playwright install --with-deps firefox
+
+      - run: pnpm --dir e2e run browsers ${{ matrix.browser }}

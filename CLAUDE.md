@@ -24,7 +24,7 @@ Zero-dependency Web Push (RFC 8291) for Workers, Deno, Bun, Vercel Edge, Node 22
 
 ## Runtime conformance
 
-`e2e/` is its own pnpm root too, for wrangler and anything else a cross-runtime test needs. `e2e/conformance/checks.ts` runs the built package (`pnpm run build` first) through RFC 8291's test vector, decryption by `test/receiver.ts`, VAPID JWT verification and send results, and CI runs it on Node 22 and 24, Deno, Bun and workerd (`pnpm --dir e2e run conformance:<runtime>`).
+`e2e/` is its own pnpm root too, for wrangler and anything else a cross-runtime test needs. `e2e/conformance/checks.ts` runs the built package (`pnpm run build` first) through RFC 8291's test vector, decryption by `test/receiver.ts`, VAPID JWT verification and send results, and CI runs it on Node 22 and 24, Deno, Bun and workerd (`pnpm --dir e2e run conformance:<runtime>`). `e2e/browsers/deliver.ts` subscribes in Chrome and Firefox and sends through their real push services; `browsers.yml` runs it daily, on release tags and by hand, never as a gate.
 
 - **`test/receiver.ts` imports nothing and uses only Web APIs**, so every runtime can load it. Keep vitest and `src/` out of it.
 
