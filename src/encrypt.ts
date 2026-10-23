@@ -4,8 +4,8 @@
  * Split out from the HTTP/VAPID orchestration in `send.ts` so the encryption
  * core can be unit-tested in isolation. This module is deliberately NOT a
  * package entry point (see the `exports` map in package.json): `encryptRecord`
- * is reachable only from inside the bundle and from tests that import `src/`
- * directly — never by consumers of the published package.
+ * ships in dist/encrypt.mjs, but no export path reaches it, so only the
+ * library's own modules and tests that import `src/` directly can call it.
  */
 
 import { urlBase64ToUint8Array } from "./vapid";

@@ -26,7 +26,7 @@ Zero-dependency Web Push (RFC 8291) for Workers, Deno, Bun, Vercel Edge, Node 22
 
 ## Runtime conformance
 
-`e2e/` is its own pnpm root too, for wrangler and anything else a cross-runtime test needs. `e2e/conformance/checks.ts` runs the built package (`pnpm run build` first) through RFC 8291's test vector, decryption by `test/receiver.ts`, VAPID JWT verification and send results, and CI runs it on Node 22 and 24, Deno, Bun and workerd (`pnpm --dir e2e run conformance:<runtime>`). `e2e/browsers/deliver.ts` subscribes in Chrome and Firefox and sends through their real push services; `browsers.yml` runs it on every push and pull request, and daily.
+`e2e/` is its own pnpm root too, for wrangler and anything else a cross-runtime test needs. `e2e/conformance/checks.ts` runs the built package (`pnpm run build` first) through RFC 8291's test vector, decryption by `test/receiver.ts`, VAPID JWT verification and send results. `conformance.yml` runs it on Node 22.12 (the `engines` floor), the latest 22 and 24, Deno, Bun and workerd, from `ci.yml` on every push and from `release.yml`, which publishes only if it passes (`pnpm --dir e2e run conformance:<runtime>` locally). `e2e/browsers/deliver.ts` subscribes in Chrome and Firefox and sends through their real push services; `browsers.yml` runs it on every push and pull request, and daily.
 
 - **`test/receiver.ts` imports nothing and uses only Web APIs**, so every runtime can load it. Keep vitest and `src/` out of it.
 
@@ -89,7 +89,7 @@ those the code genuinely cannot carry.
 Write comments only for what the code genuinely cannot carry:
 
 - **Spec citations.** `// RFC 8188 §2.1: salt | rs | idlen | keyid` — the magic numbers are meaningless without it.
-- **Why, when the why is surprising.** `test/helpers.ts` re-implements the receiver side instead of calling `src/` — without that note someone "deduplicates" it and destroys the cross-check.
+- **Why, when the why is surprising.** `test/receiver.ts` re-implements the receiver side instead of calling `src/` — without that note someone "deduplicates" it and destroys the cross-check.
 - **Toolchain and protocol landmines** that look like mistakes and get "fixed" back: the `Uint8Array<ArrayBuffer>` annotation on `concat`, the explicit `vi.fn<...>()` type parameters that give mocks a non-empty call tuple.
 - **Security-relevant invariants** — why a bound exists, what breaks without it.
 
@@ -101,7 +101,7 @@ A file header is not exempt — it is a comment, held to the same test. "What is
 file" is the filename's job, and "what does it export" is the exports' job; neither
 earns a header. Write one only for what reading the file cannot tell you: that
 `client.ts` throws outside a browser, that `encrypt.ts` is deliberately not an entry
-point, that `test/helpers.ts` duplicates the library on purpose. Most files should
+point, that `test/receiver.ts` duplicates the library on purpose. Most files should
 open on their first import.
 
 ## Tests

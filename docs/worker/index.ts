@@ -108,7 +108,7 @@ const headerOf = (request: Request, name: string) =>
 
 // Server-side, so pages ship no analytics script. Bots stay in: which agents
 // read the Markdown is the question, so queries filter by user agent instead.
-// Errors aren't views, which keeps out probes for /wp-admin/ or /robots.txt.
+// Errors aren't views, which keeps out probes for /wp-admin/ and the like.
 const logView = (env: Env, request: Request, url: URL, response: Response, served: Served) => {
 	if (request.method !== "GET" || response.status >= 400) {
 		return;
