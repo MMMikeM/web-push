@@ -1,14 +1,19 @@
 name: browsers
 
-# Real delivery through Google's and Mozilla's push services. Those are on the
-# network and fail on their own now and then, so this never gates a push:
-# it runs daily, on release tags, and by hand.
+# Real delivery through Google's and Mozilla's push services. The daily run
+# catches a browser or push service changing while no commits land.
 on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
   schedule:
     - cron: "17 5 * * *"
-  push:
-    tags: ["v*"]
   workflow_dispatch:
+
+concurrency:
+  group: browsers-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
