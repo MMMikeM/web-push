@@ -46,7 +46,10 @@ jobs:
 
       # The runner image already has Google Chrome, which is the one with
       # credentials for Google's push service.
+      # No --with-deps: the image has the libraries headless Firefox needs, and
+      # the extra fonts and codecs came from an apt mirror that stalled the job.
       - if: matrix.browser == 'firefox'
-        run: pnpm --dir e2e exec playwright install --with-deps firefox
+        timeout-minutes: 3
+        run: pnpm --dir e2e exec playwright install firefox
 
       - run: pnpm --dir e2e run browsers ${{ matrix.browser }}
