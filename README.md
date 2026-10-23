@@ -2,14 +2,23 @@
 
 **The whole Web Push flow, from subscribing in the browser to sending from the server, in one zero-dependency package.**
 
-[![npm](https://img.shields.io/npm/v/%40mmmike%2Fweb-push)](https://www.npmjs.com/package/@mmmike/web-push)
-[![minzipped size](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdeno.bundlejs.com%2F%3Fq%3D%2540mmmike%252Fweb-push&query=%24.size.compressedSize&label=minzipped%20size)](https://bundlejs.com/?q=%40mmmike%2Fweb-push)
-[![CI](https://github.com/MMMikeM/web-push/actions/workflows/ci.yml/badge.svg)](https://github.com/MMMikeM/web-push/actions/workflows/ci.yml)
-[![license](https://img.shields.io/npm/l/%40mmmike%2Fweb-push)](https://github.com/MMMikeM/web-push/blob/main/LICENSE)
+[![npm](https://img.shields.io/npm/v/%40mmmike%2Fweb-push?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/@mmmike/web-push)
+[![minzipped size](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdeno.bundlejs.com%2F%3Fq%3D%2540mmmike%252Fweb-push&query=%24.size.compressedSize&label=minzipped%20size&style=flat&colorA=000000&colorB=000000)](https://bundlejs.com/?q=%40mmmike%2Fweb-push)
+[![CI](https://img.shields.io/github/actions/workflow/status/MMMikeM/web-push/ci.yml?branch=main&label=CI&style=flat&colorA=000000)](https://github.com/MMMikeM/web-push/actions/workflows/ci.yml)
+[![delivers to Chrome and Firefox](https://img.shields.io/github/actions/workflow/status/MMMikeM/web-push/browsers.yml?branch=main&label=delivers%20to%20Chrome%20%26%20Firefox&style=flat&colorA=000000)](https://github.com/MMMikeM/web-push/actions/workflows/browsers.yml)
+[![coverage](https://img.shields.io/badge/coverage-100%25-000000?style=flat&colorA=000000&colorB=000000)](https://github.com/MMMikeM/web-push/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/%40mmmike%2Fweb-push?style=flat&colorA=000000&colorB=000000)](https://github.com/MMMikeM/web-push/blob/main/LICENSE)
+
+[![Node 22.12+](https://img.shields.io/badge/Node-22.12%2B-000000?logo=nodedotjs&logoColor=white&style=flat&colorA=000000&colorB=000000)](https://github.com/MMMikeM/web-push/blob/main/.github/workflows/conformance.yml)
+[![Deno](https://img.shields.io/badge/Deno-000000?logo=deno&logoColor=white&style=flat&colorA=000000&colorB=000000)](https://github.com/MMMikeM/web-push/blob/main/.github/workflows/conformance.yml)
+[![Bun](https://img.shields.io/badge/Bun-000000?logo=bun&logoColor=white&style=flat&colorA=000000&colorB=000000)](https://github.com/MMMikeM/web-push/blob/main/.github/workflows/conformance.yml)
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare%20Workers-000000?logo=cloudflareworkers&logoColor=white&style=flat&colorA=000000&colorB=000000)](https://github.com/MMMikeM/web-push/blob/main/.github/workflows/conformance.yml)
 
 Adding push notifications to a site is usually two jobs. A library handles sending, and the browser half is left to you: asking for permission, replacing a subscription made with an old VAPID key, serialising the subscription for your server (`getKey()` returns `ArrayBuffer`s, which JSON can't hold), and a service worker pieced together from blog posts. The usual library is also built on Node's `crypto` and `https`, so outside Node it runs on each runtime's emulation of Node.
 
 This package does both halves. It's built on `fetch` and the Web Crypto API, which Node, Bun, Deno and Cloudflare Workers each implement natively, so the server side runs the same on all of them with no Node emulation underneath.
+
+To see it work first, [send yourself a notification](https://web-push.thelazyweb.dev/#try-it) from the docs site. A Cloudflare Worker encrypts and sends it with this package.
 
 ```bash
 npm install @mmmike/web-push
