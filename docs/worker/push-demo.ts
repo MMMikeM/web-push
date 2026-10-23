@@ -1,4 +1,9 @@
-import { sendPushNotification, WebPushError } from "../../src/send.ts";
+import {
+	InvalidSubscriptionError,
+	isPushServiceEndpoint,
+	sendPushNotification,
+	WebPushError,
+} from "../../src/send.ts";
 import type { PushPayload, PushSubscriptionData, VapidConfig } from "../../src/types.ts";
 
 /** The demo's own VAPID pair, set as Worker secrets by `scripts/push-demo-keys.ts`. */
@@ -20,31 +25,13 @@ const NOTIFICATION: PushPayload = {
 	tag: "web-push-demo",
 };
 
-// Chrome, Firefox, Safari and Edge. Anything else is someone else's server,
-// which the demo has no reason to call.
-const PUSH_SERVICE_HOST =
-	/^(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|web\.push\.apple\.com|[a-z0-9-]+\.notify\.windows\.com)$/;
-
 const json = (status: number, body: unknown, headers?: HeadersInit): Response =>
 	Response.json(body, { status, headers });
 
-const isPushServiceEndpoint = (endpoint: string): boolean => {
-	try {
-		const url = new URL(endpoint);
-		return url.protocol === "https:" && PUSH_SERVICE_HOST.test(url.hostname);
-	} catch {
-		return false;
-	}
-};
-
 /** The posted subscription, or `undefined` when the body isn't one. */
 const readSubscription = async (request: Request): Promise<PushSubscriptionData | undefined> => {
-	const text = await request.text();
-	if (text.length > MAX_BODY_BYTES) {
-		return undefined;
-	}
 	try {
-		const { endpoint, keys } = JSON.parse(text) as Partial<PushSubscriptionData>;
+		const { endpoint, keys } = JSON.parse(await request.text()) as Partial<PushSubscriptionData>;
 		return typeof endpoint === "string" &&
 			isPushServiceEndpoint(endpoint) &&
 			typeof keys?.p256dh === "string" &&
@@ -56,10 +43,11 @@ const readSubscription = async (request: Request): Promise<PushSubscriptionData 
 	}
 };
 
-// Google's push service now and then calls a subscription made moments earlier
-// gone, so a fresh one gets a couple of spaced resends before the demo says so.
-const SENDS_BEFORE_GONE = 3;
-const RESEND_DELAY_MS = 1500;
+// Google's push service answers 410 for a few seconds after a subscription is
+// made, and the demo always sends to one made moments earlier. See "Right
+// after subscribing" in guides/handle-errors.md.
+// Shorter than the guide's minute, since a visitor is watching the button.
+const RESEND_GAPS_MS = [0, 2000, 4000, 8000, 16000];
 
 const sendOnce = (subscription: PushSubscriptionData, vapid: VapidConfig): Promise<boolean> =>
 	sendPushNotification(subscription, NOTIFICATION, vapid, {
@@ -70,10 +58,8 @@ const sendOnce = (subscription: PushSubscriptionData, vapid: VapidConfig): Promi
 
 const send = async (subscription: PushSubscriptionData, vapid: VapidConfig): Promise<Response> => {
 	try {
-		for (let attempt = 1; attempt <= SENDS_BEFORE_GONE; attempt++) {
-			if (attempt > 1) {
-				await new Promise((resolve) => setTimeout(resolve, RESEND_DELAY_MS));
-			}
+		for (const gapMs of RESEND_GAPS_MS) {
+			await new Promise((resolve) => setTimeout(resolve, gapMs));
 			if (await sendOnce(subscription, vapid)) {
 				return json(200, { delivered: true });
 			}
@@ -89,7 +75,11 @@ const send = async (subscription: PushSubscriptionData, vapid: VapidConfig): Pro
 		) {
 			return json(504, { error: "The push service didn't answer." });
 		}
-		return json(400, { error: "That subscription isn't valid." });
+		if (error instanceof InvalidSubscriptionError) {
+			return json(400, { error: "That subscription isn't valid." });
+		}
+		// Anything else is this deployment's own fault, such as a bad key pair.
+		return json(500, { error: "The demo's own setup is broken." });
 	}
 };
 
@@ -118,6 +108,11 @@ export const handleDemo = async (request: Request, env: DemoEnv, url: URL): Prom
 	});
 	if (!success) {
 		return json(429, { error: "That's a lot of test notifications. Try again in a minute." });
+	}
+	// Checked before reading, so an oversized body is never buffered.
+	const declaredBytes = Number(request.headers.get("content-length"));
+	if (!declaredBytes || declaredBytes > MAX_BODY_BYTES) {
+		return json(413, { error: "Send the subscription alone, as JSON." });
 	}
 	const subscription = await readSubscription(request);
 	if (!subscription) {

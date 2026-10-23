@@ -10,6 +10,7 @@
 		requestNotificationPermission,
 		serializeSubscription,
 		subscribe,
+		unsubscribe,
 	} from "../../../src/client.ts";
 
 	const DEMO_URL = "/demo/push";
@@ -20,19 +21,11 @@
 	const UNSUPPORTED =
 		"This browser can't receive push notifications here. On iPhone and iPad, Safari only allows them for sites added to the Home Screen.";
 
-	/** `subscribe` needs an active worker; `serviceWorker.ready` never resolves outside its scope. */
-	const activated = (registration: ServiceWorkerRegistration): Promise<ServiceWorkerRegistration> =>
-		new Promise((resolve) => {
-			const worker = registration.installing ?? registration.waiting;
-			if (registration.active || !worker) {
-				resolve(registration);
-				return;
-			}
-			worker.addEventListener("statechange", () => {
-				if (worker.state === "activated") {
-					resolve(registration);
-				}
-			});
+	const post = (subscription: PushSubscription): Promise<Response> =>
+		fetch(DEMO_URL, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(serializeSubscription(subscription)),
 		});
 
 	const errorFrom = async (response: Response): Promise<string> => {
@@ -81,9 +74,9 @@
 				return "Notifications are blocked for this site. Allow them in the site settings, then try again.";
 			}
 			this.#say("Subscribing. The first time in a browser can take a little while.");
-			const registration = await activated(
-				await navigator.serviceWorker.register(WORKER_URL, { scope: WORKER_SCOPE }),
-			);
+			const registration = await navigator.serviceWorker.register(WORKER_URL, {
+				scope: WORKER_SCOPE,
+			});
 			const keyResponse = await fetch(DEMO_URL);
 			if (!keyResponse.ok) {
 				return errorFrom(keyResponse);
@@ -94,11 +87,17 @@
 				return UNSUPPORTED;
 			}
 			this.#say("Sending…");
-			const response = await fetch(DEMO_URL, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(serializeSubscription(result.subscription)),
-			});
+			let response = await post(result.subscription);
+			// The push service dropped this browser's subscription, but the browser
+			// still holds it and `subscribe` handed it back. Replace it once.
+			if (response.status === 410) {
+				await unsubscribe({ registration });
+				const fresh = await subscribe(publicKey, { registration });
+				if (fresh.status !== "subscribed") {
+					return UNSUPPORTED;
+				}
+				response = await post(fresh.subscription);
+			}
 			return response.ok ? "Sent. It should arrive in a few seconds." : errorFrom(response);
 		}
 
