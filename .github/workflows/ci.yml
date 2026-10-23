@@ -33,6 +33,3 @@ jobs:
       - run: pnpm run check
 
       - run: pnpm run check:package
-
-  runtimes:
-    uses: ./.github/workflows/conformance.yml

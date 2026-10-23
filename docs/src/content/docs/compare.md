@@ -23,7 +23,7 @@ Both send the same standard notifications. `web-push` is built on Node's `crypto
 
 [npm](https://www.npmjs.com/package/@mmmike/web-push) · [GitHub](https://github.com/MMMikeM/web-push)
 
-Subscribes in the browser and sends from the server, one notification or a whole list, with no dependencies. Gone subscriptions resolve `false`, `Retry-After` arrives parsed, and every request has a timeout. It's [tested against RFC 8291's example](https://github.com/MMMikeM/web-push/blob/main/test/rfc8291-vector.test.ts), [in CI on Node, Deno, Bun and Workers](https://github.com/MMMikeM/web-push/blob/main/.github/workflows/ci.yml), and [by real delivery to Chrome and Firefox](https://github.com/MMMikeM/web-push/blob/main/.github/workflows/browsers.yml).
+Subscribes in the browser and sends from the server, one notification or a whole list, with no dependencies. Gone subscriptions resolve `false`, `Retry-After` arrives parsed, and every request has a timeout. It's [tested against RFC 8291's example](https://github.com/MMMikeM/web-push/blob/main/test/rfc8291-vector.test.ts), [in CI on Node, Deno, Bun and Workers](https://github.com/MMMikeM/web-push/blob/main/.github/workflows/conformance.yml), and [by real delivery to Chrome and Firefox](https://github.com/MMMikeM/web-push/blob/main/.github/workflows/browsers.yml).
 
 ### web-push
 

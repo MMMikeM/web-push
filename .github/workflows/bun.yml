@@ -1,0 +1,21 @@
+name: bun
+
+# The built package on Bun.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: bun-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    uses: ./.github/workflows/conformance.yml
+    with:
+      runtimes: '["bun"]'

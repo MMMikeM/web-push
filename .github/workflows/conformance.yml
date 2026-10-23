@@ -2,9 +2,15 @@ name: conformance
 
 # The built package, run on each runtime it claims: RFC 8291's test vector,
 # decryption by an independent receiver, VAPID signatures and send results.
-# ci.yml runs it on every push; release.yml runs it and publishes only if it passes.
+# node.yml, deno.yml, bun.yml and workers.yml each run their runtimes on every
+# push, so each has a status badge; release.yml runs them all and publishes
+# only if they pass.
 on:
   workflow_call:
+    inputs:
+      runtimes:
+        type: string
+        default: '["node-22.12", "node-22", "node-24", "deno", "bun", "workers"]'
 
 permissions:
   contents: read
@@ -16,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runtime: [node-22.12, node-22, node-24, deno, bun, workers]
+        runtime: ${{ fromJSON(inputs.runtimes) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

@@ -1,0 +1,21 @@
+name: node
+
+# The built package on Node 22.12 (the `engines` floor), the latest 22 and 24.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: node-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    uses: ./.github/workflows/conformance.yml
+    with:
+      runtimes: '["node-22.12", "node-22", "node-24"]'

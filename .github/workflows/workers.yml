@@ -1,0 +1,21 @@
+name: workers
+
+# The built package on workerd, the Cloudflare Workers runtime.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: workers-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    uses: ./.github/workflows/conformance.yml
+    with:
+      runtimes: '["workers"]'
