@@ -11,8 +11,9 @@ on:
     - cron: "17 5 * * *"
   workflow_dispatch:
 
+# Keyed by event too, so a push to main can't cancel the daily run.
 concurrency:
-  group: browsers-${{ github.ref }}
+  group: browsers-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -21,6 +22,7 @@ permissions:
 jobs:
   deliver:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:

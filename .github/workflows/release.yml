@@ -10,7 +10,11 @@ permissions:
   id-token: write # npm provenance
 
 jobs:
+  conformance:
+    uses: ./.github/workflows/conformance.yml
+
   release:
+    needs: conformance
     runs-on: ubuntu-latest
     steps:
       # Actions pinned to SHAs, not tags: a tag can be moved to point at malicious code.

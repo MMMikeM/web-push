@@ -1,0 +1,57 @@
+name: conformance
+
+# The built package, run on each runtime it claims: RFC 8291's test vector,
+# decryption by an independent receiver, VAPID signatures and send results.
+# ci.yml runs it on every push; release.yml runs it and publishes only if it passes.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  runtimes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime: [node-22.12, node-22, node-24, deno, bun, workers]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # wrangler runs here; keep the token out of .git/config.
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.runtime == 'node-24' && '24' || '22' }}
+          cache: pnpm
+
+      - if: matrix.runtime == 'deno'
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.x
+
+      - if: matrix.runtime == 'bun'
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+
+      - run: pnpm ci
+      - run: pnpm run build
+      - run: pnpm --dir e2e install --frozen-lockfile
+      - run: pnpm exec tsc -p e2e/tsconfig.json
+
+      # The floor `engines` allows. The build above needs a newer 22, so only
+      # the checks run on it, and 22.12 predates unflagged type stripping.
+      - if: matrix.runtime == 'node-22.12'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22.12.0"
+      - if: matrix.runtime == 'node-22.12'
+        working-directory: e2e
+        run: node --experimental-strip-types conformance/run.ts
+
+      - if: matrix.runtime != 'node-22.12'
+        run: pnpm --dir e2e run conformance:${{ startsWith(matrix.runtime, 'node') && 'node' || matrix.runtime }}

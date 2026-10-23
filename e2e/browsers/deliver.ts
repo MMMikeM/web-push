@@ -12,6 +12,8 @@ import { type BrowserContext, chromium, firefox } from "playwright";
 import { type CheckResult, report } from "../conformance/checks.ts";
 
 const DELIVERY_TIMEOUT_MS = 60_000;
+// Chrome registers a fresh profile with Google first, which has taken over 30 s.
+const SUBSCRIBE_TIMEOUT_MS = 90_000;
 
 // Google's push service has now and then answered a subscription made a moment
 // earlier as gone. A few spaced resends tell that apart from one that really
@@ -83,10 +85,17 @@ const deliverTo = async (context: BrowserContext): Promise<string | undefined> =
 	const page = await context.newPage();
 	await page.goto(origin);
 	const vapid = { ...(await generateVapidKeys()), subject: "mailto:e2e@example.com" };
-	const subscription = await page.evaluate(
-		(key) => (globalThis as unknown as E2eWindow).e2e.subscribe(key),
-		vapid.publicKey,
-	);
+	// `evaluate` waits as long as the page's promise does, and a service worker
+	// that never activates leaves `subscribe` pending forever.
+	const subscription = await Promise.race([
+		page.evaluate(
+			(key) => (globalThis as unknown as E2eWindow).e2e.subscribe(key),
+			vapid.publicKey,
+		),
+		sleep(SUBSCRIBE_TIMEOUT_MS).then(() => {
+			throw new Error(`subscribe didn't settle within ${SUBSCRIBE_TIMEOUT_MS} ms`);
+		}),
+	]);
 	const message = `delivered ✓ ${crypto.randomUUID()}`;
 	const statuses: number[] = [];
 	const logger = {
@@ -131,6 +140,11 @@ const requested = process.argv.slice(2).map((name) => name.toLowerCase());
 const selected = Object.entries(browsers).filter(
 	([name]) => requested.length === 0 || requested.includes(name.toLowerCase()),
 );
+if (selected.length === 0) {
+	throw new Error(
+		`No browser matches ${requested.join(", ")}; known: ${Object.keys(browsers).join(", ")}`,
+	);
+}
 
 const results: CheckResult[] = [];
 for (const [name, launch] of selected) {
