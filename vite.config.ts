@@ -1,4 +1,5 @@
 import { defineConfig, type ViteUserConfig } from "vite-plus";
+import { agentsMd } from "./scripts/agents-md";
 
 // Typed, not inferred, so isolatedDeclarations accepts the default export.
 const config: ViteUserConfig = defineConfig({
@@ -62,6 +63,7 @@ const config: ViteUserConfig = defineConfig({
 			level: "error",
 		},
 		publint: { strict: true },
+		plugins: [agentsMd()],
 	},
 });
 
