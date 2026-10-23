@@ -1,8 +1,9 @@
 import { markdownPath, pagePathOf } from "../src/markdown-path.ts";
+import { type DemoEnv, handleDemo, isDemoRequest } from "./push-demo.ts";
 
 type DataPoint = { indexes: string[]; blobs: string[]; doubles: number[] };
 
-type Env = {
+type Env = DemoEnv & {
 	ASSETS: { fetch: (request: Request) => Promise<Response> };
 	VIEWS: { writeDataPoint: (point: DataPoint) => void };
 };
@@ -133,6 +134,9 @@ const logView = (env: Env, request: Request, url: URL, response: Response, serve
 export default {
 	async fetch(request: Request, env: Env): Promise<Response> {
 		const url = new URL(request.url);
+		if (isDemoRequest(url)) {
+			return handleDemo(request, env, url);
+		}
 		const { response, served } = await route(request, env, url);
 		if (served) {
 			logView(env, request, url, response, served);

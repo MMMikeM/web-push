@@ -1,0 +1,127 @@
+import { sendPushNotification, WebPushError } from "../../src/send.ts";
+import type { PushPayload, PushSubscriptionData, VapidConfig } from "../../src/types.ts";
+
+/** The demo's own VAPID pair, set as Worker secrets by `scripts/push-demo-keys.ts`. */
+export type DemoEnv = {
+	DEMO_VAPID_PUBLIC_KEY?: string;
+	DEMO_VAPID_PRIVATE_KEY?: string;
+	DEMO_RATE_LIMIT: { limit: (options: { key: string }) => Promise<{ success: boolean }> };
+};
+
+const DEMO_PATH = "/demo/push";
+const SUBJECT = "https://web-push.thelazyweb.dev";
+const MAX_BODY_BYTES = 4096;
+
+// The payload is fixed, so the endpoint can't carry anyone else's message.
+const NOTIFICATION: PushPayload = {
+	title: "Hello from @mmmike/web-push",
+	body: "Sent by this site's Cloudflare Worker, encrypted for this browser alone.",
+	url: "/",
+	tag: "web-push-demo",
+};
+
+// Chrome, Firefox, Safari and Edge. Anything else is someone else's server,
+// which the demo has no reason to call.
+const PUSH_SERVICE_HOST =
+	/^(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|web\.push\.apple\.com|[a-z0-9-]+\.notify\.windows\.com)$/;
+
+const json = (status: number, body: unknown, headers?: HeadersInit): Response =>
+	Response.json(body, { status, headers });
+
+const isPushServiceEndpoint = (endpoint: string): boolean => {
+	try {
+		const url = new URL(endpoint);
+		return url.protocol === "https:" && PUSH_SERVICE_HOST.test(url.hostname);
+	} catch {
+		return false;
+	}
+};
+
+/** The posted subscription, or `undefined` when the body isn't one. */
+const readSubscription = async (request: Request): Promise<PushSubscriptionData | undefined> => {
+	const text = await request.text();
+	if (text.length > MAX_BODY_BYTES) {
+		return undefined;
+	}
+	try {
+		const { endpoint, keys } = JSON.parse(text) as Partial<PushSubscriptionData>;
+		return typeof endpoint === "string" &&
+			isPushServiceEndpoint(endpoint) &&
+			typeof keys?.p256dh === "string" &&
+			typeof keys.auth === "string"
+			? { endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth } }
+			: undefined;
+	} catch {
+		return undefined;
+	}
+};
+
+// Google's push service now and then calls a subscription made moments earlier
+// gone, so a fresh one gets a couple of spaced resends before the demo says so.
+const SENDS_BEFORE_GONE = 3;
+const RESEND_DELAY_MS = 1500;
+
+const sendOnce = (subscription: PushSubscriptionData, vapid: VapidConfig): Promise<boolean> =>
+	sendPushNotification(subscription, NOTIFICATION, vapid, {
+		ttl: 60,
+		urgency: "high",
+		timeoutMs: 10_000,
+	});
+
+const send = async (subscription: PushSubscriptionData, vapid: VapidConfig): Promise<Response> => {
+	try {
+		for (let attempt = 1; attempt <= SENDS_BEFORE_GONE; attempt++) {
+			if (attempt > 1) {
+				await new Promise((resolve) => setTimeout(resolve, RESEND_DELAY_MS));
+			}
+			if (await sendOnce(subscription, vapid)) {
+				return json(200, { delivered: true });
+			}
+		}
+		return json(410, { error: "The push service says this subscription is gone. Try again." });
+	} catch (error) {
+		if (error instanceof WebPushError) {
+			return json(502, { error: `The push service refused it with a ${error.statusCode}.` });
+		}
+		if (
+			error instanceof TypeError ||
+			(error instanceof DOMException && error.name === "TimeoutError")
+		) {
+			return json(504, { error: "The push service didn't answer." });
+		}
+		return json(400, { error: "That subscription isn't valid." });
+	}
+};
+
+export const isDemoRequest = (url: URL): boolean => url.pathname === DEMO_PATH;
+
+/**
+ * `GET` hands the page the public key to subscribe with; `POST` sends that
+ * subscription one fixed notification and keeps nothing.
+ */
+export const handleDemo = async (request: Request, env: DemoEnv, url: URL): Promise<Response> => {
+	const { DEMO_VAPID_PUBLIC_KEY: publicKey, DEMO_VAPID_PRIVATE_KEY: privateKey } = env;
+	if (!publicKey || !privateKey) {
+		return json(503, { error: "The demo isn't set up on this deployment." });
+	}
+	if (request.method === "GET") {
+		return json(200, { publicKey });
+	}
+	if (request.method !== "POST") {
+		return json(405, { error: "Use GET or POST." }, { Allow: "GET, POST" });
+	}
+	if (request.headers.get("origin") !== url.origin) {
+		return json(403, { error: "Send from this site's demo button." });
+	}
+	const { success } = await env.DEMO_RATE_LIMIT.limit({
+		key: request.headers.get("cf-connecting-ip") ?? "unknown",
+	});
+	if (!success) {
+		return json(429, { error: "That's a lot of test notifications. Try again in a minute." });
+	}
+	const subscription = await readSubscription(request);
+	if (!subscription) {
+		return json(400, { error: "Expected a push subscription from a browser's push service." });
+	}
+	return send(subscription, { publicKey, privateKey, subject: SUBJECT });
+};

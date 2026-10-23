@@ -18,6 +18,7 @@ hero:
 ---
 
 import { Card, CardGrid } from "@astrojs/starlight/components";
+import PushDemo from "../../components/PushDemo.astro";
 
 `@mmmike/web-push` is a TypeScript library for Web Push notifications. It generates the VAPID keys, subscribes the browser, and encrypts and sends each notification with `fetch` and Web Crypto, so the server code runs unchanged on Cloudflare Workers, Deno, Bun and Node 22.12+.
 
@@ -37,6 +38,12 @@ if (!delivered) await store.delete(subscription.endpoint);
 ```
 
 `publicKey` and `privateKey` are a VAPID key pair, which the [VAPID key generator](/generate-vapid-keys/) makes in your browser.
+
+## Try it
+
+This button subscribes your browser with the site's own VAPID key, then asks the Cloudflare Worker serving these docs to send it one notification with this library. The Worker keeps nothing.
+
+<PushDemo />
 
 <CardGrid>
 	<Card title="All four pieces" icon="puzzle">

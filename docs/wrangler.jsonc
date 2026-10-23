@@ -16,4 +16,9 @@
 	// Page and Markdown views, logged server-side. Query them with the SQL API:
 	// POST api.cloudflare.com/client/v4/accounts/<id>/analytics_engine/sql
 	"analytics_engine_datasets": [{ "binding": "VIEWS", "dataset": "web_push_docs_views" }],
+	// Caps the demo's test notifications per IP, per Cloudflare location. The
+	// namespace id only has to be unique within the account.
+	"ratelimits": [
+		{ "name": "DEMO_RATE_LIMIT", "namespace_id": "8291", "simple": { "limit": 5, "period": 60 } },
+	],
 }

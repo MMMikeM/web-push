@@ -18,6 +18,7 @@ const NOISE = [
 	"style",
 	"runtime-select",
 	"vapid-key-generator",
+	"push-demo",
 	"starlight-tabs-restore",
 ];
 
