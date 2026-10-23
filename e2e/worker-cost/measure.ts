@@ -5,8 +5,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
-// Startup times vary by machine, so the docs quote none: only the claims made
-// about them are checked, while upload sizes are checked to the figure.
+// Startup times vary by machine, so the docs quote no figure for them and only
+// their claims are checked. Upload sizes are checked to the figure.
 
 const WORKERS = ["empty", "web-push", "mmmike"] as const;
 type Worker = (typeof WORKERS)[number];
@@ -41,7 +41,7 @@ const SIZE_CLAIMS: { file: string; claim: RegExp; worker: Worker; digits: number
 	{ file: COMPARE, claim: /uploads ([\d.]+) kB gzipped with it/, worker: "web-push", digits: 0 },
 	{
 		file: COMPARE,
-		claim: /against ([\d.]+) kB with `@mmmike\/web-push`/,
+		claim: /With `@mmmike\/web-push` it uploads ([\d.]+) kB/,
 		worker: "mmmike",
 		digits: 1,
 	},

@@ -83,7 +83,7 @@ To send one notification to a list of subscribers, `sendPushBatch` caps how many
 
 ## Coming from `web-push`?
 
-[`web-push`](https://www.npmjs.com/package/web-push) is the established choice, and on Node it works well. Elsewhere it runs on each runtime's emulation of Node, and on Deno, Supabase and Cloudflare Workers that emulation has broken it before being fixed. It also brings 16 packages: a minimal Worker that sends with it uploads about 51 kB gzipped and takes longer to start, where one using this package uploads about 5 kB and starts as fast as an empty Worker. CI measures both on every push. And it stops at the server.
+[`web-push`](https://www.npmjs.com/package/web-push) is the established choice, and on Node it works well. Elsewhere it runs on each runtime's emulation of Node, and on Deno, Supabase and Cloudflare Workers that emulation has broken it before being fixed. It also brings 16 packages: a minimal Worker that sends with it uploads about 51 kB gzipped and takes longer to start, where one using this package uploads about 5 kB and starts as fast as an empty Worker. Both sizes are unminified, as wrangler builds by default, and CI measures them on every push. And it stops at the server.
 
 [The full comparison](https://web-push.thelazyweb.dev/compare/) has the measurements and the bug history, and sets this package against the edge-native alternatives too. The [migration guide](https://web-push.thelazyweb.dev/guides/migrate-from-web-push/) keeps your stored subscriptions, keys and service worker.
 
