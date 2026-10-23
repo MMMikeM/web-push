@@ -29,7 +29,17 @@ Subscribes in the browser and sends from the server, one notification or a whole
 
 [npm](https://www.npmjs.com/package/web-push) · [GitHub](https://github.com/web-push-libs/web-push)
 
-The established Node library, at about 6.6M downloads a week, built on Node's `crypto` and `https` with 16 packages. Outside Node it relies on the runtime's emulation of those modules, and a minimal Cloudflare Worker uploads 48 KiB gzipped with it against 4.2 KiB with `@mmmike/web-push`. It throws on every response outside 2xx, so telling a gone subscription from a failure is up to you. See [Migrate from web-push](/guides/migrate-from-web-push/).
+The established Node library, at about 6.6M downloads a week, built on Node's `crypto` and `https` with 16 packages. Outside Node it relies on the runtime's emulation of those modules. A minimal Cloudflare Worker that sends one notification uploads 51 kB gzipped with it against 5.1 kB with `@mmmike/web-push`, and takes longer to start, where `@mmmike/web-push` starts as fast as an empty Worker. [CI measures both](https://github.com/MMMikeM/web-push/actions/workflows/ci.yml) on every push. It throws on every response outside 2xx, so telling a gone subscription from a failure is up to you. See [Migrate from web-push](/guides/migrate-from-web-push/).
+
+Each of these broke `web-push` until the runtime fixed it:
+
+| Runtime            | What broke                                                                                                                             | Until        |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| Deno               | [Chrome couldn't decrypt the payloads](https://github.com/denoland/deno/issues/23693), so notifications never arrived                  | August 2024  |
+| Supabase           | [Signing with an EC private key](https://github.com/supabase/edge-runtime/issues/334) wasn't supported, so the VAPID JWT failed        | June 2024    |
+| Cloudflare Workers | [`https.request` wasn't implemented](https://github.com/cloudflare/workerd/issues/3820), so sends failed                               | August 2025  |
+| Cloudflare Workers | [Request headers were sent as `ttl: TTL, 60`](https://github.com/cloudflare/workerd/issues/4880)                                       | August 2025  |
+| Cloudflare Workers | [Requests to URLs with a query string were never sent](https://github.com/cloudflare/workerd/issues/5077), which Windows endpoints use | October 2025 |
 
 ### @pushforge/builder
 

@@ -22,9 +22,9 @@
 <a href="https://github.com/MMMikeM/web-push/actions/workflows/ci.yml"><picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/coverage-100%25-gray?style=flat-square&colorA=151b23&colorB=3369ff"><img alt="coverage 100%" src="https://img.shields.io/badge/coverage-100%25-gray?style=flat-square&colorA=f6f8fa&colorB=3369ff"></picture></a>
 </p>
 
-Adding push notifications to a site is usually two jobs. A library handles sending, and the browser half is left to you: asking for permission, replacing a subscription made with an old VAPID key, serialising the subscription for your server (`getKey()` returns `ArrayBuffer`s, which JSON can't hold), and a service worker pieced together from blog posts. The usual library is also built on Node's `crypto` and `https`, so outside Node it runs on each runtime's emulation of Node.
+Adding push notifications to a site is usually two jobs. A library handles sending, and the browser half is left to you: asking for permission, replacing a subscription made with an old VAPID key, uploading it to your server, and a service worker pieced together from blog posts. The usual library is also built on Node's `crypto` and `https`, so outside Node it runs on each runtime's emulation of Node.
 
-This package does both halves. It's built on `fetch` and the Web Crypto API, which Node, Bun, Deno and Cloudflare Workers each implement natively, so the server side runs the same on all of them with no Node emulation underneath.
+This package does both halves, and [its quickstart](https://web-push.thelazyweb.dev/getting-started/#2-add-a-service-worker) has a service worker to copy. It's built on `fetch` and the Web Crypto API, which Node, Bun, Deno and Cloudflare Workers each implement natively, so the server side runs the same on all of them with no Node emulation underneath.
 
 To see it work first, [send yourself a notification](https://web-push.thelazyweb.dev/#try-it) from the docs site. A Cloudflare Worker encrypts and sends it with this package.
 
@@ -77,13 +77,13 @@ To send one notification to a list of subscribers, `sendPushBatch` caps how many
 
 ## Specs and size
 
-- **[RFC 8291](https://www.rfc-editor.org/rfc/rfc8291) and [RFC 8292](https://www.rfc-editor.org/rfc/rfc8292#section-3).** `aes128gcm` encryption and VAPID. There's no dependency tree to audit, the crypto is one file ([`src/encrypt.ts`](https://github.com/MMMikeM/web-push/blob/main/src/encrypt.ts)), and [a test](https://github.com/MMMikeM/web-push/blob/main/test/rfc8291-vector.test.ts) pins its output byte-for-byte to [RFC 8291's Appendix A test vector](https://www.rfc-editor.org/rfc/rfc8291#appendix-A).
+- **[RFC 8291](https://www.rfc-editor.org/rfc/rfc8291) and [RFC 8292](https://www.rfc-editor.org/rfc/rfc8292#section-3).** `aes128gcm` encryption and VAPID. There's no dependency tree to audit. Encryption is in [`src/encrypt.ts`](https://github.com/MMMikeM/web-push/blob/main/src/encrypt.ts) and VAPID signing in [`src/vapid.ts`](https://github.com/MMMikeM/web-push/blob/main/src/vapid.ts), both on Web Crypto, and [a test](https://github.com/MMMikeM/web-push/blob/main/test/rfc8291-vector.test.ts) pins the encryption's output byte-for-byte to [RFC 8291's Appendix A test vector](https://www.rfc-editor.org/rfc/rfc8291#appendix-A).
 - **Browsers.** Chrome, Edge, Firefox, Opera and Samsung Internet, Safari 16+ on macOS 13+, and Safari on iOS 16.4+ for web apps added to the home screen.
 - **Small.** Minified and gzipped per subpath entry, 1.3 kB for the browser client and 3.6 kB for the server. The size badge measures the whole package, ~4.6 kB.
 
 ## Coming from `web-push`?
 
-[`web-push`](https://www.npmjs.com/package/web-push) is the established choice, and on Node it works well. Elsewhere it runs on each runtime's emulation of Node, and on Deno, Supabase and Cloudflare Workers that emulation has broken it before being fixed. It also brings 16 packages: a minimal Worker that sends with it uploads about 49 kB gzipped and starts about 14 ms slower, where one using this package uploads about 4 kB. And it stops at the server.
+[`web-push`](https://www.npmjs.com/package/web-push) is the established choice, and on Node it works well. Elsewhere it runs on each runtime's emulation of Node, and on Deno, Supabase and Cloudflare Workers that emulation has broken it before being fixed. It also brings 16 packages: a minimal Worker that sends with it uploads about 51 kB gzipped and takes longer to start, where one using this package uploads about 5 kB and starts as fast as an empty Worker. CI measures both on every push. And it stops at the server.
 
 [The full comparison](https://web-push.thelazyweb.dev/compare/) has the measurements and the bug history, and sets this package against the edge-native alternatives too. The [migration guide](https://web-push.thelazyweb.dev/guides/migrate-from-web-push/) keeps your stored subscriptions, keys and service worker.
 
@@ -91,9 +91,10 @@ To send one notification to a list of subscribers, `sendPushBatch` caps how many
 
 - The [quickstart](https://web-push.thelazyweb.dev/getting-started/) goes from VAPID keys to a first notification.
 - [Build a complete app](https://web-push.thelazyweb.dev/tutorial/) walks through one app that runs on Node, Bun, Deno or Cloudflare Workers.
-- The [recipes](https://web-push.thelazyweb.dev/guides/send-to-many/) cover sending to many, handling errors, rotating keys, extension service workers, and [securing endpoints](https://web-push.thelazyweb.dev/guides/secure-endpoints/).
+- The recipes cover [sending to many](https://web-push.thelazyweb.dev/guides/send-to-many/), [handling errors](https://web-push.thelazyweb.dev/guides/handle-errors/), [collapsing and expiring notifications](https://web-push.thelazyweb.dev/guides/collapse-notifications/), [rotating keys](https://web-push.thelazyweb.dev/guides/rotate-vapid-keys/), [runtime setup](https://web-push.thelazyweb.dev/guides/runtime-setup/), [authenticated uploads](https://web-push.thelazyweb.dev/guides/authenticated-uploads/), [extension service workers](https://web-push.thelazyweb.dev/guides/extension-service-workers/) and [securing endpoints](https://web-push.thelazyweb.dev/guides/secure-endpoints/).
 - The [API reference](https://web-push.thelazyweb.dev/reference/) is generated from the JSDoc.
 - For LLMs, there's [`llms.txt`](https://web-push.thelazyweb.dev/llms.txt) and a Markdown copy of every page.
+- Coding agents get `AGENTS.md` in the installed package, with [the rules for using it](https://web-push.thelazyweb.dev/ai-agents/) and a map of its entry points.
 
 ## License
 
