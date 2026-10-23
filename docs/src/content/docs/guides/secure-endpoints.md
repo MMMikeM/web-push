@@ -26,7 +26,7 @@ If a hostile client registers `https://internal-service.local/hooks` as its "pus
 | Firefox                   | `*.push.services.mozilla.com` |
 | Safari on macOS and iOS   | `*.push.apple.com`            |
 
-The [tutorial's server](/tutorial/#4-the-server) does this in `isPushServiceEndpoint`.
+[`isPushServiceEndpoint`](/reference/send/#ispushserviceendpoint) checks an endpoint against these hosts, and the [tutorial's server](/tutorial/#4-the-server) uses it when a browser uploads a subscription.
 
 These hosts are as of August 2026. Browsers can change push services, and smaller ones run their own (Samsung Internet, for example), so log the subscriptions you reject rather than dropping them silently.
 

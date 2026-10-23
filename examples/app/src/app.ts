@@ -3,7 +3,7 @@ import type {
 	PushSubscriptionData,
 	VapidConfig,
 } from "@mmmike/web-push";
-import { sendPushBatch } from "@mmmike/web-push/send";
+import { isPushServiceEndpoint, sendPushBatch } from "@mmmike/web-push/send";
 import type { SubscriptionStore } from "./store.ts";
 
 export type AppConfig = {
@@ -11,27 +11,6 @@ export type AppConfig = {
 	/** Guards the broadcast route, which pushes to every subscriber */
 	adminToken: string;
 	store: SubscriptionStore;
-};
-
-// The send functions POST to whatever endpoint a subscription names, and
-// subscriptions come from browsers, so only accept the real push services.
-const PUSH_SERVICE_HOSTS = [
-	/^fcm\.googleapis\.com$/,
-	/\.notify\.windows\.com$/,
-	/\.push\.services\.mozilla\.com$/,
-	/\.push\.apple\.com$/,
-];
-
-const isPushServiceEndpoint = (endpoint: string): boolean => {
-	try {
-		const { protocol, hostname } = new URL(endpoint);
-		return (
-			protocol === "https:" &&
-			PUSH_SERVICE_HOSTS.some((host) => host.test(hostname))
-		);
-	} catch {
-		return false;
-	}
 };
 
 const isSubscription = (value: unknown): value is PushSubscriptionData => {
