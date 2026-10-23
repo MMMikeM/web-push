@@ -2,8 +2,8 @@ self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
 
 // The message goes back to the page before the notification is shown, so a
-// browser that can't show one headless still reports the delivery. Chrome
-// revokes a subscription whose pushes never show a notification, hence both.
+// browser that can't show one headless still reports the delivery. A
+// `userVisibleOnly` push still has to show one, hence both.
 self.addEventListener("push", (event) => {
 	event.waitUntil(
 		(async () => {
