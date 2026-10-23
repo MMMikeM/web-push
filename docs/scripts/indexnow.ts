@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 
 // Tells Bing, Yandex, Naver and the other IndexNow engines that every page in
 // the sitemap changed, so a deploy is crawled within days. Google ignores it.
-// The key isn't a secret: the engines check it against public/<key>.txt.
+// The key isn't a secret: the engines check it against public/<key>.txt, which
+// wrangler.jsonc keeps off the Worker. Change it in both places.
 const KEY = "1bdc900a73192f76189fdfc9befbd081";
 
 const sitemap = join(dirname(fileURLToPath(import.meta.url)), "../dist/sitemap-0.xml");

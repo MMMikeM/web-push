@@ -16,6 +16,9 @@ const dist = join(dirname(fileURLToPath(import.meta.url)), "../dist");
 // Search results cut a description off at about 160 characters, and fill a
 // short one with text from the page.
 const DESCRIPTION = { min: 110, max: 160 };
+// And a title at about 60, which src/routeData.ts can only shorten by
+// dropping the site name.
+const MAX_TITLE_LENGTH = 60;
 const parser = unified().use(rehypeParse);
 
 const sitemapUrls = (): URL[] =>
@@ -46,8 +49,11 @@ const problemsWith = (url: URL): string[] => {
 		problems.push(`expected one canonical to ${url.href}`);
 	}
 	const title = select("title", page);
-	if (!title || !textOf(title).trim()) {
+	const titleText = title ? textOf(title).trim() : "";
+	if (!titleText) {
 		problems.push("empty <title>");
+	} else if (titleText.length > MAX_TITLE_LENGTH) {
+		problems.push(`<title> is ${titleText.length} characters, over ${MAX_TITLE_LENGTH}`);
 	}
 	const description = attr(page, 'meta[name="description"]', "content") ?? "";
 	if (description.length < DESCRIPTION.min || description.length > DESCRIPTION.max) {
