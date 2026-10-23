@@ -1,7 +1,7 @@
 // Fail when the README "Small." bullet no longer matches what a consumer
-// actually ships. Bundling before gzip is the point: dist files import each
-// other (send.mjs is a shim over a shared chunk, client.mjs pulls the base64
-// codec from vapid.mjs), so gzipping one dist file alone under-reports its entry.
+// actually ships. Bundling before gzip is the point: dist mirrors src one file
+// per module (send.mjs imports encrypt.mjs and vapid.mjs), so gzipping one dist
+// file alone under-reports its entry.
 //
 // Runs directly under Node's type stripping (unflagged since 22.18 / 23.6), so
 // this file sticks to erasable syntax — tsconfig.tools.json enforces that.
@@ -21,16 +21,21 @@ if (!existsSync("dist/index.mjs")) {
 }
 
 const bundledGzipSize = async (entry: string): Promise<number> => {
-	const { outputFiles } = await build({
+	const { outputFiles, warnings } = await build({
 		entryPoints: [`dist/${entry}.mjs`],
 		bundle: true,
 		minify: true,
 		format: "esm",
 		write: false,
-		// Every run warns that the shim's bare `import "./vapid.mjs"` is dropped
-		// under sideEffects:false; expected, and errors still reject the promise.
 		logLevel: "silent",
 	});
+	// esbuild is what wrangler bundles with, so a warning here shows up in every
+	// Workers consumer's build.
+	if (warnings.length > 0) {
+		throw new Error(
+			`bundling dist/${entry}.mjs warned: ${warnings.map(({ text }) => text).join("; ")}`,
+		);
+	}
 	return gzipSync(outputFiles[0].contents, { level: 9 }).length;
 };
 

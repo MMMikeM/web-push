@@ -5,6 +5,14 @@ All notable changes to `@mmmike/web-push` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Bundling `@mmmike/web-push/send` with esbuild or wrangler no longer warns that it
+  ignored `import "./vapid.mjs"`. `dist/` now holds one file per source module, so no
+  entry point carries a bare import for `sideEffects: false` to drop.
+
 ## [1.4.2] - 2026-10-22
 
 ### Changed
