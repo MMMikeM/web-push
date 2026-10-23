@@ -86,11 +86,22 @@ const deliverTo = async (context: BrowserContext): Promise<void> => {
 	if (!accepted) {
 		throw new Error(`${new URL(subscription.endpoint).host} reported the subscription gone`);
 	}
-	await page.waitForFunction(
-		(expected) => (globalThis as unknown as E2eWindow).e2e.received.includes(expected),
-		message,
-		{ timeout: DELIVERY_TIMEOUT_MS },
-	);
+	try {
+		await page.waitForFunction(
+			(expected) => (globalThis as unknown as E2eWindow).e2e.received.includes(expected),
+			message,
+			{ timeout: DELIVERY_TIMEOUT_MS },
+		);
+	} catch (error) {
+		const state = await page.evaluate(() => ({
+			received: (globalThis as unknown as E2eWindow).e2e.received,
+			worker: navigator.serviceWorker.controller?.state ?? "no controller",
+		}));
+		throw new Error(
+			`${new URL(subscription.endpoint).host} accepted the push, but the page got ${JSON.stringify(state)}`,
+			{ cause: error },
+		);
+	}
 };
 
 // `node browsers/deliver.ts chrome` runs one; no arguments runs them all.
