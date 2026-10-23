@@ -13,6 +13,8 @@ this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   entry point and its exports, then the rules from
   [Rules for AI coding agents](https://web-push.thelazyweb.dev/ai-agents/), between markers
   so it can be pasted into a project's own `AGENTS.md`.
+- `logger.debug` also receives each response's `location`, the push service's URL for the
+  message, and the `ttl` it kept, which RFC 8030 lets it shorten.
 
 ## [1.4.3] - 2026-10-23
 

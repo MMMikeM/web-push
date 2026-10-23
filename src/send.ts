@@ -331,6 +331,8 @@ const postToPushService = async (
 		status: response.status,
 		statusText: response.statusText,
 		body: responseText.slice(0, 200),
+		location: response.headers.get("location"),
+		ttl: response.headers.get("ttl"),
 	});
 
 	if (settled) {

@@ -331,6 +331,19 @@ describe("sendPushNotification — options", () => {
 		expect(debug).toHaveBeenCalledWith("Push response", expect.objectContaining({ status: 201 }));
 	});
 
+	it("logs the message location and the ttl the push service kept", async () => {
+		stubFetch(201, "Created", {
+			Location: "https://push.example/message/abc",
+			TTL: "60",
+		});
+		const debug = vi.fn<(message: string, data?: Record<string, unknown>) => void>();
+		await sendPushNotification(subscription(), payload, vapid, { ttl: 3600, logger: { debug } });
+		expect(debug).toHaveBeenCalledWith(
+			"Push response",
+			expect.objectContaining({ location: "https://push.example/message/abc", ttl: "60" }),
+		);
+	});
+
 	it("keeps the VAPID JWT expiry within 24h even for a long message ttl", async () => {
 		const mock = stubFetch(201);
 		const now = Math.floor(Date.now() / 1000);

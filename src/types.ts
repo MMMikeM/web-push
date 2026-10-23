@@ -49,7 +49,11 @@ export type VapidConfig = {
  * Optional logger interface for debugging.
  */
 export type Logger = {
-	/** Receives each push service response, endpoint and body truncated */
+	/**
+	 * Receives each push service response: its status, endpoint and body
+	 * truncated, the message's `location` URL, and the `ttl` the push service
+	 * kept, which can be shorter than the one sent (RFC 8030 §5.2)
+	 */
 	debug?: (message: string, data?: Record<string, unknown>) => void;
 	/** Not called yet */
 	info?: (message: string, data?: Record<string, unknown>) => void;
