@@ -7,6 +7,9 @@ self.addEventListener("push", (event) => {
 			self.registration.showNotification(title, {
 				body,
 				tag,
+				// Without it, Chrome swaps out a demo notification still in the
+				// notification centre without showing a banner. It throws without a tag.
+				renotify: tag !== undefined,
 				icon: "/apple-touch-icon.png",
 				data: { url },
 			}),

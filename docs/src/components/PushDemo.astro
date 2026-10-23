@@ -150,9 +150,16 @@
 			if (document.visibilityState === "visible") {
 				this.#showToast(title, body);
 			} else {
-				document.addEventListener("visibilitychange", () => this.#showToast(title, body), {
-					once: true,
-				});
+				const pageTitle = document.title;
+				document.title = `(1) ${pageTitle}`;
+				document.addEventListener(
+					"visibilitychange",
+					() => {
+						document.title = pageTitle;
+						this.#showToast(title, body);
+					},
+					{ once: true },
+				);
 			}
 		}
 
