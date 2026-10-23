@@ -57,8 +57,10 @@
 				if (!this.#arrived) {
 					this.#say(outcome);
 				}
-			} catch {
-				this.#say("Something went wrong in the browser. Try again, or try another browser.");
+			} catch (error) {
+				console.error(error);
+				const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+				this.#say(`Something went wrong in the browser (${detail}). Try again.`);
 			} finally {
 				button.disabled = false;
 			}
