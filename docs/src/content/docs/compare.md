@@ -48,7 +48,7 @@ Downloads are npm's count for the week of 12 to 18 October 2026.
 | RFC 8292 VAPID            | ✓                                                                                                                           | ✓                                                 |
 | VAPID key generation      | ✓ async                                                                                                                     | ✓ synchronous, and a CLI                          |
 | Licence                   | MIT                                                                                                                         | MPL-2.0                                           |
-| Latest release            | 1.4.2, October 2026                                                                                                         | 3.6.7, January 2024                               |
+| Latest release            | 1.4.3, October 2026                                                                                                         | 3.6.7, January 2024                               |
 | Weekly downloads          | ~9.3k                                                                                                                       | ~6.6M                                             |
 | GitHub stars              | 2                                                                                                                           | 3.6k                                              |
 
