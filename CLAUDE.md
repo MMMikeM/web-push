@@ -28,6 +28,8 @@ Zero-dependency Web Push (RFC 8291) for Workers, Deno, Bun, Vercel Edge, Node 22
 
 `e2e/` is its own pnpm root too, for wrangler and anything else a cross-runtime test needs. `e2e/conformance/checks.ts` runs the built package (`pnpm run build` first) through RFC 8291's test vector, decryption by `test/receiver.ts`, VAPID JWT verification and send results. `conformance.yml` runs it on Node 22.12 (the `engines` floor), the latest 22 and 24, Deno, Bun and workerd, from `node.yml`, `deno.yml`, `bun.yml` and `workers.yml` on every push (one workflow per runtime, for the README badges) and from `release.yml`, which publishes only if it passes (`pnpm --dir e2e run conformance:<runtime>` locally). `e2e/browsers/deliver.ts` subscribes in Chrome and Firefox and sends through their real push services; `chrome.yml` and `firefox.yml` run it through `browsers.yml` on every push and pull request, and daily, one workflow per browser so each has its own README badge.
 
+`e2e/worker-cost/measure.ts` builds a minimal sending Worker with `web-push`, with this package and empty, then fails if the gzipped upload sizes the README and `compare.md` quote are stale, or if their startup claims stop holding. `ci.yml` runs it on every push (`pnpm --dir e2e run worker-cost` after a build), so a change to those sentences means changing its patterns too.
+
 - **`test/receiver.ts` imports nothing and uses only Web APIs**, so every runtime can load it. Keep vitest and `src/` out of it.
 
 ## Documentation
