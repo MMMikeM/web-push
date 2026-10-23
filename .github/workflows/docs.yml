@@ -1,10 +1,11 @@
 name: docs
 
 on:
-  # Stable release tags only: the docs describe what `npm install` gives, so
-  # neither main nor a prerelease tag deploys.
-  push:
-    tags: ["v*", "!v*-*"]
+  # After a stable release publishes: the docs describe what `npm install`
+  # gives, so neither main, a prerelease, nor a release that failed deploys.
+  workflow_run:
+    workflows: [release]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -16,11 +17,18 @@ concurrency:
 
 jobs:
   build:
+    # For a release, the run's head_branch is its tag.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      !contains(github.event.workflow_run.head_branch, '-'))
     runs-on: ubuntu-latest
     steps:
       # Actions pinned to SHAs, not tags: a tag can be moved to point at malicious code.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # The released commit, not main's tip.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           # The build runs third-party build scripts; keep the token out of .git/config.
           persist-credentials: false
           # Full history, for each page's last-updated date.
@@ -58,6 +66,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           persist-credentials: false
 
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10

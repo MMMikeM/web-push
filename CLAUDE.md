@@ -22,7 +22,7 @@ Zero-dependency Web Push (RFC 8291) for Workers, Deno, Bun, Vercel Edge, Node 22
 - **`ai-agents.md` ships in the package.** `scripts/agents-md.ts` builds `dist/AGENTS.md` during `vp pack` from the page's sections (everything from its first `##`) and the built entry points, so a rule changed there changes what every install reads.
 - **The home page's push demo needs two Worker secrets.** `docs/worker/push-demo.ts` sends one fixed notification to a subscription the page posts, using `DEMO_VAPID_PUBLIC_KEY` and `DEMO_VAPID_PRIVATE_KEY`. `node docs/scripts/push-demo-keys.ts` sets both; locally, `docs/.dev.vars` holds a throwaway pair.
 - **Links are root-absolute: `/guides/handle-errors/`, never `../handle-errors/`.** The same Markdown is served per page (`<page>.md`) and bundled into `llms-full.txt`, where relative links resolve against the wrong URL.
-- **It deploys to a Cloudflare Worker at `web-push.thelazyweb.dev`**, from `docs.yml` on stable release tags. `docs/worker/` serves each page's Markdown copy to requests that send `Accept: text/markdown`.
+- **It deploys to a Cloudflare Worker at `web-push.thelazyweb.dev`**, from `docs.yml` once `release.yml` has published a stable release. `docs/worker/` serves each page's Markdown copy to requests that send `Accept: text/markdown`.
 
 ## Runtime conformance
 
