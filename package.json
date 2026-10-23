@@ -1,6 +1,6 @@
 {
 	"name": "@mmmike/web-push",
-	"version": "1.4.3",
+	"version": "1.5.0",
 	"description": "Subscribe in the browser and send VAPID-signed, RFC 8291 encrypted push notifications from Cloudflare Workers, Deno, Bun or Node, with one zero-dependency package.",
 	"keywords": [
 		"bun",
