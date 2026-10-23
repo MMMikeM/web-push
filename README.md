@@ -3,7 +3,7 @@
 **The whole Web Push flow, from subscribing in the browser to sending from the server, in one zero-dependency package.**
 
 [![npm](https://img.shields.io/npm/v/%40mmmike%2Fweb-push)](https://www.npmjs.com/package/@mmmike/web-push)
-[![minzipped size](https://img.shields.io/bundlephobia/minzip/%40mmmike%2Fweb-push)](https://bundlephobia.com/package/@mmmike/web-push)
+[![minzipped size](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdeno.bundlejs.com%2F%3Fq%3D%2540mmmike%252Fweb-push&query=%24.size.compressedSize&label=minzipped%20size)](https://bundlejs.com/?q=%40mmmike%2Fweb-push)
 [![CI](https://github.com/MMMikeM/web-push/actions/workflows/ci.yml/badge.svg)](https://github.com/MMMikeM/web-push/actions/workflows/ci.yml)
 [![license](https://img.shields.io/npm/l/%40mmmike%2Fweb-push)](https://github.com/MMMikeM/web-push/blob/main/LICENSE)
 
