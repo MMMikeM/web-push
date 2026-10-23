@@ -1,20 +1,13 @@
 name: browsers
 
-# Real delivery through Google's and Mozilla's push services. The daily run
-# catches a browser or push service changing while no commits land.
+# Real delivery through a browser's push service, called by chrome.yml and
+# firefox.yml so each has a status badge of its own.
 on:
-  push:
-    branches: [main]
-    tags: ["v*"]
-  pull_request:
-  schedule:
-    - cron: "17 5 * * *"
-  workflow_dispatch:
-
-# Keyed by event too, so a push to main can't cancel the daily run.
-concurrency:
-  group: browsers-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: true
+  workflow_call:
+    inputs:
+      browser:
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -23,10 +16,6 @@ jobs:
   deliver:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    strategy:
-      fail-fast: false
-      matrix:
-        browser: [chrome, firefox]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -48,8 +37,8 @@ jobs:
       # credentials for Google's push service.
       # No --with-deps: the image has the libraries headless Firefox needs, and
       # the extra fonts and codecs came from an apt mirror that stalled the job.
-      - if: matrix.browser == 'firefox'
+      - if: inputs.browser == 'firefox'
         timeout-minutes: 3
         run: pnpm --dir e2e exec playwright install firefox
 
-      - run: pnpm --dir e2e run browsers ${{ matrix.browser }}
+      - run: pnpm --dir e2e run browsers ${{ inputs.browser }}
