@@ -14,7 +14,22 @@ this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   [Rules for AI coding agents](https://web-push.thelazyweb.dev/ai-agents/), between markers
   so it can be pasted into a project's own `AGENTS.md`.
 - `logger.debug` also receives each response's `location`, the push service's URL for the
-  message, and the `ttl` it kept, which RFC 8030 lets it shorten.
+  message, truncated like the endpoint since it's a capability URL, and the `ttl` in
+  seconds that the push service kept, which RFC 8030 lets it shorten.
+- `InvalidSubscriptionError`, thrown (or listed in a batch's `failed`) when a
+  subscription's endpoint or keys are malformed. It extends `Error`, so existing checks
+  still match, and it tells a subscription to delete apart from a mistake in your own
+  VAPID config, payload, `topic`, `ttl` or `timeoutMs`, which still throws a plain
+  `Error`.
+- `isPushServiceEndpoint()`, which checks that an endpoint is on a browser's push service
+  before your server stores a subscription a browser uploaded.
+
+### Changed
+
+- `subscribe({ registration })` from a page waits for that registration's worker to
+  activate, following a replacement if it's superseded. A page could already pass a
+  registration, but one still installing failed, and `serviceWorker.ready` never resolves
+  for a worker outside the page's scope.
 
 ## [1.4.3] - 2026-10-23
 
