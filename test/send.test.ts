@@ -1,6 +1,13 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vite-plus/test";
 import { encryptPayload } from "../src/encrypt";
-import { rawPayload, sendPushNotification, topicFromString, WebPushError } from "../src/send";
+import {
+	InvalidSubscriptionError,
+	isPushServiceEndpoint,
+	rawPayload,
+	sendPushNotification,
+	topicFromString,
+	WebPushError,
+} from "../src/send";
 import type { PushSubscriptionData, VapidConfig } from "../src/types";
 import { generateVapidKeys, uint8ArrayToUrlBase64 } from "../src/vapid";
 import {
@@ -332,15 +339,23 @@ describe("sendPushNotification — options", () => {
 	});
 
 	it("logs the message location and the ttl the push service kept", async () => {
-		stubFetch(201, "Created", {
-			Location: "https://push.example/message/abc",
-			TTL: "60",
-		});
+		const location = `https://push.example/message/${"m".repeat(80)}`;
+		stubFetch(201, "Created", { Location: location, TTL: "60" });
 		const debug = vi.fn<(message: string, data?: Record<string, unknown>) => void>();
 		await sendPushNotification(subscription(), payload, vapid, { ttl: 3600, logger: { debug } });
 		expect(debug).toHaveBeenCalledWith(
 			"Push response",
-			expect.objectContaining({ location: "https://push.example/message/abc", ttl: "60" }),
+			expect.objectContaining({ location: location.slice(0, 50), ttl: 60 }),
+		);
+	});
+
+	it("logs a missing location and ttl as null", async () => {
+		stubFetch(201);
+		const debug = vi.fn<(message: string, data?: Record<string, unknown>) => void>();
+		await sendPushNotification(subscription(), payload, vapid, { logger: { debug } });
+		expect(debug).toHaveBeenCalledWith(
+			"Push response",
+			expect.objectContaining({ location: null, ttl: null }),
 		);
 	});
 
@@ -529,6 +544,16 @@ describe("sendPushNotification — payload size & validation", () => {
 		);
 	});
 
+	it("rejects its own VAPID config with a plain Error, not an InvalidSubscriptionError", async () => {
+		stubFetch(201);
+		const error = await sendPushNotification(subscription(), payload, {
+			...vapid,
+			subject: "not a contact",
+		}).catch((caught: unknown) => caught);
+		expect(error).toBeInstanceOf(Error);
+		expect(error).not.toBeInstanceOf(InvalidSubscriptionError);
+	});
+
 	// A TypeError must mean the network alone, so callers can retry on it safely.
 	it.each([
 		{
@@ -565,13 +590,14 @@ describe("sendPushNotification — payload size & validation", () => {
 			message: "Invalid subscription p256dh key: not a point on the P-256 curve",
 		},
 	])(
-		"rejects $problem with a plain Error, not a TypeError or DOMException",
+		"rejects $problem with an InvalidSubscriptionError, not a TypeError or DOMException",
 		async ({ makeSubscription, message }) => {
 			stubFetch(201);
 			const error = await sendPushNotification(makeSubscription(), payload, vapid).catch(
 				(caught: unknown) => caught,
 			);
-			expect(error).toBeInstanceOf(Error);
+			expect(error).toBeInstanceOf(InvalidSubscriptionError);
+			expect((error as Error).name).toBe("InvalidSubscriptionError");
 			expect(error).not.toBeInstanceOf(TypeError);
 			expect(error).not.toBeInstanceOf(DOMException);
 			expect((error as Error).message).toBe(message);
@@ -620,5 +646,26 @@ describe("encryptPayload — round-trip across payload sizes", () => {
 		const plaintext = crypto.getRandomValues(new Uint8Array(size));
 		const body = await encryptPayload(plaintext, client.p256dh, client.auth);
 		expect(await decryptAes128gcm(body, client)).toEqual(plaintext);
+	});
+});
+
+describe("isPushServiceEndpoint", () => {
+	it.each([
+		"https://fcm.googleapis.com/fcm/send/abc",
+		"https://wns2-par02p.notify.windows.com/w/?token=abc",
+		"https://updates.push.services.mozilla.com/wpush/v2/abc",
+		"https://web.push.apple.com/abc",
+	])("accepts %s", (endpoint) => {
+		expect(isPushServiceEndpoint(endpoint)).toBe(true);
+	});
+
+	it.each([
+		["an internal host", "https://internal-service.local/hooks"],
+		["plain http", "http://fcm.googleapis.com/fcm/send/abc"],
+		["a lookalike suffix", "https://fcm.googleapis.com.evil.example/abc"],
+		["a lookalike prefix", "https://evilfcm.googleapis.com/abc"],
+		["something that isn't a URL", "not a url"],
+	])("rejects %s", (_, endpoint) => {
+		expect(isPushServiceEndpoint(endpoint)).toBe(false);
 	});
 });

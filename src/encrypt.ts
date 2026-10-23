@@ -8,6 +8,7 @@
  * library's own modules and tests that import `src/` directly can call it.
  */
 
+import { InvalidSubscriptionError } from "./errors";
 import { urlBase64ToUint8Array } from "./vapid";
 
 const SALT_LENGTH = 16;
@@ -66,7 +67,9 @@ const decodeSubscriptionKey = (value: string, name: string): Uint8Array<ArrayBuf
 	try {
 		return urlBase64ToUint8Array(value);
 	} catch (cause) {
-		throw new Error(`Invalid subscription ${name}: not URL-safe base64`, { cause });
+		throw new InvalidSubscriptionError(`Invalid subscription ${name}: not URL-safe base64`, {
+			cause,
+		});
 	}
 };
 
@@ -91,14 +94,16 @@ export const validatePushInputs = (
 		clientPublicKeyBytes.length !== KEY_ID_LENGTH ||
 		clientPublicKeyBytes[0] !== UNCOMPRESSED_POINT_TAG
 	) {
-		throw new Error(
+		throw new InvalidSubscriptionError(
 			"Invalid subscription p256dh key: expected a 65-byte uncompressed P-256 public key",
 		);
 	}
 
 	const authSecretBytes = decodeSubscriptionKey(authSecret, "auth secret");
 	if (authSecretBytes.length < 16) {
-		throw new Error("Invalid subscription auth secret: expected at least 16 bytes");
+		throw new InvalidSubscriptionError(
+			"Invalid subscription auth secret: expected at least 16 bytes",
+		);
 	}
 
 	return { clientPublicKeyBytes, authSecretBytes };
@@ -114,9 +119,12 @@ const importClientPublicKey = async (rawKey: Uint8Array<ArrayBuffer>): Promise<C
 			[],
 		);
 	} catch (cause) {
-		throw new Error("Invalid subscription p256dh key: not a point on the P-256 curve", {
-			cause,
-		});
+		throw new InvalidSubscriptionError(
+			"Invalid subscription p256dh key: not a point on the P-256 curve",
+			{
+				cause,
+			},
+		);
 	}
 };
 

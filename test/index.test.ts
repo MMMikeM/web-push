@@ -19,6 +19,8 @@ describe("index barrel", () => {
 		"unsubscribeFromPush",
 	];
 	const serverExports = [
+		"InvalidSubscriptionError",
+		"isPushServiceEndpoint",
 		"rawPayload",
 		"sendPushBatch",
 		"sendPushNotification",

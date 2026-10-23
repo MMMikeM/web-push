@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vite-plus/test";
-import { rawPayload, sendPushBatch, WebPushError } from "../src/send";
+import { InvalidSubscriptionError, rawPayload, sendPushBatch, WebPushError } from "../src/send";
 import type { PushSubscriptionData, VapidConfig } from "../src/types";
 import { generateVapidKeys, uint8ArrayToUrlBase64 } from "../src/vapid";
 import {
@@ -124,6 +124,7 @@ describe("sendPushBatch — result partitioning", () => {
 
 		expect(failed).toHaveLength(1);
 		expect(failed[0].endpoint).toBe("https://push.example/bad-keys");
+		expect(failed[0].error).toBeInstanceOf(InvalidSubscriptionError);
 		expect((failed[0].error as Error).message).toMatch(/Invalid subscription p256dh key/);
 		expect(mock).toHaveBeenCalledTimes(1);
 		expect(mock.mock.calls[0][0]).toBe("https://push.example/ok");
@@ -141,6 +142,7 @@ describe("sendPushBatch — result partitioning", () => {
 		expect(delivered).toBe(1);
 		expect(failed).toHaveLength(1);
 		expect(failed[0].endpoint).toBe("http://push.example/insecure");
+		expect(failed[0].error).toBeInstanceOf(InvalidSubscriptionError);
 		expect((failed[0].error as Error).message).toMatch(/must be an https: URL/);
 		expect(mock).toHaveBeenCalledTimes(1);
 		expect(mock.mock.calls[0][0]).toBe("https://push.example/ok");
@@ -159,7 +161,7 @@ describe("sendPushBatch — result partitioning", () => {
 		const result = await sendPushBatch(rows, payload, vapid);
 
 		expect(result.delivered).toBe(2);
-		expect(result.failed).toEqual([{ endpoint: "", error: expect.any(Error) }]);
+		expect(result.failed).toEqual([{ endpoint: "", error: expect.any(InvalidSubscriptionError) }]);
 		expect(result.failed[0].error).not.toBeInstanceOf(TypeError);
 	});
 

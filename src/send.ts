@@ -4,6 +4,7 @@
  */
 
 import { assertPayloadWithinLimit, encryptPayload, validatePushInputs } from "./encrypt";
+import { InvalidSubscriptionError } from "./errors";
 import type {
 	PushPayload,
 	PushSubscriptionData,
@@ -35,6 +36,8 @@ const parseRetryAfterMs = (retryAfter: string | null): number | null => {
 	const date = Date.parse(trimmed);
 	return Number.isNaN(date) ? null : Math.max(0, date - Date.now());
 };
+
+export { InvalidSubscriptionError };
 
 /**
  * Error thrown when the push service rejects a send with a non-2xx status,
@@ -163,24 +166,49 @@ const assertValidTopic = (topic: string | undefined): void => {
 	}
 };
 
-// Malformed subscription input throws a plain Error, never the TypeError that
-// `new URL` or a missing `keys` would, so TypeError means the network alone.
+// Malformed subscription input throws InvalidSubscriptionError, never the
+// TypeError that `new URL` or a missing `keys` would, so TypeError means the
+// network alone.
 const subscriptionKeys = ({ keys }: PushSubscriptionData): [p256dh: string, auth: string] => {
 	if (typeof keys?.p256dh !== "string" || typeof keys.auth !== "string") {
-		throw new Error("Invalid subscription: missing its p256dh or auth key");
+		throw new InvalidSubscriptionError("Invalid subscription: missing its p256dh or auth key");
 	}
 	return [keys.p256dh, keys.auth];
+};
+
+// The browsers' push services: Chrome and other Chromium browsers, Edge,
+// Firefox, and Safari on macOS and iOS.
+const PUSH_SERVICE_HOST =
+	/^(?:fcm\.googleapis\.com|(?:[\w-]+\.)+(?:notify\.windows\.com|push\.services\.mozilla\.com|push\.apple\.com))$/;
+
+/**
+ * Whether an endpoint is an `https:` URL on a browser's push service: Google's
+ * for Chromium browsers, Microsoft's for Edge, Mozilla's or Apple's. The send
+ * functions post to whatever endpoint a subscription names, so a server that
+ * takes subscriptions from browsers can check them here first, and stop a
+ * hostile client from aiming its sends at internal hosts.
+ *
+ * @see {@link https://web-push.thelazyweb.dev/guides/secure-endpoints/ | Secure your endpoints}
+ */
+export const isPushServiceEndpoint = (endpoint: string): boolean => {
+	if (!URL.canParse(endpoint)) {
+		return false;
+	}
+	const url = new URL(endpoint);
+	return url.protocol === "https:" && PUSH_SERVICE_HOST.test(url.hostname);
 };
 
 /** The JWT `aud` claim is the push service origin, not the full endpoint. */
 const pushServiceOrigin = (endpoint: string): string => {
 	if (!URL.canParse(endpoint)) {
-		throw new Error("Invalid subscription endpoint: not a URL");
+		throw new InvalidSubscriptionError("Invalid subscription endpoint: not a URL");
 	}
 	const url = new URL(endpoint);
 	// Anything but TLS hands the capability URL and payload to the network.
 	if (url.protocol !== "https:") {
-		throw new Error("Invalid subscription endpoint: must be an https: URL (RFC 8030 §3)");
+		throw new InvalidSubscriptionError(
+			"Invalid subscription endpoint: must be an https: URL (RFC 8030 §3)",
+		);
 	}
 	return `${url.protocol}//${url.host}`;
 };
@@ -326,13 +354,17 @@ const postToPushService = async (
 
 	const responseText = await readBodyPrefix(response);
 
+	// The endpoint and the message's Location are both capability URLs: whoever
+	// holds one can push to the subscription, or act on the message (RFC 8030
+	// §6). Only their prefix reaches a log.
+	const keptTtl = response.headers.get("ttl");
 	logger?.debug?.("Push response", {
 		endpoint: subscription.endpoint.slice(0, 50),
 		status: response.status,
 		statusText: response.statusText,
 		body: responseText.slice(0, 200),
-		location: response.headers.get("location"),
-		ttl: response.headers.get("ttl"),
+		location: response.headers.get("location")?.slice(0, 50) ?? null,
+		ttl: keptTtl === null ? null : Number(keptTtl),
 	});
 
 	if (settled) {
@@ -365,8 +397,10 @@ const postToPushService = async (
  * @throws {DOMException} `TimeoutError` after `timeoutMs`
  * @throws the `signal`'s abort reason when it aborts: an `AbortError` `DOMException`
  * unless you passed `abort()` a reason of your own
- * @throws {Error} on invalid input: VAPID config, payload size, `topic`, `ttl`,
- * `timeoutMs`, or a non-`https:` endpoint
+ * @throws {InvalidSubscriptionError} when the subscription's endpoint isn't an
+ * `https:` URL or its keys are missing or malformed: delete it
+ * @throws {Error} on your own invalid input: VAPID config, payload size,
+ * `topic`, `ttl` or `timeoutMs`
  * @example
  * ```ts
  * const delivered = await sendPushNotification(subscription, payload, vapid);
@@ -417,7 +451,8 @@ export const sendPushNotification = async (
  * wrapper is encrypted and sent verbatim
  * @throws {Error} on caller input — invalid VAPID config, oversized payload,
  * invalid `topic`, `ttl`, `concurrency`, or `timeoutMs` — before anything is sent.
- * A non-`https:` endpoint is per-subscription data and lands in `failed`.
+ * A malformed subscription is per-subscription data and lands in `failed` as an
+ * {@link InvalidSubscriptionError}.
  * @example
  * ```ts
  * const { delivered, gone, failed } = await sendPushBatch(subscriptions, payload, vapid);
@@ -481,7 +516,7 @@ export const sendPushBatch = async (
 	const sendOne = async (subscription: PushSubscriptionData | null | undefined): Promise<void> => {
 		try {
 			if (!subscription) {
-				throw new Error("Invalid subscription: not an object");
+				throw new InvalidSubscriptionError("Invalid subscription: not an object");
 			}
 			validatePushInputs(payloadBytes, ...subscriptionKeys(subscription));
 			const jwt = await cachedJwtFor(pushServiceOrigin(subscription.endpoint));

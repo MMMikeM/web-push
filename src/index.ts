@@ -13,6 +13,8 @@ export {
 } from "./client";
 export type { RegistrationOption, SubscribeOptions, SubscribeResult } from "./client";
 export {
+	InvalidSubscriptionError,
+	isPushServiceEndpoint,
 	rawPayload,
 	sendPushBatch,
 	sendPushNotification,

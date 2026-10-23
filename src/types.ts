@@ -50,9 +50,9 @@ export type VapidConfig = {
  */
 export type Logger = {
 	/**
-	 * Receives each push service response: its status, endpoint and body
-	 * truncated, the message's `location` URL, and the `ttl` the push service
-	 * kept, which can be shorter than the one sent (RFC 8030 §5.2)
+	 * Receives each push service response: its status, the endpoint, body and
+	 * the message's `location` URL truncated, and the `ttl` in seconds the push
+	 * service kept, which can be shorter than the one sent (RFC 8030 §5.2)
 	 */
 	debug?: (message: string, data?: Record<string, unknown>) => void;
 	/** Not called yet */
@@ -87,8 +87,9 @@ export type SendPushBatchResult = {
 	/** Endpoints the push service reported gone (404/410) — delete these */
 	gone: string[];
 	/**
-	 * Sends that did not deliver, each with its error. A plain `Error` means the
-	 * subscription itself is malformed: delete it. A row that isn't an object at
+	 * Sends that did not deliver, each with its error. An
+	 * `InvalidSubscriptionError` means the subscription itself is malformed:
+	 * delete it. A row that isn't an object at
 	 * all, such as `null`, has an empty `endpoint`, so find it in your own data
 	 * rather than deleting by endpoint. A `WebPushError` is a
 	 * push-service rejection carrying `statusCode` and `retryAfterMs`; a 401 or
@@ -105,7 +106,10 @@ export type SendPushBatchResult = {
  * @see {@link https://web-push.thelazyweb.dev/guides/collapse-notifications/ | Collapse and expire notifications}
  */
 export type SendPushOptions = {
-	/** Receives each push service response at `debug` level, endpoint and body truncated */
+	/**
+	 * Receives each push service response at `debug` level, with the endpoint,
+	 * body and `location` truncated
+	 */
 	logger?: Logger;
 	/** TTL in seconds, 0 or more, rounded down to a whole second (default: 86400 = 24 hours) */
 	ttl?: number;
