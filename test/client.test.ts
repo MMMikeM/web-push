@@ -47,10 +47,31 @@ type EnvOptions = {
 };
 
 function PushManager() {}
+function ServiceWorkerGlobalScope() {}
 
-// client.ts touches only `pushManager`; the Pick checks that much of the fake.
-const asRegistration = (fake: Pick<ServiceWorkerRegistration, "pushManager">) =>
-	fake as ServiceWorkerRegistration;
+// client.ts touches only these; the Pick checks that much of the fake.
+const asRegistration = (
+	fake: Pick<ServiceWorkerRegistration, "pushManager"> &
+		Partial<Pick<ServiceWorkerRegistration, "active" | "installing" | "waiting">>,
+) => fake as ServiceWorkerRegistration;
+
+/** A service worker whose `statechange` the test fires by hand. */
+const makeWorker = (state: ServiceWorkerState) => {
+	const listeners: (() => void)[] = [];
+	const worker = {
+		state,
+		addEventListener: (_type: "statechange", listener: () => void) => listeners.push(listener),
+		becomes(next: ServiceWorkerState) {
+			worker.state = next;
+			for (const listener of listeners) {
+				listener();
+			}
+		},
+	};
+	return { worker, asWorker: worker as unknown as ServiceWorker };
+};
+
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const setupPushEnv = (opts: EnvOptions = {}) => {
 	const {
@@ -330,6 +351,60 @@ describe("from a service worker", () => {
 		expect(await getCurrentSubscription({ registration })).toBe(existing);
 		expect(await unsubscribe({ registration })).toBe(existing.endpoint);
 		expect(await getCurrentSubscription({ registration })).toBeNull();
+	});
+});
+
+describe("with a registration a page passes in", () => {
+	it("waits for its worker to activate before subscribing", async () => {
+		const { pushManager, created } = setupPushEnv();
+		const { worker, asWorker } = makeWorker("installing");
+		const registration = asRegistration({ pushManager, installing: asWorker });
+
+		const result = subscribe(VAPID_KEY, { registration });
+		await settle();
+		worker.becomes("installed");
+		worker.becomes("activating");
+		expect(pushManager.subscribe).not.toHaveBeenCalled();
+
+		worker.becomes("activated");
+		expect(await result).toEqual({ status: "subscribed", subscription: created, isNew: true });
+	});
+
+	it("follows the worker that replaces one going redundant", async () => {
+		const { pushManager, created } = setupPushEnv();
+		const first = makeWorker("installing");
+		const replacement = makeWorker("installed");
+		const registration = asRegistration({ pushManager, installing: first.asWorker });
+
+		const result = subscribe(VAPID_KEY, { registration });
+		await settle();
+		Object.assign(registration, { installing: null, waiting: replacement.asWorker });
+		first.worker.becomes("redundant");
+		await settle();
+		expect(pushManager.subscribe).not.toHaveBeenCalled();
+
+		replacement.worker.becomes("activated");
+		expect(await result).toEqual({ status: "subscribed", subscription: created, isNew: true });
+	});
+
+	it("subscribes at once when a worker is already active, even with an update installing", async () => {
+		const { pushManager } = setupPushEnv();
+		const registration = asRegistration({
+			pushManager,
+			active: makeWorker("activated").asWorker,
+			installing: makeWorker("installing").asWorker,
+		});
+		expect((await subscribe(VAPID_KEY, { registration })).status).toBe("subscribed");
+	});
+
+	it("doesn't wait inside a service worker, whose own script has to finish first", async () => {
+		const { pushManager } = setupPushEnv({ worker: true });
+		vi.stubGlobal("ServiceWorkerGlobalScope", ServiceWorkerGlobalScope);
+		const registration = asRegistration({
+			pushManager,
+			installing: makeWorker("installing").asWorker,
+		});
+		expect((await subscribe(VAPID_KEY, { registration })).status).toBe("subscribed");
 	});
 });
 

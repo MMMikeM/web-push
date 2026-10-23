@@ -54,7 +54,9 @@ export type SubscribeResult =
 export type RegistrationOption = {
 	/**
 	 * Defaults to `navigator.serviceWorker.ready`; a service worker passes
-	 * `self.registration`.
+	 * `self.registration`. A page can pass one whose worker is still
+	 * installing, such as one registered outside the page's scope, and
+	 * `subscribe` waits for it to activate.
 	 */
 	registration?: ServiceWorkerRegistration;
 };
@@ -100,6 +102,33 @@ const decodeVapidPublicKey = (vapidPublicKey: string): Uint8Array<ArrayBuffer> =
 		throw new Error(INVALID_VAPID_PUBLIC_KEY);
 	}
 	return key;
+};
+
+const isServiceWorker = (): boolean => "ServiceWorkerGlobalScope" in globalThis;
+
+/**
+ * `pushManager.subscribe` needs an active worker, and a page outside the
+ * worker's scope can't wait on `serviceWorker.ready`, so a registration a page
+ * passes in is awaited here. A worker that goes redundant hands over to the
+ * one replacing it. Not inside a service worker, whose own script has to
+ * finish before it can activate, so waiting there would never end.
+ */
+const whenActive = (
+	registration: ServiceWorkerRegistration,
+): Promise<ServiceWorkerRegistration> => {
+	const pending = registration.installing ?? registration.waiting;
+	if (registration.active || !pending || isServiceWorker()) {
+		return Promise.resolve(registration);
+	}
+	return new Promise((resolve, reject) => {
+		pending.addEventListener("statechange", () => {
+			if (pending.state === "activated") {
+				resolve(registration);
+			} else if (pending.state === "redundant") {
+				whenActive(registration).then(resolve, reject);
+			}
+		});
+	});
 };
 
 // Browsers that predate `options.applicationServerKey` report null; treat that
@@ -173,7 +202,9 @@ export const subscribe = async (
 		return { status: "denied" };
 	}
 
-	const target = registration ?? (await navigator.serviceWorker.ready);
+	const target = registration
+		? await whenActive(registration)
+		: await navigator.serviceWorker.ready;
 	const existingSubscription = await target.pushManager.getSubscription();
 	if (existingSubscription) {
 		if (
@@ -210,7 +241,9 @@ export const getCurrentSubscription = async ({
 		return null;
 	}
 
-	const target = registration ?? (await navigator.serviceWorker.ready);
+	const target = registration
+		? await whenActive(registration)
+		: await navigator.serviceWorker.ready;
 	return target.pushManager.getSubscription();
 };
 
