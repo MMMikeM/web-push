@@ -15,11 +15,10 @@ const DELIVERY_TIMEOUT_MS = 60_000;
 // Chrome registers a fresh profile with Google first, which has taken over 30 s.
 const SUBSCRIBE_TIMEOUT_MS = 90_000;
 
-// Google's push service has now and then answered a subscription made a moment
-// earlier as gone. A few spaced resends tell that apart from one that really
-// is, and the result reports any resend, so it stays visible.
-const MAX_SENDS = 4;
-const RESEND_DELAY_MS = 2000;
+// Google's push service answers 410 for a few seconds after a subscription is
+// made (see "Right after subscribing" in guides/handle-errors.md), and this
+// sends to one made moments earlier. The result reports any resend.
+const RESEND_GAPS_MS = [0, 2000, 4000, 8000, 16000, 32000];
 
 const publicDir = fileURLToPath(new URL("public/", import.meta.url));
 const distDir = fileURLToPath(new URL("../../dist/", import.meta.url));
@@ -92,7 +91,7 @@ const deliverTo = async (context: BrowserContext): Promise<string | undefined> =
 			(key) => (globalThis as unknown as E2eWindow).e2e.subscribe(key),
 			vapid.publicKey,
 		),
-		sleep(SUBSCRIBE_TIMEOUT_MS).then(() => {
+		sleep(SUBSCRIBE_TIMEOUT_MS, undefined, { ref: false }).then(() => {
 			throw new Error(`subscribe didn't settle within ${SUBSCRIBE_TIMEOUT_MS} ms`);
 		}),
 	]);
@@ -102,10 +101,11 @@ const deliverTo = async (context: BrowserContext): Promise<string | undefined> =
 		debug: (_: string, data?: { status?: number }) => statuses.push(Number(data?.status)),
 	};
 	let accepted = false;
-	for (let send = 1; send <= MAX_SENDS && !accepted; send++) {
-		if (send > 1) {
-			await sleep(RESEND_DELAY_MS);
+	for (const gapMs of RESEND_GAPS_MS) {
+		if (accepted) {
+			break;
 		}
+		await sleep(gapMs);
 		accepted = await sendPushNotification(subscription, rawPayload(message), vapid, {
 			ttl: 60,
 			urgency: "high",
