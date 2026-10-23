@@ -55,7 +55,7 @@
 	},
 	"scripts": {
 		"build": "vp pack",
-		"lint": "vp lint src test scripts examples",
+		"lint": "vp lint src test scripts examples e2e",
 		"lint:types": "tsc -p tsconfig.check.json && tsc -p tsconfig.tools.json",
 		"format": "vp fmt --write",
 		"format:check": "vp fmt --check",

@@ -10,6 +10,8 @@ self.addEventListener("push", (event) => {
 			const text = event.data?.text() ?? "";
 			const pages = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
 			for (const page of pages) {
+				// Client.postMessage has no targetOrigin; that's window.postMessage.
+				// oxlint-disable-next-line unicorn/require-post-message-target-origin
 				page.postMessage(text);
 			}
 			await self.registration.showNotification("web-push e2e", { body: text });

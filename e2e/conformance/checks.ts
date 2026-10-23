@@ -89,6 +89,9 @@ const importRfcServerKeyPair = async (): Promise<CryptoKeyPair> => {
 	return { publicKey, privateKey };
 };
 
+const replace = (target: object, name: string, value: unknown) =>
+	Object.defineProperty(target, name, { value, configurable: true, writable: true });
+
 /**
  * Run `run` with the RFC's fixed ephemeral key pair and salt in place of fresh
  * random ones. The published package has no seam for them, by design, so the
@@ -100,8 +103,6 @@ const withRfcRandomness = async <T>(run: () => Promise<T>): Promise<T> => {
 	const { subtle } = crypto;
 	const realGenerateKey = subtle.generateKey;
 	const realGetRandomValues = crypto.getRandomValues;
-	const replace = (target: object, name: string, value: unknown) =>
-		Object.defineProperty(target, name, { value, configurable: true, writable: true });
 
 	replace(
 		subtle,

@@ -35,6 +35,13 @@ const config: ViteUserConfig = defineConfig({
 			"typescript/no-non-null-assertion": "error",
 		},
 		env: { builtin: true },
+		overrides: [
+			{
+				// The e2e drivers run browsers, checks and retries one after another on purpose.
+				files: ["e2e/**"],
+				rules: { "no-await-in-loop": "off" },
+			},
+		],
 	},
 	test: {
 		environment: "node",
