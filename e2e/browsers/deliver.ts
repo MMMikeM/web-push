@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import type { PushSubscriptionData } from "@mmmike/web-push";
 import { rawPayload, sendPushNotification } from "@mmmike/web-push/send";
@@ -11,6 +12,12 @@ import { type BrowserContext, chromium, firefox } from "playwright";
 import { type CheckResult, report } from "../conformance/checks.ts";
 
 const DELIVERY_TIMEOUT_MS = 60_000;
+
+// Google's push service has now and then answered a subscription made a moment
+// earlier as gone. A few spaced resends tell that apart from one that really
+// is, and the result reports any resend, so it stays visible.
+const MAX_SENDS = 4;
+const RESEND_DELAY_MS = 2000;
 
 const publicDir = fileURLToPath(new URL("public/", import.meta.url));
 const distDir = fileURLToPath(new URL("../../dist/", import.meta.url));
@@ -67,8 +74,11 @@ const browsers: Record<string, (profileDir: string) => Promise<BrowserContext>> 
 		}),
 };
 
-/** Subscribe in the browser, send from here through the real push service, and wait for it to arrive. */
-const deliverTo = async (context: BrowserContext): Promise<void> => {
+/**
+ * Subscribe in the browser, send from here through the real push service, and
+ * wait for it to arrive. Returns a note when the push needed resending.
+ */
+const deliverTo = async (context: BrowserContext): Promise<string | undefined> => {
 	await context.grantPermissions(["notifications"], { origin });
 	const page = await context.newPage();
 	await page.goto(origin);
@@ -78,13 +88,25 @@ const deliverTo = async (context: BrowserContext): Promise<void> => {
 		vapid.publicKey,
 	);
 	const message = `delivered ✓ ${crypto.randomUUID()}`;
-	const accepted = await sendPushNotification(subscription, rawPayload(message), vapid, {
-		ttl: 60,
-		urgency: "high",
-		topic: "e2e",
-	});
+	const statuses: number[] = [];
+	const logger = {
+		debug: (_: string, data?: { status?: number }) => statuses.push(Number(data?.status)),
+	};
+	let accepted = false;
+	for (let send = 1; send <= MAX_SENDS && !accepted; send++) {
+		if (send > 1) {
+			await sleep(RESEND_DELAY_MS);
+		}
+		accepted = await sendPushNotification(subscription, rawPayload(message), vapid, {
+			ttl: 60,
+			urgency: "high",
+			topic: "e2e",
+			logger,
+		});
+	}
+	const pushService = new URL(subscription.endpoint).host;
 	if (!accepted) {
-		throw new Error(`${new URL(subscription.endpoint).host} reported the subscription gone`);
+		throw new Error(`${pushService} answered every send with ${statuses.join(", ")}`);
 	}
 	try {
 		await page.waitForFunction(
@@ -97,11 +119,11 @@ const deliverTo = async (context: BrowserContext): Promise<void> => {
 			received: (globalThis as unknown as E2eWindow).e2e.received,
 			worker: navigator.serviceWorker.controller?.state ?? "no controller",
 		}));
-		throw new Error(
-			`${new URL(subscription.endpoint).host} accepted the push, but the page got ${JSON.stringify(state)}`,
-			{ cause: error },
-		);
+		throw new Error(`${pushService} accepted the push, but the page got ${JSON.stringify(state)}`, {
+			cause: error,
+		});
 	}
+	return statuses.length > 1 ? `resent after ${statuses.slice(0, -1).join(", ")}` : undefined;
 };
 
 // `node browsers/deliver.ts chrome` runs one; no arguments runs them all.
@@ -116,8 +138,8 @@ for (const [name, launch] of selected) {
 	let context: BrowserContext | undefined;
 	try {
 		context = await launch(profileDir);
-		await deliverTo(context);
-		results.push({ name: `${name} receives and decrypts a push`, passed: true });
+		const note = await deliverTo(context);
+		results.push({ name: `${name} receives and decrypts a push`, passed: true, detail: note });
 	} catch (error) {
 		results.push({
 			name: `${name} receives and decrypts a push`,
