@@ -5,6 +5,14 @@ All notable changes to `@mmmike/web-push` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- The built `.mjs` files no longer carry the JSDoc, which stays in the `.d.mts` files where
+  editors read it. A Worker that sends with the package and isn't minified uploads 4.8 kB
+  gzipped instead of 5.1 kB.
+
 ## [1.5.0] - 2026-10-23
 
 ### Added

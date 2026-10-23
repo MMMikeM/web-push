@@ -70,6 +70,9 @@ const config: ViteUserConfig = defineConfig({
 			level: "error",
 		},
 		publint: { strict: true },
+		// The JSDoc ships in the .d.mts files, where editors read it. Left in the
+		// .mjs files, a consumer that doesn't minify uploads it too.
+		outputOptions: { comments: { jsdoc: false } },
 		plugins: [agentsMd()],
 	},
 });
