@@ -7,6 +7,11 @@ this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [1.4.3] - 2026-10-23
 
+### Changed
+
+- The package no longer ships source maps. `dist/` isn't minified and mirrors `src/`
+  file for file, so it reads the same without them.
+
 ### Fixed
 
 - Bundling `@mmmike/web-push/send` with esbuild or wrangler no longer warns that it

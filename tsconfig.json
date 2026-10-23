@@ -8,8 +8,8 @@
 		"esModuleInterop": true,
 		"skipLibCheck": true,
 		"declaration": true,
-		"declarationMap": true,
 		"stripInternal": true,
+		"isolatedDeclarations": true,
 		"outDir": "dist",
 		"rootDir": "src"
 	},

@@ -64,15 +64,12 @@
 		"coverage": "vp test run --coverage",
 		"audit": "pnpm audit --audit-level high --ignore-registry-errors",
 		"check": "pnpm run format:check && pnpm run lint && pnpm run lint:types && pnpm run coverage && pnpm run audit",
-		"check:exports": "attw --pack . --profile esm-only",
-		"check:publint": "publint --strict",
 		"check:sizes": "node scripts/check-sizes.ts",
-		"check:package": "pnpm run build && pnpm run check:publint && pnpm run check:exports && pnpm run check:sizes",
+		"check:package": "pnpm run build && pnpm run check:sizes",
 		"prepublishOnly": "pnpm run check && pnpm run check:package",
 		"release": "git tag -a \"v$npm_package_version\" -m \"v$npm_package_version\" && git push --follow-tags"
 	},
 	"devDependencies": {
-		"@arethetypeswrong/cli": "^0.18.5",
 		"@arethetypeswrong/core": "^0.18.5",
 		"@types/node": "^26.6.5",
 		"@vitest/coverage-v8": "5.0.5",

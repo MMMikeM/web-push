@@ -1,6 +1,7 @@
-import { defineConfig } from "vite-plus";
+import { defineConfig, type ViteUserConfig } from "vite-plus";
 
-export default defineConfig({
+// Typed, not inferred, so isolatedDeclarations accepts the default export.
+const config: ViteUserConfig = defineConfig({
 	fmt: {
 		useTabs: true,
 		printWidth: 100,
@@ -53,9 +54,15 @@ export default defineConfig({
 		dts: true,
 		clean: true,
 		unbundle: true,
+		// attw, publint and the bundler only warn by default; these make each
+		// one fail the build instead.
+		failOnWarn: true,
 		attw: {
 			profile: "esm-only",
+			level: "error",
 		},
-		publint: true,
+		publint: { strict: true },
 	},
 });
+
+export default config;

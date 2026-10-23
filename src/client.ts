@@ -198,7 +198,7 @@ export const subscribe = async (
  * @deprecated Renamed to {@link subscribe} — same behavior, symmetric with
  * `unsubscribe`.
  */
-export const subscribeToPush = subscribe;
+export const subscribeToPush: typeof subscribe = subscribe;
 
 /**
  * Get the current push subscription if it exists.
