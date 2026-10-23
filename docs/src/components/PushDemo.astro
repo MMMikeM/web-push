@@ -2,6 +2,15 @@
 	<button type="button" class="primary" data-send>Send me a test notification</button>
 	<span class="status" role="status" aria-live="polite"></span>
 	<noscript><p>The demo needs JavaScript.</p></noscript>
+	<div class="toast" role="status" aria-live="polite" hidden>
+		<img src="/apple-touch-icon.png" alt="" width="40" height="40" />
+		<div class="toast-text">
+			<p class="toast-meta"><span>web-push.thelazyweb.dev</span><span>now</span></p>
+			<p class="toast-title"></p>
+			<p class="toast-body"></p>
+		</div>
+		<button type="button" class="toast-close" aria-label="Dismiss" data-dismiss>×</button>
+	</div>
 </push-demo>
 
 <script>
@@ -17,6 +26,9 @@
 	const WORKER_URL = "/push-demo-sw.js";
 	// A scope of its own keeps the demo's service worker from controlling the docs pages.
 	const WORKER_SCOPE = "/push-demo/";
+	// How long the docs Worker waits before its first send (worker/push-demo.ts).
+	const SEND_DELAY_S = 5;
+	const TOAST_MS = 10_000;
 
 	const UNSUPPORTED =
 		"This browser can't receive push notifications here. On iPhone and iPad, Safari only allows them for sites added to the Home Screen.";
@@ -33,16 +45,20 @@
 		return error ?? `The demo answered ${response.status}.`;
 	};
 
+	type Arrival = { title?: string; body?: string };
+
 	class PushDemo extends HTMLElement {
 		// The push can land before the send request returns.
 		#arrived = false;
+		#countdown: ReturnType<typeof setInterval> | undefined;
+		#toastTimer: ReturnType<typeof setTimeout> | undefined;
 
 		connectedCallback() {
 			this.querySelector("[data-send]")?.addEventListener("click", () => this.#send());
+			this.querySelector("[data-dismiss]")?.addEventListener("click", () => this.#hideToast());
 			navigator.serviceWorker?.addEventListener("message", (event) => {
 				if (event.data?.type === "push-demo:received") {
-					this.#arrived = true;
-					this.#say("Arrived. Encrypted, signed and sent by this library on a Cloudflare Worker.");
+					this.#arrive(event.data as Arrival);
 				}
 			});
 			navigator.serviceWorker?.startMessages();
@@ -52,6 +68,7 @@
 			const button = this.querySelector<HTMLButtonElement>("[data-send]")!;
 			button.disabled = true;
 			this.#arrived = false;
+			this.#hideToast();
 			try {
 				const outcome = await this.#subscribeAndSend();
 				if (!this.#arrived) {
@@ -62,6 +79,7 @@
 				const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
 				this.#say(`Something went wrong in the browser (${detail}). Try again.`);
 			} finally {
+				this.#stopCountdown();
 				button.disabled = false;
 			}
 		}
@@ -88,7 +106,7 @@
 			if (result.status !== "subscribed") {
 				return UNSUPPORTED;
 			}
-			this.#say("Sending…");
+			this.#startCountdown();
 			let response = await post(result.subscription);
 			// The push service dropped this browser's subscription, but the browser
 			// still holds it and `subscribe` handed it back. Replace it once.
@@ -98,9 +116,64 @@
 				if (fresh.status !== "subscribed") {
 					return UNSUPPORTED;
 				}
+				this.#startCountdown();
 				response = await post(fresh.subscription);
 			}
 			return response.ok ? "Sent. It should arrive in a few seconds." : errorFrom(response);
+		}
+
+		#startCountdown() {
+			this.#stopCountdown();
+			let left = SEND_DELAY_S;
+			const tick = () => {
+				this.#say(
+					left > 0
+						? `Sending in ${left}. Switch to another tab or app to watch it arrive as a real notification.`
+						: "Sending…",
+				);
+				left -= 1;
+			};
+			tick();
+			this.#countdown = setInterval(tick, 1000);
+		}
+
+		#stopCountdown() {
+			clearInterval(this.#countdown);
+			this.#countdown = undefined;
+		}
+
+		#arrive({ title, body }: Arrival) {
+			this.#arrived = true;
+			this.#stopCountdown();
+			this.#say("Arrived. Encrypted, signed and sent by this library on a Cloudflare Worker.");
+			// Shown once the visitor is back, so a toast doesn't expire unseen.
+			if (document.visibilityState === "visible") {
+				this.#showToast(title, body);
+			} else {
+				document.addEventListener("visibilitychange", () => this.#showToast(title, body), {
+					once: true,
+				});
+			}
+		}
+
+		#showToast(title = "", body = "") {
+			const toast = this.querySelector<HTMLElement>(".toast");
+			if (!toast) {
+				return;
+			}
+			toast.querySelector(".toast-title")!.textContent = title;
+			toast.querySelector(".toast-body")!.textContent = body;
+			toast.hidden = false;
+			clearTimeout(this.#toastTimer);
+			this.#toastTimer = setTimeout(() => this.#hideToast(), TOAST_MS);
+		}
+
+		#hideToast() {
+			clearTimeout(this.#toastTimer);
+			const toast = this.querySelector<HTMLElement>(".toast");
+			if (toast) {
+				toast.hidden = true;
+			}
 		}
 
 		#say(message: string) {
@@ -127,7 +200,7 @@
 		background-color: var(--sl-color-gray-7, var(--sl-color-gray-6));
 	}
 
-	button {
+	[data-send] {
 		min-height: 2.75rem;
 		padding-inline: 1rem;
 		border: 1px solid var(--sl-color-text-accent);
@@ -139,7 +212,7 @@
 		cursor: pointer;
 	}
 
-	button:disabled {
+	[data-send]:disabled {
 		cursor: progress;
 		opacity: 0.7;
 	}
@@ -153,5 +226,100 @@
 		flex: 1 1 16rem;
 		font-size: var(--sl-text-sm);
 		color: var(--sl-color-gray-2);
+	}
+
+	/* Laid out like a desktop notification: icon, source and time, title, body. */
+	.toast {
+		position: fixed;
+		inset-block-end: 1.5rem;
+		inset-inline-end: 1.5rem;
+		z-index: 100;
+		display: flex;
+		align-items: flex-start;
+		gap: 0.75rem;
+		width: min(22rem, calc(100vw - 2rem));
+		padding: 0.875rem 1rem;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.875rem;
+		background-color: var(--sl-color-gray-6);
+		box-shadow: 0 12px 32px rgb(0 0 0 / 0.35);
+		animation: toast-in 220ms ease-out;
+	}
+
+	.toast[hidden] {
+		display: none;
+	}
+
+	.toast img {
+		flex: none;
+		border-radius: 0.5rem;
+	}
+
+	.toast-text {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.toast p {
+		margin: 0;
+	}
+
+	.toast-meta {
+		display: flex;
+		justify-content: space-between;
+		gap: 0.5rem;
+		font-size: var(--sl-text-xs);
+		color: var(--sl-color-gray-3);
+	}
+
+	.toast-title {
+		margin-block-start: 0.125rem;
+		font-size: var(--sl-text-sm);
+		font-weight: 600;
+		color: var(--sl-color-white);
+	}
+
+	.toast-body {
+		font-size: var(--sl-text-sm);
+		color: var(--sl-color-gray-2);
+	}
+
+	.toast-close {
+		flex: none;
+		width: 1.75rem;
+		height: 1.75rem;
+		margin: -0.25rem -0.375rem 0 0;
+		border: 0;
+		border-radius: 50%;
+		background: none;
+		color: var(--sl-color-gray-3);
+		font-size: 1.25rem;
+		line-height: 1;
+		cursor: pointer;
+	}
+
+	.toast-close:hover {
+		color: var(--sl-color-white);
+	}
+
+	@media (max-width: 30rem) {
+		.toast {
+			inset-inline: 1rem;
+			inset-block-end: 1rem;
+			width: auto;
+		}
+	}
+
+	@keyframes toast-in {
+		from {
+			opacity: 0;
+			transform: translateY(0.75rem);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.toast {
+			animation: none;
+		}
 	}
 </style>

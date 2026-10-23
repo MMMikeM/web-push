@@ -43,11 +43,12 @@ const readSubscription = async (request: Request): Promise<PushSubscriptionData 
 	}
 };
 
-// Google's push service answers 410 for a few seconds after a subscription is
-// made, and the demo always sends to one made moments earlier. See "Right
-// after subscribing" in guides/handle-errors.md.
-// Shorter than the guide's minute, since a visitor is watching the button.
-const RESEND_GAPS_MS = [0, 2000, 4000, 8000, 16000];
+// The first wait gives the visitor time to switch away, which the page counts
+// down (PushDemo.astro), and Google's push service time to register a
+// subscription made moments earlier: it answers 410 until it has (see "Right
+// after subscribing" in guides/handle-errors.md). The rest stay shorter than
+// the guide's minute, since a visitor is watching.
+const RESEND_GAPS_MS = [5000, 2000, 4000, 8000, 16000];
 
 const sendOnce = (subscription: PushSubscriptionData, vapid: VapidConfig): Promise<boolean> =>
 	sendPushNotification(subscription, NOTIFICATION, vapid, {
