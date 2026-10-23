@@ -1,0 +1,19 @@
+// Typechecks the conformance runners against the built package, so it runs
+// after `pnpm run build`. Node types are here for the workerd driver alone;
+// the checks themselves run on Deno, Bun and workerd too.
+{
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "nodenext",
+		"moduleResolution": "nodenext",
+		"lib": ["ES2023", "DOM"],
+		"strict": true,
+		"skipLibCheck": true,
+		"noEmit": true,
+		"allowImportingTsExtensions": true,
+		"verbatimModuleSyntax": true,
+		"erasableSyntaxOnly": true,
+		"types": ["node"]
+	},
+	"include": ["conformance/**/*.ts"]
+}

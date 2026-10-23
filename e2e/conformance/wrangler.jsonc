@@ -1,0 +1,5 @@
+{
+	"name": "web-push-conformance",
+	"main": "worker.ts",
+	"compatibility_date": "2026-10-01",
+}

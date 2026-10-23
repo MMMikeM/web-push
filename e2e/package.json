@@ -1,0 +1,18 @@
+{
+	"name": "@mmmike/web-push-e2e",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"conformance:node": "node conformance/run.ts",
+		"conformance:deno": "deno run conformance/run.ts",
+		"conformance:bun": "bun conformance/run.ts",
+		"conformance:workers": "node conformance/workers.ts"
+	},
+	"dependencies": {
+		"@mmmike/web-push": "link:.."
+	},
+	"devDependencies": {
+		"wrangler": "4.151.0"
+	},
+	"packageManager": "pnpm@12.14.0"
+}

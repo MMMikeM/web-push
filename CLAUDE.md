@@ -22,6 +22,12 @@ Zero-dependency Web Push (RFC 8291) for Workers, Deno, Bun, Vercel Edge, Node 22
 - **Links are root-absolute: `/guides/handle-errors/`, never `../handle-errors/`.** The same Markdown is served per page (`<page>.md`) and bundled into `llms-full.txt`, where relative links resolve against the wrong URL.
 - **It deploys to a Cloudflare Worker at `web-push.thelazyweb.dev`**, from `docs.yml` on stable release tags. `docs/worker/` serves each page's Markdown copy to requests that send `Accept: text/markdown`.
 
+## Runtime conformance
+
+`e2e/` is its own pnpm root too, for wrangler and anything else a cross-runtime test needs. `e2e/conformance/checks.ts` runs the built package (`pnpm run build` first) through RFC 8291's test vector, decryption by `test/receiver.ts`, VAPID JWT verification and send results, and CI runs it on Node 22 and 24, Deno, Bun and workerd (`pnpm --dir e2e run conformance:<runtime>`).
+
+- **`test/receiver.ts` imports nothing and uses only Web APIs**, so every runtime can load it. Keep vitest and `src/` out of it.
+
 ## Documentation
 
 **Every exported function, class, and type in `src/` carries JSDoc.** Re-export statements (`export type { X } from "./y"`) don't. **So does every field of an exported object type**: the reference renders each one as a table row, and an undocumented field is an empty cell.
