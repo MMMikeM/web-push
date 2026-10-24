@@ -72,6 +72,7 @@ const githubUser = new URL(project.repositoryUrl).pathname.split("/")[1];
 		background: var(--paper-alt);
 		box-shadow: 0 0 0 100vmax var(--paper-alt);
 		clip-path: inset(0 -100vmax);
+		font-family: var(--__sl-font-mono);
 		font-size: var(--sl-text-sm);
 		line-height: 1.8;
 	}
@@ -98,7 +99,6 @@ const githubUser = new URL(project.repositoryUrl).pathname.split("/")[1];
 	.address a {
 		color: var(--pen);
 	}
-
 	.links {
 		flex-wrap: wrap;
 		gap: 0.25rem 1.5rem;

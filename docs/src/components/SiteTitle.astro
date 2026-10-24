@@ -1,0 +1,35 @@
+---
+import WebPushMark from "./WebPushMark.astro";
+
+const { siteTitle, siteTitleHref } = Astro.locals.starlightRoute;
+const [scope, name] = siteTitle.includes("/") ? siteTitle.split("/") : ["", siteTitle];
+---
+
+<a href={siteTitleHref} class="site-title" translate="no">
+	<WebPushMark />
+	<span>{scope && <span class="scope">{scope}/</span>}{name}</span>
+</a>
+
+<style>
+	.site-title {
+		display: flex;
+		align-items: center;
+		gap: 0.625rem;
+		min-width: 0;
+		color: var(--ink);
+		font-family: var(--__sl-font-mono);
+		font-size: var(--sl-text-lg);
+		font-weight: 500;
+		text-decoration: none;
+		white-space: nowrap;
+	}
+
+	span {
+		overflow: hidden;
+	}
+
+	.scope {
+		color: var(--ink-muted);
+		font-weight: 400;
+	}
+</style>

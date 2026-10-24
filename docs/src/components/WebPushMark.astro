@@ -1,0 +1,27 @@
+---
+/** The web-push mark: three bars, the vibrate pattern [200, 100, 200, 100, 200]. */
+---
+
+<svg class="mark" aria-hidden="true" viewBox="0 0 66 36" width="33" height="18">
+	<rect x="1" y="1" width="16" height="34" rx="3"></rect>
+	<rect x="25" y="1" width="16" height="34" rx="3"></rect>
+	<rect x="49" y="1" width="16" height="34" rx="3"></rect>
+</svg>
+
+<style>
+	.mark {
+		flex: none;
+		width: auto;
+		height: 1.25em;
+	}
+
+	rect {
+		fill: var(--highlight);
+		stroke: none;
+	}
+
+	:global(:root[data-theme="light"]) rect {
+		stroke: var(--ink);
+		stroke-width: 2;
+	}
+</style>

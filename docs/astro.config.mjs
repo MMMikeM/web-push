@@ -63,6 +63,7 @@ export default defineConfig({
 				MarkdownContent: "./src/components/MarkdownContent.astro",
 				Footer: "./src/components/Footer.astro",
 				Hero: "./src/components/Hero.astro",
+				SiteTitle: "./src/components/SiteTitle.astro",
 			},
 			social: [{ icon: "github", label: "GitHub", href: "https://github.com/MMMikeM/web-push" }],
 			plugins: [
