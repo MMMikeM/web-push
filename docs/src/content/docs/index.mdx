@@ -56,7 +56,7 @@ await sendPushNotification(subscription, NOTIFICATION, vapid, {
 1. [`/vapid`](/reference/vapid/) Generate your VAPID key pair once, on the server or in the browser.
 2. [`sw.js`](/getting-started/#2-add-a-service-worker) A copy-paste service worker that shows the notification and handles the click.
 3. [`/client`](/reference/client/) `subscribe()` resolves to subscribed, denied or unsupported.
-4. [`/send`](/reference/send/) Send to one subscription, or fan out to a list.
+4. [`/send`](/reference/send/) Send to one subscription, or fan out to a list. A gone subscription resolves `false`, so you know to delete it.
 
 </PieceList>
 
