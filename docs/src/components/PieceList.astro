@@ -1,0 +1,74 @@
+---
+interface Props {
+	/** Numbers the items as subsections: 2.1, 2.2 and so on. */
+	section: number;
+}
+
+const { section } = Astro.props;
+---
+
+<div class="pieces" style={`--section: "${section}."`}>
+	<slot />
+</div>
+
+<style>
+	.pieces {
+		container-type: inline-size;
+	}
+
+	.pieces :global(ol) {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		counter-reset: piece;
+		border-top: 1px solid var(--line);
+	}
+
+	.pieces :global(li) {
+		counter-increment: piece;
+		margin: 0;
+		padding-block: 1.125rem;
+		border-bottom: 1px solid var(--line);
+		line-height: 1.55;
+	}
+
+	.pieces :global(li::before) {
+		content: var(--section) counter(piece);
+		display: inline-block;
+		width: 2.75rem;
+		color: var(--ink-muted);
+		font-family: var(--__sl-font-mono);
+		font-size: var(--sl-text-sm);
+	}
+
+	.pieces :global(li > a:first-child) {
+		display: inline-block;
+		margin-inline-end: 0.75rem;
+		text-decoration: none;
+	}
+
+	.pieces :global(li > a:first-child code) {
+		padding: 0;
+		background: none;
+		color: var(--ink);
+		font-size: var(--sl-text-base);
+	}
+
+	/* A hanging indent, so a description that wraps lines up under its first line. */
+	@container (min-width: 32rem) {
+		.pieces :global(li) {
+			padding-inline-start: 13.25rem;
+			text-indent: -13.25rem;
+		}
+
+		.pieces :global(li > a:first-child) {
+			width: 10.5rem;
+			margin-inline-end: 0;
+		}
+
+		.pieces :global(li > *),
+		.pieces :global(li::before) {
+			text-indent: 0;
+		}
+	}
+</style>

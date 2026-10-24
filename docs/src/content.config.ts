@@ -7,8 +7,13 @@ export const collections = {
 	docs: defineCollection({
 		loader: docsLoader(),
 		schema: docsSchema({
-			// Puts the runtime menu beside the title, for pages with runtime-specific steps.
-			extend: z.object({ runtimePicker: z.boolean().optional() }),
+			extend: z.object({
+				// Puts the runtime menu beside the title, for pages with runtime-specific steps.
+				runtimePicker: z.boolean().optional(),
+				// A phrase of the hero title to highlight. The title itself stays plain
+				// text, because llms.txt prints it as it is.
+				heroHighlight: z.string().optional(),
+			}),
 		}),
 	}),
 };

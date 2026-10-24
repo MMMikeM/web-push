@@ -1,0 +1,47 @@
+<div class="margin-note decoration" role="note" data-pagefind-ignore>
+	<span class="mark" aria-hidden="true">
+		<svg
+			width="28"
+			height="22"
+			viewBox="0 0 28 22"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="1.6"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+		>
+			<path d="M26 18C18 18 8 14 4 4"></path>
+			<path d="M2 9L4 4L9 6"></path>
+		</svg>
+	</span>
+	<div class="text"><slot /></div>
+</div>
+
+<style>
+	.margin-note {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.625rem;
+		color: var(--pen);
+		font-style: italic;
+		font-size: var(--sl-text-lg);
+		line-height: 1.45;
+	}
+
+	.mark {
+		flex: none;
+		margin-top: 0.125rem;
+	}
+
+	.text :global(p) {
+		margin: 0;
+	}
+
+	.text :global(code) {
+		padding: 0;
+		background: none;
+		color: inherit;
+		font-style: normal;
+		font-size: 0.85em;
+	}
+</style>

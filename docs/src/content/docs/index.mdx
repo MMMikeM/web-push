@@ -2,13 +2,13 @@
 title: Web Push for Cloudflare Workers, Deno, Bun and Node
 description: Subscribe in the browser and send RFC 8291 encrypted push notifications from Cloudflare Workers, Deno, Bun or Node, with one zero-dependency package.
 template: splash
+heroHighlight: one package
 hero:
-  title: "@mmmike/web-push"
-  tagline: The whole Web Push flow, from subscribing in the browser to sending from the server, in one zero-dependency package.
+  title: The whole Web Push flow, in one package.
+  tagline: VAPID keys, a service worker, browser subscribe helpers and the server send. Zero dependencies, built on fetch and Web Crypto, so the same code runs unchanged on Cloudflare Workers, Deno, Bun and Node 22.12+. Written so you only have to do this once.
   actions:
     - text: Get started
       link: /getting-started/
-      icon: right-arrow
     - text: Build a complete app
       link: /tutorial/
       variant: secondary
@@ -17,54 +17,130 @@ hero:
       variant: minimal
 ---
 
-import { Card, CardGrid } from "@astrojs/starlight/components";
+import MarginNote from "../../components/MarginNote.astro";
+import PieceList from "../../components/PieceList.astro";
 import PushDemo from "../../components/PushDemo.astro";
+import RelayDiagram from "../../components/RelayDiagram.astro";
+import Row from "../../components/Row.astro";
 
-`@mmmike/web-push` is a TypeScript library for Web Push notifications. It generates the VAPID keys, subscribes the browser, and encrypts and sends each notification with `fetch` and Web Crypto, so the server code runs unchanged on Cloudflare Workers, Deno, Bun and Node 22.12+.
+## 1. Try it
 
-```bash
-npm install @mmmike/web-push
+<Row id="try-it">
+
+This button subscribes your browser with the site's own VAPID key, then asks the Cloudflare Worker that serves these docs to send you one notification through this library. The Worker stores nothing.
+
+<PushDemo>
+
+```ts title="docs/worker/push-demo.ts"
+await sendPushNotification(subscription, NOTIFICATION, vapid, {
+	ttl: 60,
+	urgency: "high",
+	timeoutMs: 10_000,
+});
 ```
 
-```ts
-import { sendPushNotification } from "@mmmike/web-push/send";
+</PushDemo>
 
-const delivered = await sendPushNotification(
-	subscription,
-	{ title: "New message", body: "Ada replied to your post", url: "/inbox" },
-	{ publicKey, privateKey, subject: "mailto:you@example.com" },
-);
-if (!delivered) await store.delete(subscription.endpoint);
-```
+<MarginNote slot="note">
+	On an iPhone, add this site to your home screen first. Apple's rule, not mine.
+</MarginNote>
 
-`publicKey` and `privateKey` are a VAPID key pair, which the [VAPID key generator](/generate-vapid-keys/) makes in your browser.
+</Row>
 
-## Try it
+## 2. The four pieces
 
-This button subscribes your browser with the site's own VAPID key, then asks the Cloudflare Worker serving these docs to send it one notification with this library. The Worker keeps nothing.
+<Row>
 
-<PushDemo />
+<PieceList section={2}>
 
-<CardGrid>
-	<Card title="All four pieces" icon="puzzle">
-		VAPID key generation, a copy-paste service worker, the client subscribe
-		helpers, and the server send, one at a time or fanned out to a list.
-	</Card>
-	<Card title="No Node emulation" icon="rocket">
-		Built on `fetch` and Web Crypto, which Cloudflare Workers, Bun, Deno, Node
-		and browsers each implement natively, so no runtime's copy of Node sits
-		underneath it.
-	</Card>
-	<Card title="Ratified specs" icon="approve-check">
-		[RFC 8291](https://www.rfc-editor.org/rfc/rfc8291) `aes128gcm` encryption
-		and [RFC 8292](https://www.rfc-editor.org/rfc/rfc8292#section-3) VAPID,
-		pinned byte-for-byte against RFC 8291's [Appendix A test
-		vector](https://www.rfc-editor.org/rfc/rfc8291#appendix-A).
-	</Card>
-	<Card title="Small" icon="seti:zip">
-		Zero dependencies, and each entry point is tree-shakeable on its own, so the
-		browser bundle carries only the client.
-	</Card>
-</CardGrid>
+1. [`/vapid`](/reference/vapid/) Generate your VAPID key pair once, on the server or in the browser.
+2. [`sw.js`](/getting-started/#2-add-a-service-worker) A copy-paste service worker that shows the notification and handles the click.
+3. [`/client`](/reference/client/) `subscribe()` resolves to subscribed, denied or unsupported.
+4. [`/send`](/reference/send/) Send to one subscription, or fan out to a list.
 
-If you're coming from `web-push`, [How it compares](/compare/) sets this package against `web-push` and the edge-native alternatives, and the [migration guide](/guides/migrate-from-web-push/) maps each `sendNotification` option to its equivalent here.
+</PieceList>
+
+<MarginNote slot="note">
+	Each one tree-shakes on its own. The browser half is about 1.3 kB, the server
+	half 3.6 kB, minified and gzipped.
+</MarginNote>
+
+</Row>
+
+## 3. Runtimes
+
+<Row>
+
+If it has `fetch` and `crypto.subtle`, it works. No Node emulation, no polyfills, no compat layer.
+
+<div class="chips">
+
+- Node 22.12+
+- Bun
+- Deno
+- Cloudflare Workers
+- Vercel Edge
+- Browsers
+
+</div>
+
+<MarginNote slot="note">
+	Why 22.12? It's the first Node that can `require()` an ES module, so CommonJS
+	projects can load this package too.
+</MarginNote>
+
+</Row>
+
+## 4. Security considerations
+
+<Row>
+
+Payloads are encrypted with RFC 8291 `aes128gcm`, and every request is signed with RFC 8292 VAPID. The push service in the middle carries your message but can't read it.
+
+<RelayDiagram />
+
+<MarginNote slot="note">
+	Push services return 201 even when the payload is broken, so you'd never know.
+	Hence the RFC's own test vector, pinned byte for byte.
+</MarginNote>
+
+</Row>
+
+<Row>
+
+<mark>100% test coverage</mark>, and every release waits on conformance checks
+in Node, Deno, Bun and Workers. Every push to the repository also delivers a
+real notification through Chrome's and Firefox's push services.
+
+<MarginNote slot="note">
+	The first release had no tests at all. This is the apology.
+</MarginNote>
+
+</Row>
+
+<Row>
+
+Zero dependencies.
+
+<MarginNote slot="note">
+	On the build side: SHA-pinned Actions, npm provenance, and a seven-day wait
+	before new dev-dependency releases are installed.
+</MarginNote>
+
+</Row>
+
+## Appendix A. Coming from web-push
+
+<Row>
+
+The [migration guide](/guides/migrate-from-web-push/) maps `sendNotification`'s options to their equivalents here. [The comparison page](/compare/) covers where each library fits, including when to stay put.
+
+<MarginNote slot="note">
+	RFC 8291 keeps its test vector in Appendix A too. Seemed polite.
+</MarginNote>
+
+</Row>
+
+## Acknowledgements
+
+Thanks to the web-push-libs maintainers, whose `web-push` has been sending notifications from Node for a decade. If you're on older Node, or you need its draft `aesgcm` encoding, proxy agents or the legacy GCM key, it's still the right choice.

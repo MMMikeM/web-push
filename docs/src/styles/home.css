@@ -1,0 +1,44 @@
+/* The home page is the only one with a hero. */
+
+[data-has-hero] {
+	--sl-main-pad: 0;
+}
+
+[data-has-hero] .sl-markdown-content {
+	font-size: 1.1875rem;
+}
+
+[data-has-hero] .sl-markdown-content .level-h2 {
+	margin-top: 4rem;
+	padding-top: 4rem;
+	border-top: 1px solid var(--line);
+}
+
+[data-has-hero] .sl-markdown-content h2 {
+	font-size: 1.375rem;
+}
+
+[data-has-hero] .sl-markdown-content .level-h2 + * {
+	margin-top: 1.75rem;
+}
+
+[data-has-hero] :is(.sl-markdown-content, .sl-markdown-content .main) > :is(p, ul) {
+	max-width: 36em;
+}
+
+.chips ul {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.625rem;
+	padding: 0;
+	list-style: none;
+	font-family: var(--__sl-font-mono);
+	font-size: var(--sl-text-base);
+}
+
+.chips li {
+	margin: 0;
+	padding: 0.625rem 1rem;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+}

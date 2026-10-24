@@ -1,0 +1,44 @@
+---
+interface Props {
+	id?: string;
+}
+
+const { id } = Astro.props;
+---
+
+<div class="row" id={id}>
+	<div class="columns">
+		<div class="main"><slot /></div>
+		<slot name="note" />
+	</div>
+</div>
+
+<style>
+	.row {
+		container-type: inline-size;
+	}
+
+	.row + .row {
+		margin-top: 2.25rem;
+	}
+
+	.columns {
+		display: grid;
+		gap: 0.75rem;
+	}
+
+	.columns > :global(.margin-note) {
+		margin-top: 0;
+	}
+
+	.main {
+		min-width: 0;
+	}
+
+	@container (min-width: 52rem) {
+		.columns {
+			grid-template-columns: minmax(0, 1fr) 14rem;
+			column-gap: 3.5rem;
+		}
+	}
+</style>

@@ -18,7 +18,7 @@ const NOISE = [
 	"style",
 	"runtime-select",
 	"vapid-key-generator",
-	"push-demo",
+	".decoration",
 	"starlight-tabs-restore",
 ];
 
@@ -91,12 +91,16 @@ const prepareTabs = (tree: Root) => {
 	}
 };
 
-// A splash page's tagline and action links sit in its hero, outside the content.
+// A splash page's tagline, install command and action links sit in its hero, outside the content.
 const heroOf = (page: Root): ElementContent[] => {
 	const tagline = select(".hero .tagline", page);
 	const actions = selectAll(".hero .actions a", page);
+	const install = select(".install code", page);
 	return [
 		...(tagline ? [element("p", ...tagline.children)] : []),
+		...(install
+			? [element("pre", { ...install, properties: { className: ["language-sh"] } })]
+			: []),
 		...(actions.length > 0
 			? [element("ul", ...actions.map((action) => element("li", action)))]
 			: []),

@@ -1,13 +1,49 @@
-<push-demo class="not-content">
-	<button type="button" class="primary" data-send>Send me a test notification</button>
-	<span class="status" role="status" aria-live="polite"></span>
-	<noscript><p>The demo needs JavaScript.</p></noscript>
-	<div class="toast" role="status" aria-live="polite" hidden>
-		<img src="/apple-touch-icon.png" alt="" width="40" height="40" />
-		<div class="toast-text">
-			<p class="toast-meta"><span>web-push.thelazyweb.dev</span><span>now</span></p>
-			<p class="toast-title"></p>
-			<p class="toast-body"></p>
+---
+import Bell from "./NotificationIcon.astro";
+---
+
+<push-demo>
+	<div class="controls not-content decoration" data-pagefind-ignore>
+		<button type="button" data-send>
+			<svg
+				aria-hidden="true"
+				width="18"
+				height="18"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.8"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+			>
+				<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+				<path d="M10 21h4"></path>
+			</svg>
+			<span data-label>Send me a test notification</span>
+		</button>
+		<p class="status" role="status" aria-live="polite"></p>
+		<noscript><p>The demo needs JavaScript.</p></noscript>
+	</div>
+	<div class="output">
+		<div class="preview not-content decoration" data-pagefind-ignore>
+			<p class="empty">Your notification lands here, and on your screen.</p>
+			<div class="notification" hidden>
+				<Bell />
+				<div class="notification-text">
+					<p class="meta"><span>web-push.thelazyweb.dev</span><span>now</span></p>
+					<p class="title"></p>
+					<p class="body"></p>
+				</div>
+			</div>
+		</div>
+		<div class="code"><slot /></div>
+	</div>
+	<div class="toast notification not-content decoration" role="status" aria-live="polite" hidden>
+		<Bell />
+		<div class="notification-text">
+			<p class="meta"><span>web-push.thelazyweb.dev</span><span>now</span></p>
+			<p class="title"></p>
+			<p class="body"></p>
 		</div>
 		<button type="button" class="toast-close" aria-label="Dismiss" data-dismiss>×</button>
 	</div>
@@ -69,6 +105,7 @@
 			button.disabled = true;
 			this.#arrived = false;
 			this.#hideToast();
+			this.#fill(this.querySelector(".preview .notification"));
 			try {
 				const outcome = await this.#subscribeAndSend();
 				if (!this.#arrived) {
@@ -81,6 +118,7 @@
 			} finally {
 				this.#stopCountdown();
 				button.disabled = false;
+				button.querySelector("[data-label]")!.textContent = "Send another";
 			}
 		}
 
@@ -146,6 +184,7 @@
 			this.#arrived = true;
 			this.#stopCountdown();
 			this.#say("Arrived. Encrypted, signed and sent by this library on a Cloudflare Worker.");
+			this.#fill(this.querySelector(".preview .notification"), { title, body });
 			// Shown once the visitor is back, so a toast doesn't expire unseen.
 			if (document.visibilityState === "visible") {
 				this.#showToast(title, body);
@@ -163,14 +202,31 @@
 			}
 		}
 
+		/** Shows the notification in `card`, or hides the card when there's none. */
+		#fill(card: HTMLElement | null, notification?: Arrival) {
+			if (!card) {
+				return;
+			}
+			card.querySelector(".title")!.textContent = notification?.title ?? "";
+			card.querySelector(".body")!.textContent = notification?.body ?? "";
+			card.hidden = !notification;
+			card
+				.closest(".preview")
+				?.querySelector(".empty")
+				?.toggleAttribute("hidden", Boolean(notification));
+		}
+
+		// Only when the preview card is out of view, so the page never shows two of the same notification.
 		#showToast(title = "", body = "") {
+			const preview = this.querySelector(".preview")?.getBoundingClientRect();
+			if (preview && preview.bottom > 0 && preview.top < window.innerHeight) {
+				return;
+			}
 			const toast = this.querySelector<HTMLElement>(".toast");
 			if (!toast) {
 				return;
 			}
-			toast.querySelector(".toast-title")!.textContent = title;
-			toast.querySelector(".toast-body")!.textContent = body;
-			toast.hidden = false;
+			this.#fill(toast, { title, body });
 			clearTimeout(this.#toastTimer);
 			this.#toastTimer = setTimeout(() => this.#hideToast(), TOAST_MS);
 		}
@@ -197,25 +253,31 @@
 <style>
 	push-demo {
 		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+	}
+
+	.controls {
+		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.75rem 1rem;
-		margin-block: 1.5rem;
-		padding: 1.25rem;
-		border: 1px solid var(--sl-color-gray-5);
-		border-radius: 0.5rem;
-		background-color: var(--sl-color-gray-7, var(--sl-color-gray-6));
+		gap: 0.75rem 1.25rem;
 	}
 
 	[data-send] {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.625rem;
 		min-height: 2.75rem;
-		padding-inline: 1rem;
-		border: 1px solid var(--sl-color-text-accent);
-		border-radius: 0.375rem;
-		background-color: var(--sl-color-text-accent);
-		color: var(--sl-color-black);
+		padding: 0.875rem 1.5rem;
+		border: 1px solid var(--button);
+		border-radius: 8px;
+		background-color: var(--button);
+		color: var(--button-text);
 		font: inherit;
-		font-size: var(--sl-text-sm);
+		font-family: var(--__sl-font-mono);
+		font-size: var(--sl-text-base);
+		font-weight: 500;
 		cursor: pointer;
 	}
 
@@ -231,64 +293,111 @@
 
 	.status {
 		flex: 1 1 16rem;
+		margin: 0;
+		color: var(--ink-muted);
 		font-size: var(--sl-text-sm);
-		color: var(--sl-color-gray-2);
+	}
+
+	.status:empty {
+		display: none;
+	}
+
+	.output {
+		display: grid;
+		gap: 1.25rem;
+	}
+
+	.output > * {
+		min-width: 0;
+		margin: 0;
+	}
+
+	.preview {
+		display: flex;
+		max-width: 26rem;
+	}
+
+	.empty {
+		display: flex;
+		flex-grow: 1;
+		align-items: center;
+		justify-content: center;
+		min-height: 5.5rem;
+		margin: 0;
+		padding: 1rem 1.125rem;
+		border: 1px dashed var(--line-strong);
+		border-radius: 14px;
+		color: var(--ink-muted);
+		font-size: var(--sl-text-base);
+		text-align: center;
+	}
+
+	.empty[hidden] {
+		display: none;
+	}
+
+	.code :global(.expressive-code) {
+		margin: 0;
 	}
 
 	/* Laid out like a desktop notification: icon, source and time, title, body. */
+	.notification {
+		display: flex;
+		flex-grow: 1;
+		align-items: flex-start;
+		gap: 0.875rem;
+		align-self: flex-start;
+		padding: 1rem 1.125rem;
+		border: 1px solid var(--line);
+		border-radius: 14px;
+		background-color: var(--notif-bg);
+		font-family: var(--__sl-font-mono);
+	}
+
+	.notification[hidden] {
+		display: none;
+	}
+
+	.notification-text {
+		display: flex;
+		flex: 1;
+		flex-direction: column;
+		gap: 0.25rem;
+		min-width: 0;
+	}
+
+	.notification p {
+		margin: 0;
+	}
+
+	.meta {
+		display: flex;
+		justify-content: space-between;
+		gap: 0.75rem;
+		color: var(--ink-muted);
+		font-size: var(--sl-text-xs);
+	}
+
+	.title {
+		color: var(--ink);
+		font-size: var(--sl-text-sm);
+		font-weight: 500;
+	}
+
+	.body {
+		color: var(--ink-muted);
+		font-size: var(--sl-text-sm);
+	}
+
 	.toast {
 		position: fixed;
 		inset-block-end: 1.5rem;
 		inset-inline-end: 1.5rem;
 		z-index: 100;
-		display: flex;
-		align-items: flex-start;
-		gap: 0.75rem;
 		width: min(22rem, calc(100vw - 2rem));
-		padding: 0.875rem 1rem;
-		border: 1px solid var(--sl-color-gray-5);
-		border-radius: 0.875rem;
-		background-color: var(--sl-color-gray-6);
+		box-sizing: border-box;
 		box-shadow: 0 12px 32px rgb(0 0 0 / 0.35);
 		animation: toast-in 220ms ease-out;
-	}
-
-	.toast[hidden] {
-		display: none;
-	}
-
-	.toast img {
-		flex: none;
-		border-radius: 0.5rem;
-	}
-
-	.toast-text {
-		flex: 1;
-		min-width: 0;
-	}
-
-	.toast p {
-		margin: 0;
-	}
-
-	.toast-meta {
-		display: flex;
-		justify-content: space-between;
-		gap: 0.5rem;
-		font-size: var(--sl-text-xs);
-		color: var(--sl-color-gray-3);
-	}
-
-	.toast-title {
-		margin-block-start: 0.125rem;
-		font-size: var(--sl-text-sm);
-		font-weight: 600;
-		color: var(--sl-color-white);
-	}
-
-	.toast-body {
-		font-size: var(--sl-text-sm);
-		color: var(--sl-color-gray-2);
 	}
 
 	.toast-close {
@@ -299,14 +408,14 @@
 		border: 0;
 		border-radius: 50%;
 		background: none;
-		color: var(--sl-color-gray-3);
+		color: var(--ink-muted);
 		font-size: 1.25rem;
 		line-height: 1;
 		cursor: pointer;
 	}
 
 	.toast-close:hover {
-		color: var(--sl-color-white);
+		color: var(--ink);
 	}
 
 	@media (max-width: 30rem) {

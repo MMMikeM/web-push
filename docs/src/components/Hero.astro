@@ -1,0 +1,206 @@
+---
+import { LinkButton } from "@astrojs/starlight/components";
+import { project } from "../project.ts";
+import MarginNote from "./MarginNote.astro";
+
+const { data } = Astro.locals.starlightRoute.entry;
+const { title = data.title, tagline, actions = [] } = data.hero ?? {};
+const highlight = data.heroHighlight;
+const [beforeHighlight, afterHighlight] =
+	highlight && title.includes(highlight) ? title.split(highlight) : [title];
+
+const install = `npm install ${project.name}`;
+const initialledAuthor = project.author.replace(/^(\S)\S*\s+/, "$1. ");
+const published = new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+---
+
+<div class="rfc-header decoration" data-pagefind-ignore>
+	<p>
+		<span>Independent Submission</span>
+		<span>Request for Comments: <a href={`${project.repositoryUrl}/issues/new`}>open an issue</a></span>
+		<span>Category: Informational</span>
+	</p>
+	<p class="end">
+		<span>{initialledAuthor}</span>
+		<a href="https://thelazyweb.dev">thelazyweb.dev</a>
+		<span>{published}</span>
+	</p>
+</div>
+
+<div class="lead">
+	<div class="columns">
+		<div class="main">
+			<div class="hero">
+				<h1 id="_top" data-page-title>
+					{beforeHighlight}{afterHighlight !== undefined && <mark>{highlight}</mark>}{afterHighlight}
+				</h1>
+				{tagline && <p class="tagline">{tagline}</p>}
+				<div class="actions">
+					{actions.map(({ link, text, variant, icon }) => (
+						<LinkButton href={link} variant={variant} icon={icon?.name}>
+							{text}
+						</LinkButton>
+					))}
+				</div>
+			</div>
+			<div class="install">
+				<code><span class="prompt decoration" aria-hidden="true">$ </span>{install}</code>
+				<button type="button" class="decoration" aria-label="Copy the install command" data-copy={install}>
+					<svg
+						aria-hidden="true"
+						width="18"
+						height="18"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.8"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<rect x="9" y="9" width="12" height="12" rx="2"></rect>
+						<path d="M5 15V5a2 2 0 0 1 2-2h8"></path>
+					</svg>
+				</button>
+			</div>
+		</div>
+		<MarginNote>I did it three times first.</MarginNote>
+	</div>
+</div>
+
+<script>
+	for (const button of document.querySelectorAll<HTMLButtonElement>("[data-copy]")) {
+		button.addEventListener("click", async () => {
+			await navigator.clipboard.writeText(button.dataset.copy ?? "");
+			button.dataset.copied = "";
+			setTimeout(() => delete button.dataset.copied, 1500);
+		});
+	}
+</script>
+
+<style>
+	.rfc-header {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		gap: 0.5rem 2.5rem;
+		padding-top: 2.5rem;
+		color: var(--ink-muted);
+		font-family: var(--__sl-font-mono);
+		font-size: var(--sl-text-sm);
+		line-height: 1.7;
+	}
+
+	.rfc-header p {
+		display: flex;
+		flex-direction: column;
+		margin: 0;
+	}
+
+	.rfc-header a {
+		color: var(--pen);
+	}
+
+	@media (min-width: 40rem) {
+		.rfc-header .end {
+			text-align: end;
+		}
+	}
+
+	.lead {
+		container-type: inline-size;
+	}
+
+	.columns {
+		display: grid;
+		gap: 1.5rem;
+		padding-block: 3.5rem 5rem;
+	}
+
+	.main {
+		display: flex;
+		flex-direction: column;
+		gap: 1.75rem;
+	}
+
+	.hero {
+		display: flex;
+		flex-direction: column;
+		gap: 1.75rem;
+	}
+
+	h1 {
+		margin: 0;
+		color: var(--ink);
+		font-size: clamp(2.5rem, 6vw, 4.125rem);
+		font-weight: 600;
+		line-height: 1.08;
+	}
+
+	.tagline {
+		max-width: 34em;
+		margin: 0;
+		color: var(--ink-muted);
+		font-size: var(--sl-text-xl);
+		line-height: 1.6;
+	}
+
+	.actions {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.75rem 1rem;
+	}
+
+	.install {
+		align-self: flex-start;
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		max-width: 100%;
+		box-sizing: border-box;
+		padding: 0.25rem 0.25rem 0.25rem 1.125rem;
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		font-size: var(--sl-text-sm);
+	}
+
+	.install code {
+		overflow-x: auto;
+		white-space: nowrap;
+	}
+
+	.prompt {
+		color: var(--ink-muted);
+	}
+
+	.install button {
+		display: flex;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		width: 2.75rem;
+		height: 2.75rem;
+		border: 0;
+		border-radius: 6px;
+		background: none;
+		color: var(--ink-muted);
+		cursor: pointer;
+	}
+
+	.install button:hover,
+	.install button[data-copied] {
+		color: var(--ink);
+	}
+
+	@container (min-width: 52rem) {
+		.columns {
+			grid-template-columns: minmax(0, 1fr) 14rem;
+			column-gap: 3.5rem;
+		}
+
+		/* Level with the tagline, which the note answers. */
+		.columns > :global(.margin-note) {
+			margin-top: 9.5rem;
+		}
+	}
+</style>

@@ -24,9 +24,24 @@ export default defineConfig({
 			title: "@mmmike/web-push",
 			description:
 				"Zero-dependency Web Push (RFC 8291) for Workers, Deno, Bun, Node, and browsers.",
-			customCss: ["./src/styles/reference.css"],
+			customCss: [
+				"@fontsource-variable/source-serif-4/opsz.css",
+				"@fontsource-variable/source-serif-4/opsz-italic.css",
+				"@fontsource/ibm-plex-mono/latin-400.css",
+				"@fontsource/ibm-plex-mono/latin-500.css",
+				"./src/styles/theme.css",
+				"./src/styles/home.css",
+				"./src/styles/reference.css",
+			],
 			// One dark theme, so code reads the same in light and dark mode.
-			expressiveCode: { themes: ["material-theme-palenight"] },
+			expressiveCode: {
+				themes: ["material-theme-palenight"],
+				styleOverrides: {
+					borderRadius: "12px",
+					uiFontFamily: "var(--__sl-font-mono)",
+					frames: { frameBoxShadowCssValue: "none" },
+				},
+			},
 			head: [
 				{ tag: "meta", attrs: { property: "og:image", content: socialImage.url } },
 				{ tag: "meta", attrs: { property: "og:image:width", content: "1200" } },
@@ -47,6 +62,7 @@ export default defineConfig({
 				PageTitle: "./src/components/PageTitle.astro",
 				MarkdownContent: "./src/components/MarkdownContent.astro",
 				Footer: "./src/components/Footer.astro",
+				Hero: "./src/components/Hero.astro",
 			},
 			social: [{ icon: "github", label: "GitHub", href: "https://github.com/MMMikeM/web-push" }],
 			plugins: [
@@ -82,7 +98,7 @@ export default defineConfig({
 					exclude: ["reference", "reference/**", "tutorial"],
 					// Whitespace minifying flattens tables and headings into run-on lines.
 					minify: { whitespace: false },
-					customSelectors: { all: [".sl-anchor-link"] },
+					customSelectors: { all: [".sl-anchor-link", ".decoration"] },
 				}),
 			],
 			sidebar: [
