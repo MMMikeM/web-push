@@ -37,8 +37,14 @@ const { id } = Astro.props;
 
 	@container (min-width: 52rem) {
 		.columns {
-			grid-template-columns: minmax(0, 1fr) 14rem;
-			column-gap: 3.5rem;
+			grid-template-columns: minmax(0, 36em) 14rem;
+			justify-content: start;
+			column-gap: 2.5rem;
+		}
+
+		.columns > :global(.margin-note) {
+			--margin-note-up: none;
+			--margin-note-left: block;
 		}
 	}
 </style>

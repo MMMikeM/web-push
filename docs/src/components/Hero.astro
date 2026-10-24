@@ -194,13 +194,16 @@ const published = new Date().toLocaleDateString("en-GB", { month: "long", year: 
 
 	@container (min-width: 52rem) {
 		.columns {
-			grid-template-columns: minmax(0, 1fr) 14rem;
-			column-gap: 3.5rem;
+			grid-template-columns: minmax(0, 42.5rem) 14rem;
+			justify-content: start;
+			column-gap: 2.5rem;
 		}
 
 		/* Level with the tagline, which the note answers. */
 		.columns > :global(.margin-note) {
-			margin-top: 9.5rem;
+			--margin-note-up: none;
+			--margin-note-left: block;
+			margin-top: 10.25rem;
 		}
 	}
 </style>

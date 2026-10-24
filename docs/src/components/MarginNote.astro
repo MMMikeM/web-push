@@ -1,6 +1,7 @@
 <div class="margin-note decoration" role="note" data-pagefind-ignore>
 	<span class="mark" aria-hidden="true">
 		<svg
+			class="up"
 			width="28"
 			height="22"
 			viewBox="0 0 28 22"
@@ -12,6 +13,20 @@
 		>
 			<path d="M26 18C18 18 8 14 4 4"></path>
 			<path d="M2 9L4 4L9 6"></path>
+		</svg>
+		<svg
+			class="left"
+			width="28"
+			height="16"
+			viewBox="0 0 28 16"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="1.6"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+		>
+			<path d="M27 12C19 13 11 8 3 8"></path>
+			<path d="M7 4.5L3 8L7 11.5"></path>
 		</svg>
 	</span>
 	<div class="text"><slot /></div>
@@ -30,7 +45,20 @@
 
 	.mark {
 		flex: none;
+	}
+
+	/* Up at the paragraph above, unless a layout puts the note beside it and swaps the arrows. */
+	.up {
+		display: var(--margin-note-up, block);
 		margin-top: 0.125rem;
+	}
+
+	/* Hangs into the gutter, so the tip reaches towards the text. */
+	.left {
+		display: var(--margin-note-left, none);
+		margin-top: 0.3rem;
+		margin-inline-start: -1.5rem;
+		max-width: none;
 	}
 
 	.text :global(p) {
