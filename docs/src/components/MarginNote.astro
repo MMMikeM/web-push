@@ -1,51 +1,19 @@
 ---
-import { type PenArrow, penArrowPath } from "./pen-arrow.ts";
-
-/** Beside the anchor: px from the top left of the block that holds the note and its anchor. */
-type Beside = { left: number; top: number; width?: number; rotate: number; arrow?: PenArrow };
-
-/** In the flow straight after the anchor. */
-type Below = {
-	/** How far in from the start of the block, or `auto` to sit at its end. */
-	indent: string;
-	rotate: number;
-	width?: string;
-	/** Margin above and below, to tuck the note against the next element. */
-	space?: string;
-	/** Shown above the anchor instead, though it still follows it for screen readers. */
-	before?: boolean;
-	arrow?: PenArrow;
-};
+import { notePlacements, placementCss, ranges } from "../margin-notes.ts";
+import { penArrowPath } from "./pen-arrow.ts";
 
 interface Props {
-	/** On pages 66rem and wider. */
-	wide: Beside;
-	/** In the left gutter, which only has room for a note in a 90rem viewport. */
-	gutter?: Beside;
-	narrow: Below;
+	/** Its key in margin-notes.json, which holds where it sits at each width. */
+	id: string;
 }
 
-const { wide, gutter, narrow } = Astro.props;
-
-const besideVars = (prefix: string, { left, top, width = 260, rotate }: Beside) => ({
-	[`--${prefix}-left`]: `${left}px`,
-	[`--${prefix}-top`]: `${top}px`,
-	[`--${prefix}-width`]: `${width}px`,
-	[`--${prefix}-rotate`]: `${rotate}deg`,
-});
-
-const style = {
-	"--narrow-indent": narrow.indent,
-	"--narrow-width": narrow.width ?? "min(16rem, 70%)",
-	"--narrow-rotate": `${narrow.rotate}deg`,
-	"--narrow-space": narrow.space ?? "0.75rem 0",
-	"--narrow-order": narrow.before ? "-1" : "0",
-	...besideVars("wide", wide),
-	...(gutter && besideVars("gutter", gutter)),
-};
-
-const arrows = Object.entries({ narrow: narrow.arrow, wide: wide.arrow, gutter: gutter?.arrow }).filter(
-	(entry): entry is [string, PenArrow] => entry[1] !== undefined,
+const { id } = Astro.props;
+const placements = notePlacements[id];
+if (!placements) {
+	throw new Error(`margin-notes.json has no placements for the margin note "${id}"`);
+}
+const arrows = ranges(placements).flatMap(({ from, placement }) =>
+	placement.arrow ? [{ at: from, arrow: placement.arrow }] : [],
 );
 ---
 
@@ -53,12 +21,12 @@ const arrows = Object.entries({ narrow: narrow.arrow, wide: wide.arrow, gutter: 
 	class="margin-note decoration"
 	role="note"
 	data-pagefind-ignore
-	data-gutter={gutter && ""}
-	style={style}
+	data-note={id}
+	data-placements={import.meta.env.DEV ? JSON.stringify(placements) : undefined}
 >
 	<div class="text"><slot /></div>
 	{
-		arrows.map(([at, arrow]) => (
+		arrows.map(({ at, arrow }) => (
 			<svg
 				class="arrow"
 				data-at={at}
@@ -76,24 +44,15 @@ const arrows = Object.entries({ narrow: narrow.arrow, wide: wide.arrow, gutter: 
 			</svg>
 		))
 	}
+	<style is:inline data-note-style={id} set:html={placementCss(id, placements)} />
 </div>
 
 <style>
 	.margin-note {
-		position: relative;
-		order: var(--narrow-order);
-		width: var(--narrow-width);
-		margin-block: var(--narrow-space);
-		margin-inline-start: var(--narrow-indent);
 		color: var(--pen);
-		font-size: 1rem;
 		font-style: italic;
 		line-height: 1.4;
 		text-wrap: pretty;
-	}
-
-	.text {
-		rotate: var(--narrow-rotate);
 	}
 
 	.text :global(p) {
@@ -119,52 +78,5 @@ const arrows = Object.entries({ narrow: narrow.arrow, wide: wide.arrow, gutter: 
 
 	.arrow[data-corner="bottom"] {
 		inset: auto auto 0 0;
-	}
-
-	.arrow[data-at="narrow"] {
-		display: block;
-	}
-
-	@container page (min-width: 66rem) {
-		.margin-note {
-			position: absolute;
-			top: var(--wide-top);
-			left: var(--wide-left);
-			width: var(--wide-width);
-			margin: 0;
-			font-size: 1.0625rem;
-		}
-
-		.text {
-			rotate: var(--wide-rotate);
-		}
-
-		.arrow[data-at="narrow"] {
-			display: none;
-		}
-
-		.arrow[data-at="wide"] {
-			display: block;
-		}
-	}
-
-	@media (min-width: 90rem) {
-		.margin-note[data-gutter] {
-			top: var(--gutter-top);
-			left: var(--gutter-left);
-			width: var(--gutter-width);
-		}
-
-		[data-gutter] .text {
-			rotate: var(--gutter-rotate);
-		}
-
-		[data-gutter] .arrow[data-at="wide"] {
-			display: none;
-		}
-
-		[data-gutter] .arrow[data-at="gutter"] {
-			display: block;
-		}
 	}
 </style>

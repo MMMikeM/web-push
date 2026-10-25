@@ -9,6 +9,13 @@ import { project } from "./src/project.ts";
 
 const site = "https://web-push.thelazyweb.dev";
 
+// Tools for tuning the margin notes, kept out of the repository: present only
+// on a machine that has them, and then only in `astro dev`.
+const noteTuner = await import("./src/integrations/note-tuner/index.ts").then(
+	(tools) => tools.noteTuner(),
+	() => undefined,
+);
+
 const socialImage = {
 	url: `${site}/og.png`,
 	// The card's own text; re-render public/og.png when the home tagline changes.
@@ -119,6 +126,7 @@ export default defineConfig({
 			],
 		}),
 		markdownPages(),
+		...(noteTuner ? [noteTuner] : []),
 		// Replaces the sitemap Starlight adds when none is configured.
 		sitemap({
 			serialize: (item) => {

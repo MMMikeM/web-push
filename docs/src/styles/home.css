@@ -11,9 +11,7 @@
 	}
 }
 
-/* Margin notes choose their wide or narrow placement from its width. */
 [data-has-hero] .sl-markdown-content {
-	container: page / inline-size;
 	font-size: 1.1875rem;
 }
 

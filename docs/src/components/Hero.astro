@@ -47,25 +47,7 @@ const published = new Date().toLocaleDateString("en-GB", { month: "long", year: 
 						{afterAnchor !== undefined && <u>{note?.target}</u>}
 						{afterAnchor}
 					</p>
-					{note && (
-						<MarginNote
-							wide={{
-								left: 407,
-								top: 102,
-								width: 200,
-								rotate: -4,
-								arrow: { from: [-6, 8], via: [-26, 30], to: [-59, 30] },
-							}}
-							narrow={{
-								indent: "45%",
-								width: "min(12rem, 52%)",
-								rotate: -3,
-								space: "1rem 0",
-							}}
-						>
-							{note.text}
-						</MarginNote>
-					)}
+					{note && <MarginNote id="hero">{note.text}</MarginNote>}
 				</div>
 			)
 		}
