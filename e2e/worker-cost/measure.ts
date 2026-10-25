@@ -18,9 +18,10 @@ const LABELS: Record<Worker, string> = {
 
 const STARTUP_RUNS = 7;
 // The docs say web-push takes longer to start and this package starts as fast
-// as an empty Worker. The profiler samples about every 1.5 ms.
-const WEB_PUSH_MIN_EXTRA_MS = 5;
-const MMMIKE_MAX_EXTRA_MS = 2;
+// as an empty Worker. As fractions of the empty Worker's startup, since GitHub's
+// runners start everything about 2.5 times slower than a laptop.
+const WEB_PUSH_MIN_EXTRA = 0.5;
+const MMMIKE_MAX_EXTRA = 0.1;
 
 const README = fileURLToPath(new URL("../../README.md", import.meta.url));
 const COMPARE = fileURLToPath(new URL("../../docs/src/content/docs/compare.md", import.meta.url));
@@ -126,10 +127,11 @@ for (const { file, claim, worker, digits } of SIZE_CLAIMS) {
 		);
 	}
 }
-if (!(extraMs("web-push") >= WEB_PUSH_MIN_EXTRA_MS)) {
+const emptyMs = startups.get("empty") ?? Number.NaN;
+if (!(extraMs("web-push") >= WEB_PUSH_MIN_EXTRA * emptyMs)) {
 	failures.push(`web-push started only ${ms(extraMs("web-push"))} ms slower than an empty Worker`);
 }
-if (!(extraMs("mmmike") <= MMMIKE_MAX_EXTRA_MS)) {
+if (!(extraMs("mmmike") <= MMMIKE_MAX_EXTRA * emptyMs)) {
 	failures.push(`@mmmike/web-push started ${ms(extraMs("mmmike"))} ms slower than an empty Worker`);
 }
 if (failures.length > 0) {
