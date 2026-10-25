@@ -1,10 +1,7 @@
 export type Point = [x: number, y: number];
 
-/**
- * A pen stroke in a margin note's own coordinates: px from its top left corner,
- * or its bottom left for a note whose height changes with the page width.
- */
-export type PenArrow = { from: Point; via: Point; to: Point; corner?: "top" | "bottom" };
+/** A pen stroke from `from` to `to`, bowed towards `via`. */
+export type PenArrow = { from: Point; via: Point; to: Point };
 
 const HEAD_LENGTH = 9;
 const HEAD_SPREAD = (32 * Math.PI) / 180;

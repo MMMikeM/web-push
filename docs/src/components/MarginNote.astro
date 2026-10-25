@@ -1,15 +1,16 @@
 ---
 import { notePlacements, placementCss, ranges } from "../margin-notes.ts";
-import { penArrowParts } from "./pen-arrow.ts";
 
 interface Props {
 	/** Its key in margin-notes.json, which holds where it sits at each width. */
 	id: string;
+	/** A selector for what its arrows point at. */
+	anchor?: string;
 	/** Writes itself in letter by letter, then draws its arrow. Its slot must be plain text. */
 	written?: boolean;
 }
 
-const { id, written = false } = Astro.props;
+const { id, anchor, written = false } = Astro.props;
 const placements = notePlacements[id];
 if (!placements) {
 	throw new Error(`margin-notes.json has no placements for the margin note "${id}"`);
@@ -22,7 +23,7 @@ const writtenText = written
 const letters = [...writtenText];
 
 const arrows = ranges(placements).flatMap(({ from, placement }) =>
-	placement.arrow ? [{ at: from, arrow: placement.arrow, ...penArrowParts(placement.arrow) }] : [],
+	placement.arrow ? [{ at: from, arrow: placement.arrow }] : [],
 );
 ---
 
@@ -31,6 +32,7 @@ const arrows = ranges(placements).flatMap(({ from, placement }) =>
 	role="note"
 	data-pagefind-ignore
 	data-note={id}
+	data-anchor={anchor}
 	data-placements={import.meta.env.DEV ? JSON.stringify(placements) : undefined}
 	data-written={written ? "" : undefined}
 	style={written ? `--letters: ${letters.length}` : undefined}
@@ -52,11 +54,11 @@ const arrows = ranges(placements).flatMap(({ from, placement }) =>
 		)
 	}
 	{
-		arrows.map(({ at, arrow, curve, head }) => (
+		arrows.map(({ at, arrow }) => (
 			<svg
 				class="arrow"
 				data-at={at}
-				data-corner={arrow.corner}
+				data-arrow={JSON.stringify(arrow)}
 				aria-hidden="true"
 				width="1"
 				height="1"
@@ -66,13 +68,34 @@ const arrows = ranges(placements).flatMap(({ from, placement }) =>
 				stroke-linecap="round"
 				stroke-linejoin="round"
 			>
-				<path class="curve" d={curve} pathLength="1" />
-				<path class="head" d={head} pathLength="1" />
+				<path class="curve" pathLength="1" />
+				<path class="head" pathLength="1" />
 			</svg>
 		))
 	}
 	<style is:inline data-note-style={id} set:html={placementCss(id, placements)} />
 </div>
+
+<script>
+	import { followNoteArrows } from "./note-arrows.ts";
+
+	followNoteArrows();
+
+	// A written note waits to be seen before it writes itself in, once. Set here
+	// rather than in the markup, so a page without JavaScript still plays it.
+	for (const note of document.querySelectorAll<HTMLElement>("[data-written]")) {
+		note.toggleAttribute("data-unseen", true);
+		new IntersectionObserver(
+			([entry], observer) => {
+				if (entry?.isIntersecting) {
+					note.removeAttribute("data-unseen");
+					observer.disconnect();
+				}
+			},
+			{ threshold: 0.6 },
+		).observe(note);
+	}
+</script>
 
 <style>
 	.margin-note {
@@ -104,35 +127,42 @@ const arrows = ranges(placements).flatMap(({ from, placement }) =>
 		overflow: visible;
 	}
 
-	.arrow[data-corner="bottom"] {
-		inset: auto auto 0 0;
-	}
-
 	/* A pen writing the note, then drawing its arrow from the note to the tip. */
 	@media (prefers-reduced-motion: no-preference) {
+		[data-written][data-unseen] :is(.letter, .arrow .curve, .arrow .head) {
+			animation-play-state: paused;
+		}
+
 		[data-written] {
-			--write-start: 0.6s;
-			--write-pace: 35ms;
+			--write-start: 0.3s;
+			--write-pace: 22ms;
+			--stroke: 0.45s;
+			/* The pen lifting off the end of the line to draw the tip. */
+			--lift: 0.12s;
 		}
 
 		.letter {
 			opacity: 0;
-			animation: note-letter 0.12s ease-out forwards;
+			animation: note-letter 0.04s linear forwards;
 			animation-delay: calc(var(--write-start) + var(--i) * var(--write-pace));
 		}
 
 		[data-written] .arrow path {
-			--drawn-at: calc(var(--write-start) + var(--letters) * var(--write-pace) + 0.15s);
+			--drawn-at: calc(var(--write-start) + var(--letters) * var(--write-pace) + 0.1s);
 			stroke-dasharray: 1;
 			stroke-dashoffset: 1;
-			/* Slow off the note, quick through the middle, slow into the tip. */
-			animation: note-stroke 0.7s cubic-bezier(0.7, 0, 0.3, 1) both;
+			/* A hand's pace: a slow start, then even, easing off only just before the tip. */
+			animation: note-stroke var(--stroke) cubic-bezier(0.45, 0, 0.6, 0.95) both;
 			animation-delay: var(--drawn-at);
 		}
 
+		/* One barb in to the point, a lift's hold there, then the other barb out. */
 		[data-written] .arrow .head {
-			animation-duration: 0.15s;
-			animation-delay: calc(var(--drawn-at) + 0.7s);
+			--head-at: calc(var(--drawn-at) + var(--stroke) + var(--lift));
+			animation:
+				note-head-in 50ms linear both,
+				note-head-out 50ms linear forwards;
+			animation-delay: var(--head-at), calc(var(--head-at) + 50ms + var(--lift));
 		}
 	}
 
@@ -143,6 +173,35 @@ const arrows = ranges(placements).flatMap(({ from, placement }) =>
 	}
 
 	/* Flat caps until the end: a round cap draws a dot where an unstarted dash sits. */
+	/* The barbs are the same length, so the point is halfway along the head. */
+	@keyframes note-head-in {
+		from {
+			stroke-dashoffset: 1;
+			stroke-linecap: butt;
+		}
+
+		to {
+			stroke-dashoffset: 0.5;
+			stroke-linecap: butt;
+		}
+	}
+
+	@keyframes note-head-out {
+		from {
+			stroke-dashoffset: 0.5;
+			stroke-linecap: butt;
+		}
+
+		99% {
+			stroke-linecap: butt;
+		}
+
+		to {
+			stroke-dashoffset: 0;
+			stroke-linecap: round;
+		}
+	}
+
 	@keyframes note-stroke {
 		from {
 			stroke-dashoffset: 1;

@@ -40,7 +40,7 @@ await sendPushNotification(subscription, NOTIFICATION, vapid, {
 });
 ```
 
-<MarginNote id="iphone" slot="note">
+<MarginNote id="iphone" anchor="push-demo [data-send]" slot="note">
 	On an iPhone, add this site to your home screen first. Apple's rule, not mine.
 </MarginNote>
 
@@ -59,7 +59,7 @@ await sendPushNotification(subscription, NOTIFICATION, vapid, {
 
 </PieceList>
 
-<MarginNote id="pieces">
+<MarginNote id="pieces" anchor=".pieces ol">
 	Each one tree-shakes on its own. The browser half is about 1.3 kB, the server
 	half 3.6 kB, minified and gzipped.
 </MarginNote>
@@ -81,7 +81,7 @@ If it has `fetch` and `crypto.subtle`, it works. No Node emulation, no polyfills
 	<li>Browsers</li>
 </ul>
 
-<MarginNote id="node">
+<MarginNote id="node" anchor=".chips .circled">
 	Why 22.12? It's the first Node that can `require()` an ES module, so CommonJS
 	projects can load this package too.
 </MarginNote>
@@ -94,7 +94,7 @@ Payloads are encrypted with RFC 8291 `aes128gcm`, and every request is signed wi
 
 <RelayDiagram>
 
-<MarginNote id="relay" slot="note">
+<MarginNote id="relay" anchor=".relay .sealed" slot="note">
 	Push services return 201 even when the payload is broken, so you'd never know.
 	Hence the RFC's own test vector, pinned byte for byte.
 </MarginNote>
@@ -107,7 +107,7 @@ Payloads are encrypted with RFC 8291 `aes128gcm`, and every request is signed wi
 in Node, Deno, Bun and Workers. Every push to the repository also delivers a
 real notification through Chrome's and Firefox's push services.
 
-<MarginNote id="coverage">
+<MarginNote id="coverage" anchor=".annotated > p > mark">
 	The first release had no tests at all. This is the apology.
 </MarginNote>
 
@@ -117,7 +117,7 @@ real notification through Chrome's and Firefox's push services.
 
 Zero dependencies, so installing it adds nothing else to your lockfile.
 
-<MarginNote id="deps">
+<MarginNote id="deps" anchor='.annotated:has(> [data-note="deps"]) > p'>
 	On the build side: SHA-pinned Actions, npm provenance, and a seven-day wait
 	before new dev-dependency releases are installed.
 </MarginNote>

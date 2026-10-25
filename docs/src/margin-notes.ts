@@ -1,23 +1,43 @@
 import placements from "./margin-notes.json";
-import type { PenArrow } from "./components/pen-arrow.ts";
+import type { Point } from "./components/pen-arrow.ts";
 
-/** Positioned beside its anchor: px from the top left of the block that holds both. */
-export type Beside = {
+export type Side = "top" | "right" | "bottom" | "left";
+
+/** One end of an arrow: the middle of a side, moved by `offset` px. */
+export type End = { side: Side; offset: Point };
+
+/**
+ * From a side of the note to a side of its anchor, so the arrow follows the
+ * words it points at however they wrap. `bend` bows the curve that many px
+ * to the right of its direction, as drawn; negative bows it left.
+ */
+export type Arrow = { from: End; to: End; bend: number };
+
+/** px from the left or the right edge of the block that holds a note and its anchor. */
+type Across = { left: number; right?: never } | { right: number; left?: never };
+
+/** px from the top or the bottom edge of that block. */
+type Down = { top: number; bottom?: never } | { bottom: number; top?: never };
+
+/** Positioned beside its anchor, from whichever edges of their block it should follow. */
+export type Beside = Across & Down & BesideBox;
+
+type BesideBox = {
 	mode: "beside";
-	left: number;
-	top: number;
 	width: number;
 	rotate: number;
 	/** Space kept below the block, for a note that hangs beneath it. */
 	room?: number;
-	arrow?: PenArrow;
+	arrow?: Arrow;
 };
 
 /** In the flow straight after its anchor. */
 export type Flow = {
 	mode: "flow";
-	/** px in from the start of the block, a CSS length, or `auto` to sit at its end. */
+	/** px in from the block's left edge, a CSS length, or `auto` to sit against the other side. */
 	indent: number | string;
+	/** Measures `indent` from the right edge instead, so the note keeps its gap there at any width. */
+	side?: "right";
 	/** px, or a CSS length such as `min(16rem, 70%)`. */
 	width: number | string;
 	rotate: number;
@@ -25,7 +45,7 @@ export type Flow = {
 	space: [above: number, below: number];
 	/** Shown above its anchor instead, though it still follows it for screen readers. */
 	before?: boolean;
-	arrow?: PenArrow;
+	arrow?: Arrow;
 };
 
 export type Placement = Beside | Flow;
@@ -51,12 +71,24 @@ const media = (from: number, to: number | undefined) =>
 		.filter(Boolean)
 		.join(" and ") || "all";
 
+const besideBox = (placement: Beside) => {
+	const across =
+		placement.right === undefined ? `left: ${placement.left}px` : `right: ${placement.right}px`;
+	const down =
+		placement.bottom === undefined ? `top: ${placement.top}px` : `bottom: ${placement.bottom}px`;
+	return `position: absolute; inset: auto; ${across}; ${down}; width: ${placement.width}px; margin: 0; order: 0;`;
+};
+
+const flowBox = (placement: Flow) => {
+	const [above, below] = placement.space;
+	const indent = length(placement.indent);
+	const [right, left] = placement.side === "right" ? [indent, "auto"] : ["0", indent];
+	return `position: relative; inset: auto; width: ${length(placement.width)}; margin: ${above}px ${right} ${below}px ${left}; order: ${placement.before ? -1 : 0};`;
+};
+
 const rules = (id: string, at: number, placement: Placement): string => {
 	const note = `.margin-note[data-note="${id}"]`;
-	const box =
-		placement.mode === "beside"
-			? `position: absolute; left: ${placement.left}px; top: ${placement.top}px; width: ${placement.width}px; margin: 0; order: 0;`
-			: `position: relative; left: auto; top: auto; width: ${length(placement.width)}; margin: ${placement.space[0]}px 0 ${placement.space[1]}px ${length(placement.indent)}; order: ${placement.before ? -1 : 0};`;
+	const box = placement.mode === "beside" ? besideBox(placement) : flowBox(placement);
 	const room =
 		placement.mode === "beside" && placement.room
 			? ` :has(> ${note}) { padding-bottom: ${placement.room}px; }`
