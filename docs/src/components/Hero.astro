@@ -47,7 +47,11 @@ const published = new Date().toLocaleDateString("en-GB", { month: "long", year: 
 						{afterAnchor !== undefined && <u>{note?.target}</u>}
 						{afterAnchor}
 					</p>
-					{note && <MarginNote id="hero">{note.text}</MarginNote>}
+					{note && (
+						<MarginNote id="hero" written>
+							{note.text}
+						</MarginNote>
+					)}
 				</div>
 			)
 		}

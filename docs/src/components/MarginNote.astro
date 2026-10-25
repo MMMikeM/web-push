@@ -1,19 +1,28 @@
 ---
 import { notePlacements, placementCss, ranges } from "../margin-notes.ts";
-import { penArrowPath } from "./pen-arrow.ts";
+import { penArrowParts } from "./pen-arrow.ts";
 
 interface Props {
 	/** Its key in margin-notes.json, which holds where it sits at each width. */
 	id: string;
+	/** Writes itself in letter by letter, then draws its arrow. Its slot must be plain text. */
+	written?: boolean;
 }
 
-const { id } = Astro.props;
+const { id, written = false } = Astro.props;
 const placements = notePlacements[id];
 if (!placements) {
 	throw new Error(`margin-notes.json has no placements for the margin note "${id}"`);
 }
+// The slot arrives as HTML, with the characters Astro escapes in text escaped.
+const ENTITIES: Record<string, string> = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'" };
+const writtenText = written
+	? (await Astro.slots.render("default")).trim().replace(/&(amp|lt|gt|quot|#39);/g, (entity) => ENTITIES[entity] ?? entity)
+	: "";
+const letters = [...writtenText];
+
 const arrows = ranges(placements).flatMap(({ from, placement }) =>
-	placement.arrow ? [{ at: from, arrow: placement.arrow }] : [],
+	placement.arrow ? [{ at: from, arrow: placement.arrow, ...penArrowParts(placement.arrow) }] : [],
 );
 ---
 
@@ -23,10 +32,27 @@ const arrows = ranges(placements).flatMap(({ from, placement }) =>
 	data-pagefind-ignore
 	data-note={id}
 	data-placements={import.meta.env.DEV ? JSON.stringify(placements) : undefined}
+	data-written={written ? "" : undefined}
+	style={written ? `--letters: ${letters.length}` : undefined}
 >
-	<div class="text"><slot /></div>
 	{
-		arrows.map(({ at, arrow }) => (
+		written ? (
+			<div class="text">
+				<span class="sr-only">{writtenText}</span>
+				<span aria-hidden="true">
+					{letters.map((letter, index) =>
+						letter === " " ? " " : <span class="letter" style={`--i: ${index}`}>{letter}</span>,
+					)}
+				</span>
+			</div>
+		) : (
+			<div class="text">
+				<slot />
+			</div>
+		)
+	}
+	{
+		arrows.map(({ at, arrow, curve, head }) => (
 			<svg
 				class="arrow"
 				data-at={at}
@@ -40,7 +66,8 @@ const arrows = ranges(placements).flatMap(({ from, placement }) =>
 				stroke-linecap="round"
 				stroke-linejoin="round"
 			>
-				<path d={penArrowPath(arrow)} />
+				<path class="curve" d={curve} pathLength="1" />
+				<path class="head" d={head} pathLength="1" />
 			</svg>
 		))
 	}
@@ -79,5 +106,56 @@ const arrows = ranges(placements).flatMap(({ from, placement }) =>
 
 	.arrow[data-corner="bottom"] {
 		inset: auto auto 0 0;
+	}
+
+	/* A pen writing the note, then drawing its arrow from the note to the tip. */
+	@media (prefers-reduced-motion: no-preference) {
+		[data-written] {
+			--write-start: 0.6s;
+			--write-pace: 35ms;
+		}
+
+		.letter {
+			opacity: 0;
+			animation: note-letter 0.12s ease-out forwards;
+			animation-delay: calc(var(--write-start) + var(--i) * var(--write-pace));
+		}
+
+		[data-written] .arrow path {
+			--drawn-at: calc(var(--write-start) + var(--letters) * var(--write-pace) + 0.15s);
+			stroke-dasharray: 1;
+			stroke-dashoffset: 1;
+			/* Slow off the note, quick through the middle, slow into the tip. */
+			animation: note-stroke 0.7s cubic-bezier(0.7, 0, 0.3, 1) both;
+			animation-delay: var(--drawn-at);
+		}
+
+		[data-written] .arrow .head {
+			animation-duration: 0.15s;
+			animation-delay: calc(var(--drawn-at) + 0.7s);
+		}
+	}
+
+	@keyframes note-letter {
+		to {
+			opacity: 1;
+		}
+	}
+
+	/* Flat caps until the end: a round cap draws a dot where an unstarted dash sits. */
+	@keyframes note-stroke {
+		from {
+			stroke-dashoffset: 1;
+			stroke-linecap: butt;
+		}
+
+		99% {
+			stroke-linecap: butt;
+		}
+
+		to {
+			stroke-dashoffset: 0;
+			stroke-linecap: round;
+		}
 	}
 </style>
