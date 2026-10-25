@@ -16,6 +16,52 @@
 	}
 }
 
+/*
+ * The column holds one width from each of margin-notes.json's breakpoints to the
+ * next, the width it has at the breakpoint itself, so text wraps the same way
+ * across a placement's whole range and a note tuned there stays where it was put.
+ * Centred, so a wider screen in the range shares the spare room either side.
+ */
+[data-has-hero] .sl-container {
+	margin-inline: auto;
+}
+
+@media (min-width: 384px) {
+	:root[data-has-hero] {
+		--sl-content-width: 352px;
+	}
+}
+
+@media (min-width: 608px) {
+	:root[data-has-hero] {
+		--sl-content-width: 576px;
+	}
+}
+
+@media (min-width: 768px) {
+	:root[data-has-hero] {
+		--sl-content-width: 672px;
+	}
+}
+
+@media (min-width: 1024px) {
+	:root[data-has-hero] {
+		--sl-content-width: 928px;
+	}
+}
+
+@media (min-width: 1136px) {
+	:root[data-has-hero] {
+		--sl-content-width: 1040px;
+	}
+}
+
+@media (min-width: 1440px) {
+	:root[data-has-hero] {
+		--sl-content-width: 1080px;
+	}
+}
+
 [data-has-hero] .sl-markdown-content {
 	font-size: var(--text-lg);
 }
