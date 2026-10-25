@@ -172,6 +172,15 @@ const published = new Date().toLocaleDateString("en-GB", { month: "long", year: 
 		line-height: 1.08;
 	}
 
+	/*
+	 * Source Serif's inline box is 1.38em tall, more than the heading's line height,
+	 * so the yellow runs from just above the ascenders to just below the descenders
+	 * and clears the line above.
+	 */
+	h1 mark {
+		background: linear-gradient(transparent 19%, var(--highlight) 19% 97%, transparent 97%);
+	}
+
 	.tagline {
 		position: relative;
 		display: flex;
