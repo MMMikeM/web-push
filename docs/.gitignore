@@ -4,3 +4,5 @@ dist/
 src/content/docs/reference/
 .wrangler/
 .dev.vars
+# Local tools for tuning the margin notes.
+src/integrations/note-tuner/
