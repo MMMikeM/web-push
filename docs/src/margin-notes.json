@@ -319,21 +319,5 @@
 				"to": [-85.2, 86.5]
 			}
 		}
-	},
-	"appendix": {
-		"0": {
-			"mode": "flow",
-			"indent": 152,
-			"width": "min(14rem, calc(100% - 9.5rem))",
-			"rotate": 3,
-			"space": [12, 18]
-		},
-		"1136": {
-			"mode": "beside",
-			"left": 600,
-			"top": 84,
-			"width": 300,
-			"rotate": -2
-		}
 	}
 }

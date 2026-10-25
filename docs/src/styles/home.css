@@ -21,19 +21,12 @@
 	border-top: 1px solid var(--line);
 }
 
-/* Room between lines for the wavy underline when a heading wraps. */
 [data-has-hero] .sl-markdown-content h2 {
 	font-size: var(--text-xl);
-	line-height: 1.5;
+	line-height: var(--leading-snug);
 }
 
-/* The heading inside brings its own space above, so the wrapper adds none. */
-[data-has-hero] .sl-markdown-content .annotated:has(> .level-h2) {
-	margin-top: 0;
-}
-
-/* A heading wrapped with its margin note keeps the same space before its section's text. */
-[data-has-hero] .sl-markdown-content :is(.level-h2, .annotated:has(> .level-h2)) + * {
+[data-has-hero] .sl-markdown-content .level-h2 + * {
 	margin-top: var(--space-s);
 }
 
@@ -47,7 +40,7 @@
 		font-size: var(--text-2xl);
 	}
 
-	[data-has-hero] .sl-markdown-content :is(.level-h2, .annotated:has(> .level-h2)) + * {
+	[data-has-hero] .sl-markdown-content .level-h2 + * {
 		margin-top: var(--space-l);
 	}
 }
