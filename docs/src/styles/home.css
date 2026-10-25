@@ -4,6 +4,11 @@
 	--sl-main-pad: 0;
 }
 
+/* A rotated margin note near the edge is clipped rather than scrolling the page sideways. */
+[data-has-hero] .page {
+	overflow-x: clip;
+}
+
 /* From tablet width up, more room at the sides than a phone gets. */
 @media (min-width: 48rem) {
 	[data-has-hero] {
