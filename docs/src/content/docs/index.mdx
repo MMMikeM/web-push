@@ -46,7 +46,7 @@ await sendPushNotification(subscription, NOTIFICATION, vapid, {
 
 </PushDemo>
 
-## 2. The four pieces
+## 2. The <u>four</u> pieces
 
 <Annotated>
 
@@ -59,7 +59,7 @@ await sendPushNotification(subscription, NOTIFICATION, vapid, {
 
 </PieceList>
 
-<MarginNote id="pieces" anchor=".pieces ol">
+<MarginNote id="pieces" anchor='[id="2-the-four-pieces"] u'>
 	Each one tree-shakes on its own. The browser half is about 1.3 kB, the server
 	half 3.6 kB, minified and gzipped.
 </MarginNote>
@@ -115,9 +115,9 @@ real notification through Chrome's and Firefox's push services.
 
 <Annotated>
 
-Zero dependencies, so installing it adds nothing else to your lockfile.
+Zero dependencies, so installing it adds nothing else to your <u>lockfile</u>.
 
-<MarginNote id="deps" anchor='.annotated:has(> [data-note="deps"]) > p'>
+<MarginNote id="deps" anchor='.annotated:has(> [data-note="deps"]) u'>
 	On the build side: SHA-pinned Actions, npm provenance, and a seven-day wait
 	before new dev-dependency releases are installed.
 </MarginNote>
