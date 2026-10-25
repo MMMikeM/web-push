@@ -59,6 +59,8 @@ export default defineConfig({
 				// The sizes keep Chrome on the SVG: https://evilmartians.com/chronicles/how-to-favicon-in-2021-six-files-that-fit-most-needs
 				{ tag: "link", attrs: { rel: "icon", href: "/favicon.ico", sizes: "32x32" } },
 				{ tag: "link", attrs: { rel: "apple-touch-icon", href: "/apple-touch-icon.png" } },
+				// The site has its own dark theme, so the Dark Reader extension leaves its colours alone.
+				{ tag: "meta", attrs: { name: "darkreader-lock" } },
 			],
 			lastUpdated: true,
 			editLink: { baseUrl: `${project.repositoryUrl}/edit/main/docs/` },
