@@ -33,10 +33,10 @@ const message = "Your order has shipped";
 		container-type: inline-size;
 	}
 
-	/* Stacked, a narrow note shares the row of the arrow below the sealed stop. */
+	/* A narrow note follows the whole diagram, rather than splitting its stops. */
 	.stops {
 		display: grid;
-		grid-template-areas: "from" "out" "sealed" "in" "to";
+		grid-template-areas: "from" "out" "sealed" "in" "to" "note";
 		gap: 0.75rem;
 		justify-items: center;
 	}
@@ -62,7 +62,7 @@ const message = "Your order has shipped";
 	}
 
 	.stops > :global(.margin-note) {
-		grid-area: in;
+		grid-area: note;
 		justify-self: end;
 		align-self: center;
 	}
