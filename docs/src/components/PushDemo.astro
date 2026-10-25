@@ -388,6 +388,13 @@ import Bell from "./NotificationIcon.astro";
 		max-height: 2.1875rem;
 	}
 
+	/* Small enough on a phone that the call's first line wraps after its first argument. */
+	@container (max-width: 25rem) {
+		.code :global(.expressive-code) {
+			--ec-codeFontSize: 0.75rem;
+		}
+	}
+
 	@container (min-width: 44rem) {
 		.output {
 			grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);

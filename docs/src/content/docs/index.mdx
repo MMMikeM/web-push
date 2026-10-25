@@ -32,7 +32,7 @@ This button subscribes your browser with the site's own VAPID key, then asks the
 
 <PushDemo>
 
-```ts title="docs/worker/push-demo.ts"
+```ts title="docs/worker/push-demo.ts" wrap hangingIndent=2
 await sendPushNotification(subscription, NOTIFICATION, vapid, {
 	ttl: 60,
 	urgency: "high",
@@ -80,7 +80,6 @@ await sendPushNotification(subscription, NOTIFICATION, vapid, {
 		top: -64,
 		width: 560,
 		rotate: -1.5,
-		arrow: { from: [10, 52], via: [-40, 54], to: [-80, 76] },
 	}}
 	narrow={{
 		indent: "0.375rem",

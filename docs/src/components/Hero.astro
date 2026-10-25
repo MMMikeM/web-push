@@ -127,8 +127,9 @@ const published = new Date().toLocaleDateString("en-GB", { month: "long", year: 
 		margin: 0;
 	}
 
-	/* Padding on an inline link grows what a finger can hit without moving the lines. */
+	/* Grows what a finger can hit; the negative margin keeps the rows where they were. */
 	.rfc-header a {
+		margin-block: -0.875rem;
 		padding-block: 0.875rem;
 		color: var(--pen);
 	}
