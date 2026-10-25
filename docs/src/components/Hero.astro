@@ -2,30 +2,32 @@
 import { LinkButton } from "@astrojs/starlight/components";
 import { project } from "../project.ts";
 import MarginNote from "./MarginNote.astro";
-import NoteConnector from "./NoteConnector.astro";
-import NoteTarget from "./NoteTarget.astro";
 
 const { data } = Astro.locals.starlightRoute.entry;
 const { title = data.title, tagline, actions = [] } = data.hero ?? {};
 const highlight = data.heroHighlight;
 const note = data.heroNote;
-const [beforeNoteTarget, afterNoteTarget] =
+const [beforeAnchor, afterAnchor] =
 	tagline && note && tagline.includes(note.target) ? tagline.split(note.target) : [tagline];
 const [beforeHighlight, afterHighlight] =
 	highlight && title.includes(highlight) ? title.split(highlight) : [title];
 
 const install = `npm install ${project.name}`;
+const issueUrl = `${project.repositoryUrl}/issues/new`;
 const initialledAuthor = project.author.replace(/^(\S)\S*\s+/, "$1. ");
 const published = new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 ---
 
 <div class="rfc-header decoration" data-pagefind-ignore>
 	<p>
-		<span>Independent Submission</span>
-		<span>Request for Comments: <a href={`${project.repositoryUrl}/issues/new`}>open an issue</a></span>
-		<span>Category: Informational</span>
+		<span class="wide-only">Independent Submission</span>
+		<span class="narrow-only"
+			>Informational · {initialledAuthor} · <a href="https://thelazyweb.dev">thelazyweb.dev</a></span
+		>
+		<span>Request for Comments: <a href={issueUrl}>open an issue</a></span>
+		<span class="wide-only">Category: Informational</span>
 	</p>
-	<p class="end">
+	<p class="end wide-only">
 		<span>{initialledAuthor}</span>
 		<a href="https://thelazyweb.dev">thelazyweb.dev</a>
 		<span>{published}</span>
@@ -39,14 +41,34 @@ const published = new Date().toLocaleDateString("en-GB", { month: "long", year: 
 		</h1>
 		{
 			tagline && (
-				<p class="tagline">
-					{beforeNoteTarget}
-					{afterNoteTarget !== undefined && <NoteTarget for="hero">{note?.target}</NoteTarget>}
-					{afterNoteTarget}
-				</p>
+				<div class="tagline">
+					<p>
+						{beforeAnchor}
+						{afterAnchor !== undefined && <u>{note?.target}</u>}
+						{afterAnchor}
+					</p>
+					{note && (
+						<MarginNote
+							wide={{
+								left: 407,
+								top: 102,
+								width: 200,
+								rotate: -4,
+								arrow: { from: [-6, 8], via: [-26, 30], to: [-59, 30] },
+							}}
+							narrow={{
+								indent: "45%",
+								width: "min(12rem, 52%)",
+								rotate: -3,
+								space: "1rem 0",
+							}}
+						>
+							{note.text}
+						</MarginNote>
+					)}
+				</div>
 			)
 		}
-		{note && <MarginNote for="hero">{note.text}</MarginNote>}
 		<div class="actions">
 			{actions.map(({ link, text, variant, icon }) => (
 				<LinkButton href={link} variant={variant} icon={icon?.name}>
@@ -73,7 +95,6 @@ const published = new Date().toLocaleDateString("en-GB", { month: "long", year: 
 				</svg>
 			</button>
 		</div>
-		{note && afterNoteTarget !== undefined && <NoteConnector for="hero" approach="side" />}
 	</div>
 </div>
 
@@ -106,35 +127,44 @@ const published = new Date().toLocaleDateString("en-GB", { month: "long", year: 
 		margin: 0;
 	}
 
+	/* Padding on an inline link grows what a finger can hit without moving the lines. */
 	.rfc-header a {
+		padding-block: 0.875rem;
 		color: var(--pen);
 	}
 
+	.rfc-header .end {
+		text-align: end;
+	}
+
+	@media (max-width: 39.99rem) {
+		.rfc-header {
+			padding-top: 1.25rem;
+			font-size: var(--sl-text-xs);
+		}
+
+		.rfc-header .wide-only {
+			display: none;
+		}
+	}
+
 	@media (min-width: 40rem) {
-		.rfc-header .end {
-			text-align: end;
+		.rfc-header .narrow-only {
+			display: none;
 		}
 	}
 
 	.lead {
-		container-type: inline-size;
+		container: page / inline-size;
 	}
 
 	.hero {
-		position: relative;
 		display: grid;
-		grid-template-areas: "title" "tagline" "note" "actions" "install";
 		gap: 1.75rem;
-		padding-block: 3.5rem 5rem;
-	}
-
-	.hero > :global(.margin-note) {
-		grid-area: note;
-		margin-top: -0.75rem;
+		padding-block: 1.5rem 0.5rem;
 	}
 
 	h1 {
-		grid-area: title;
 		margin: 0;
 		color: var(--ink);
 		font-size: clamp(2.5rem, 6vw, 4.125rem);
@@ -143,24 +173,32 @@ const published = new Date().toLocaleDateString("en-GB", { month: "long", year: 
 	}
 
 	.tagline {
-		grid-area: tagline;
+		position: relative;
+		display: flex;
+		flex-direction: column;
 		max-width: 34em;
-		margin: 0;
 		color: var(--ink-muted);
 		font-size: var(--sl-text-xl);
 		line-height: 1.6;
 	}
 
+	.tagline p {
+		margin: 0;
+	}
+
 	.actions {
-		grid-area: actions;
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
 		gap: 0.75rem 1rem;
 	}
 
+	.actions :global(.sl-link-button) {
+		min-height: 2.75rem;
+		align-items: center;
+	}
+
 	.install {
-		grid-area: install;
 		justify-self: start;
 		display: flex;
 		align-items: center;
@@ -201,19 +239,9 @@ const published = new Date().toLocaleDateString("en-GB", { month: "long", year: 
 		color: var(--ink);
 	}
 
-	@container (min-width: 52rem) {
+	@container page (min-width: 52rem) {
 		.hero {
-			grid-template-columns: minmax(0, 42.5rem) 14rem;
-			grid-template-areas: "title ." "tagline note" "actions ." "install .";
-			justify-content: start;
-			column-gap: 2.5rem;
-		}
-
-		.hero > :global(.margin-note) {
-			--margin-note-up: none;
-			--margin-note-left: block;
-			align-self: start;
-			margin-top: 0.2rem;
+			padding-block: 3.5rem 1.5rem;
 		}
 	}
 </style>

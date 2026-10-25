@@ -1,0 +1,25 @@
+---
+interface Props {
+	/** Space kept below the block on wide pages, for a note that hangs beneath it. */
+	room?: string;
+}
+
+const { room } = Astro.props;
+---
+
+<div class="annotated" style={room && `--room: ${room}`}><slot /></div>
+
+<style>
+	/* A column, so a note can be ordered above the block it follows. */
+	.annotated {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+	}
+
+	@container page (min-width: 66rem) {
+		.annotated {
+			padding-bottom: var(--room, 0);
+		}
+	}
+</style>

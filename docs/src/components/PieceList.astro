@@ -2,18 +2,12 @@
 interface Props {
 	/** Numbers the items as subsections: 2.1, 2.2 and so on. */
 	section: number;
-	/** The `for` of a margin note that points at the whole list. */
-	noteFor?: string;
 }
 
-const { section, noteFor } = Astro.props;
+const { section } = Astro.props;
 ---
 
-<div
-	class="pieces"
-	data-note-target={noteFor}
-	style={`--section: "${section}."${noteFor ? `; anchor-name: --target-${noteFor}` : ""}`}
->
+<div class="pieces" style={`--section: "${section}."`}>
 	<slot />
 </div>
 
@@ -21,7 +15,7 @@ const { section, noteFor } = Astro.props;
 	/* A size container has no width of its own to fit a column to, so it takes the text's measure. */
 	.pieces {
 		container-type: inline-size;
-		width: 36em;
+		width: 37em;
 		max-width: 100%;
 	}
 
@@ -33,51 +27,59 @@ const { section, noteFor } = Astro.props;
 		border-top: 1px solid var(--line);
 	}
 
+	/* Each item holds a link and a span; the number is its ::before. */
 	.pieces :global(li) {
 		counter-increment: piece;
+		display: grid;
+		grid-template-columns: auto 1fr;
+		align-items: center;
+		column-gap: 0.875rem;
 		margin: 0;
-		padding-block: 1.125rem;
+		padding-block: 0.25rem 1rem;
 		border-bottom: 1px solid var(--line);
 		line-height: 1.55;
 	}
 
 	.pieces :global(li::before) {
 		content: var(--section) counter(piece);
-		display: inline-block;
-		width: 2.75rem;
 		color: var(--ink-muted);
 		font-family: var(--__sl-font-mono);
 		font-size: var(--sl-text-sm);
 	}
 
-	.pieces :global(li > a:first-child) {
-		display: inline-block;
-		margin-inline-end: 0.75rem;
+	.pieces :global(li > a) {
+		display: flex;
+		align-items: center;
+		min-height: 2.75rem;
 		text-decoration: none;
 	}
 
-	.pieces :global(li > a:first-child code) {
+	.pieces :global(li > a code) {
 		padding: 0;
 		background: none;
 		color: var(--ink);
 		font-size: var(--sl-text-base);
 	}
 
-	/* A hanging indent, so a description that wraps lines up under its first line. */
+	.pieces :global(li > span) {
+		grid-column: 1 / -1;
+	}
+
 	@container (min-width: 32rem) {
 		.pieces :global(li) {
-			padding-inline-start: 13.25rem;
-			text-indent: -13.25rem;
+			grid-template-columns: 2.75rem 9.375rem 1fr;
+			align-items: baseline;
+			column-gap: 1rem;
+			padding-block: 1.125rem;
 		}
 
-		.pieces :global(li > a:first-child) {
-			width: 10.5rem;
-			margin-inline-end: 0;
+		.pieces :global(li > a) {
+			display: inline;
+			min-height: 0;
 		}
 
-		.pieces :global(li > *),
-		.pieces :global(li::before) {
-			text-indent: 0;
+		.pieces :global(li > span) {
+			grid-column: auto;
 		}
 	}
 </style>

@@ -3,30 +3,37 @@ import Bell from "./NotificationIcon.astro";
 ---
 
 <push-demo>
-	<div class="controls not-content decoration" data-pagefind-ignore>
-		<button type="button" data-send>
-			<svg
-				aria-hidden="true"
-				width="18"
-				height="18"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="1.8"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-			>
-				<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
-				<path d="M10 21h4"></path>
-			</svg>
-			<span data-label>Send me a test notification</span>
-		</button>
-		<p class="status" role="status" aria-live="polite"></p>
-		<noscript><p>The demo needs JavaScript.</p></noscript>
+	<div class="trigger">
+		<div class="controls not-content decoration" data-pagefind-ignore>
+			<button type="button" data-send>
+				<svg
+					aria-hidden="true"
+					width="18"
+					height="18"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+					<path d="M10 21h4"></path>
+				</svg>
+				<span class="labels">
+					<span class="first">Send me a test notification</span>
+					<span class="again">Send another</span>
+				</span>
+			</button>
+			<noscript><p>The demo needs JavaScript.</p></noscript>
+		</div>
+		<slot name="note" />
 	</div>
 	<div class="output">
 		<div class="preview not-content decoration" data-pagefind-ignore>
-			<p class="empty">Your notification lands here, and on your screen.</p>
+			<p class="message" role="status" aria-live="polite">
+				Your notification lands here, and on your screen.
+			</p>
 			<div class="notification" hidden>
 				<Bell />
 				<div class="notification-text">
@@ -67,7 +74,20 @@ import Bell from "./NotificationIcon.astro";
 	const TOAST_MS = 10_000;
 
 	const UNSUPPORTED =
-		"This browser can't receive push notifications here. On iPhone and iPad, Safari only allows them for sites added to the Home Screen.";
+		"This browser can’t receive push notifications here. On iPhone and iPad, Safari only allows them for sites added to the Home Screen.";
+	const BLOCKED =
+		"Notifications are blocked for this site. Allow them in the site settings, then try again.";
+	// Chrome refuses push in a private window with an AbortError it only explains in
+	// the console, and Brave does the same while its push service is turned off.
+	const NO_PUSH_SERVICE =
+		"This window can’t receive push notifications. If it’s a private window, try a normal one.";
+
+	/** Whether a send request went out, or why it didn't. */
+	type Outcome = { sent: true } | { sent: false; reason: string };
+
+	const failed = (reason: string): Outcome => ({ sent: false, reason });
+
+	const isAbort = (error: unknown) => error instanceof DOMException && error.name === "AbortError";
 
 	const post = (subscription: PushSubscription): Promise<Response> =>
 		fetch(DEMO_URL, {
@@ -76,9 +96,9 @@ import Bell from "./NotificationIcon.astro";
 			body: JSON.stringify(serializeSubscription(subscription)),
 		});
 
-	const errorFrom = async (response: Response): Promise<string> => {
+	const errorFrom = async (response: Response): Promise<Outcome> => {
 		const { error } = (await response.json().catch(() => ({}))) as { error?: string };
-		return error ?? `The demo answered ${response.status}.`;
+		return failed(error ?? `The demo answered ${response.status}.`);
 	};
 
 	type Arrival = { title?: string; body?: string };
@@ -108,28 +128,32 @@ import Bell from "./NotificationIcon.astro";
 			this.#fill(this.querySelector(".preview .notification"));
 			try {
 				const outcome = await this.#subscribeAndSend();
+				if (outcome.sent) {
+					button.dataset.sent = "";
+				}
 				if (!this.#arrived) {
-					this.#say(outcome);
+					this.#say(outcome.sent ? "Sent. It should arrive in a few seconds." : outcome.reason, {
+						failed: !outcome.sent,
+					});
 				}
 			} catch (error) {
 				console.error(error);
 				const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-				this.#say(`Something went wrong in the browser (${detail}). Try again.`);
+				this.#say(`Something went wrong in the browser (${detail}). Try again.`, { failed: true });
 			} finally {
 				this.#stopCountdown();
 				button.disabled = false;
-				button.querySelector("[data-label]")!.textContent = "Send another";
 			}
 		}
 
-		async #subscribeAndSend(): Promise<string> {
+		async #subscribeAndSend(): Promise<Outcome> {
 			if (!isPushSupported()) {
-				return UNSUPPORTED;
+				return failed(UNSUPPORTED);
 			}
 			// Asked first, while the click still counts as one: Firefox only shows
 			// the prompt in response to a user action.
 			if ((await requestNotificationPermission()) !== "granted") {
-				return "Notifications are blocked for this site. Allow them in the site settings, then try again.";
+				return failed(BLOCKED);
 			}
 			this.#say("Subscribing. The first time in a browser can take a little while.");
 			const registration = await navigator.serviceWorker.register(WORKER_URL, {
@@ -140,9 +164,17 @@ import Bell from "./NotificationIcon.astro";
 				return errorFrom(keyResponse);
 			}
 			const { publicKey } = (await keyResponse.json()) as { publicKey: string };
-			const result = await subscribe(publicKey, { registration });
+			const result = await subscribe(publicKey, { registration }).catch((error: unknown) => {
+				if (isAbort(error)) {
+					return { status: "no push service" } as const;
+				}
+				throw error;
+			});
+			if (result.status === "no push service") {
+				return failed(NO_PUSH_SERVICE);
+			}
 			if (result.status !== "subscribed") {
-				return UNSUPPORTED;
+				return failed(UNSUPPORTED);
 			}
 			this.#startCountdown();
 			let response = await post(result.subscription);
@@ -152,12 +184,12 @@ import Bell from "./NotificationIcon.astro";
 				await unsubscribe({ registration });
 				const fresh = await subscribe(publicKey, { registration });
 				if (fresh.status !== "subscribed") {
-					return UNSUPPORTED;
+					return failed(UNSUPPORTED);
 				}
 				this.#startCountdown();
 				response = await post(fresh.subscription);
 			}
-			return response.ok ? "Sent. It should arrive in a few seconds." : errorFrom(response);
+			return response.ok ? { sent: true } : errorFrom(response);
 		}
 
 		#startCountdown() {
@@ -210,10 +242,6 @@ import Bell from "./NotificationIcon.astro";
 			card.querySelector(".title")!.textContent = notification?.title ?? "";
 			card.querySelector(".body")!.textContent = notification?.body ?? "";
 			card.hidden = !notification;
-			card
-				.closest(".preview")
-				?.querySelector(".empty")
-				?.toggleAttribute("hidden", Boolean(notification));
 		}
 
 		// Only when the preview card is out of view, so the page never shows two of the same notification.
@@ -239,10 +267,11 @@ import Bell from "./NotificationIcon.astro";
 			}
 		}
 
-		#say(message: string) {
-			const status = this.querySelector(".status");
+		#say(message: string, { failed = false } = {}) {
+			const status = this.querySelector<HTMLElement>(".message");
 			if (status) {
 				status.textContent = message;
+				status.toggleAttribute("data-failed", failed);
 			}
 		}
 	}
@@ -252,9 +281,17 @@ import Bell from "./NotificationIcon.astro";
 
 <style>
 	push-demo {
+		container-type: inline-size;
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
+	}
+
+	/* The margin note in its slot is positioned within it on wide pages. */
+	.trigger {
+		position: relative;
+		display: flex;
+		flex-direction: column;
 	}
 
 	.controls {
@@ -281,6 +318,20 @@ import Bell from "./NotificationIcon.astro";
 		cursor: pointer;
 	}
 
+	/* Both labels share one cell, so the button keeps its width when it changes. */
+	.labels {
+		display: grid;
+	}
+
+	.labels > * {
+		grid-area: 1 / 1;
+	}
+
+	[data-send]:not([data-sent]) .again,
+	[data-send][data-sent] .first {
+		visibility: hidden;
+	}
+
 	[data-send]:disabled {
 		cursor: progress;
 		opacity: 0.7;
@@ -289,17 +340,6 @@ import Bell from "./NotificationIcon.astro";
 	button:focus-visible {
 		outline: 2px solid var(--sl-color-text-accent);
 		outline-offset: 2px;
-	}
-
-	.status {
-		flex: 1 1 16rem;
-		margin: 0;
-		color: var(--ink-muted);
-		font-size: var(--sl-text-sm);
-	}
-
-	.status:empty {
-		display: none;
 	}
 
 	.output {
@@ -312,41 +352,57 @@ import Bell from "./NotificationIcon.astro";
 		margin: 0;
 	}
 
+	/* Whatever happens shows here: progress, the reason it failed, or the notification. */
 	.preview {
 		display: flex;
-		max-width: 26rem;
+		flex-direction: column;
+		justify-content: center;
+		gap: 0.875rem;
+		min-height: 8.75rem;
+		box-sizing: border-box;
+		padding: 1.125rem;
+		border: 1.5px dashed var(--line-strong);
+		border-radius: 14px;
 	}
 
-	.empty {
-		display: flex;
-		flex-grow: 1;
-		align-items: center;
-		justify-content: center;
-		min-height: 5.5rem;
+	.message {
 		margin: 0;
-		padding: 1rem 1.125rem;
-		border: 1px dashed var(--line-strong);
-		border-radius: 14px;
 		color: var(--ink-muted);
 		font-size: var(--sl-text-base);
-		text-align: center;
 	}
 
-	.empty[hidden] {
-		display: none;
+	.message[data-failed] {
+		color: var(--ink);
 	}
 
 	.code :global(.expressive-code) {
 		margin: 0;
 	}
 
+	/* In the filename bar, where it covers no code on a touch screen that always shows it. */
+	.code :global(.frame.has-title .copy) {
+		inset-block-start: 0;
+	}
+
+	.code :global(.frame.has-title .copy button) {
+		max-height: 2.1875rem;
+	}
+
+	@container (min-width: 44rem) {
+		.output {
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+		}
+
+		.message {
+			text-align: center;
+		}
+	}
+
 	/* Laid out like a desktop notification: icon, source and time, title, body. */
 	.notification {
 		display: flex;
-		flex-grow: 1;
 		align-items: flex-start;
 		gap: 0.875rem;
-		align-self: flex-start;
 		padding: 1rem 1.125rem;
 		border: 1px solid var(--line);
 		border-radius: 14px;

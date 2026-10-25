@@ -94,7 +94,8 @@ h1 {
 mark {
 	background: var(--highlight);
 	color: var(--highlight-ink);
-	padding-inline: 0.2em;
+	/* Almost none at the end, so a full stop or comma after it sits against the yellow. */
+	padding-inline: 0.2em 0.05em;
 	box-decoration-break: clone;
 	-webkit-box-decoration-break: clone;
 }

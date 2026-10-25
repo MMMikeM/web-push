@@ -1,84 +1,99 @@
 ---
+import { type PenArrow, penArrowPath } from "./pen-arrow.ts";
+
+/** Beside the anchor: px from the top left of the block that holds the note and its anchor. */
+type Beside = { left: number; top: number; width?: number; rotate: number; arrow?: PenArrow };
+
+/** In the flow straight after the anchor. */
+type Below = {
+	/** How far in from the start of the block, or `auto` to sit at its end. */
+	indent: string;
+	rotate: number;
+	width?: string;
+	/** Margin above and below, to tuck the note against the next element. */
+	space?: string;
+	/** Shown above the anchor instead, though it still follows it for screen readers. */
+	before?: boolean;
+	arrow?: PenArrow;
+};
+
 interface Props {
-	/** Names the note, so a `NoteTarget` and `NoteConnector` with the same `for` draw its arrow. */
-	for?: string;
+	/** On pages 66rem and wider. */
+	wide: Beside;
+	/** In the left gutter, which only has room for a note in an 85rem viewport. */
+	gutter?: Beside;
+	narrow: Below;
 }
 
-const { for: id } = Astro.props;
+const { wide, gutter, narrow } = Astro.props;
+
+const besideVars = (prefix: string, { left, top, width = 260, rotate }: Beside) => ({
+	[`--${prefix}-left`]: `${left}px`,
+	[`--${prefix}-top`]: `${top}px`,
+	[`--${prefix}-width`]: `${width}px`,
+	[`--${prefix}-rotate`]: `${rotate}deg`,
+});
+
+const style = {
+	"--narrow-indent": narrow.indent,
+	"--narrow-width": narrow.width ?? "min(16rem, 70%)",
+	"--narrow-rotate": `${narrow.rotate}deg`,
+	"--narrow-space": narrow.space ?? "0.75rem 0",
+	"--narrow-order": narrow.before ? "-1" : "0",
+	...besideVars("wide", wide),
+	...(gutter && besideVars("gutter", gutter)),
+};
+
+const arrows = Object.entries({ narrow: narrow.arrow, wide: wide.arrow, gutter: gutter?.arrow }).filter(
+	(entry): entry is [string, PenArrow] => entry[1] !== undefined,
+);
 ---
 
 <div
-	class:list={["margin-note decoration", { connected: id }]}
+	class="margin-note decoration"
 	role="note"
 	data-pagefind-ignore
-	data-note={id}
-	style={id && `anchor-name: --note-${id}`}
+	data-gutter={gutter && ""}
+	style={style}
 >
-	<span class="mark" aria-hidden="true">
-		<svg
-			class="up"
-			width="28"
-			height="22"
-			viewBox="0 0 28 22"
-			fill="none"
-			stroke="currentColor"
-			stroke-width="1.6"
-			stroke-linecap="round"
-			stroke-linejoin="round"
-		>
-			<path d="M26 18C18 18 8 14 4 4"></path>
-			<path d="M2 9L4 4L9 6"></path>
-		</svg>
-		<svg
-			class="left"
-			width="28"
-			height="16"
-			viewBox="0 0 28 16"
-			fill="none"
-			stroke="currentColor"
-			stroke-width="1.6"
-			stroke-linecap="round"
-			stroke-linejoin="round"
-		>
-			<path d="M27 12C19 13 11 8 3 8"></path>
-			<path d="M7 4.5L3 8L7 11.5"></path>
-		</svg>
-	</span>
 	<div class="text"><slot /></div>
+	{
+		arrows.map(([at, arrow]) => (
+			<svg
+				class="arrow"
+				data-at={at}
+				data-corner={arrow.corner}
+				aria-hidden="true"
+				width="1"
+				height="1"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.6"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+			>
+				<path d={penArrowPath(arrow)} />
+			</svg>
+		))
+	}
 </div>
 
 <style>
 	.margin-note {
-		display: flex;
-		align-items: flex-start;
-		gap: 0.625rem;
+		position: relative;
+		order: var(--narrow-order);
+		width: var(--narrow-width);
+		margin-block: var(--narrow-space);
+		margin-inline-start: var(--narrow-indent);
 		color: var(--pen);
+		font-size: 1rem;
 		font-style: italic;
-		font-size: var(--sl-text-lg);
-		line-height: 1.45;
+		line-height: 1.4;
+		text-wrap: pretty;
 	}
 
-	.mark {
-		flex: none;
-	}
-
-	/* Up at the paragraph above, unless a layout puts the note beside it and swaps the arrows. */
-	.up {
-		display: var(--margin-note-up, block);
-		margin-top: 0.125rem;
-	}
-
-	/* Hangs into the gutter, so the tip reaches towards the text. */
-	.left {
-		display: var(--margin-note-left, none);
-		margin-top: 0.3rem;
-		margin-inline-start: -1.5rem;
-		max-width: none;
-	}
-
-	/* A connected note's arrow is drawn to its target instead. */
-	.connected .left {
-		display: none;
+	.text {
+		rotate: var(--narrow-rotate);
 	}
 
 	.text :global(p) {
@@ -90,6 +105,66 @@ const { for: id } = Astro.props;
 		background: none;
 		color: inherit;
 		font-style: normal;
-		font-size: 0.85em;
+		font-size: 0.88em;
+	}
+
+	/* No margin: Starlight spaces any element that follows another in Markdown content. */
+	.arrow {
+		position: absolute;
+		inset: 0 auto auto 0;
+		display: none;
+		margin: 0;
+		overflow: visible;
+	}
+
+	.arrow[data-corner="bottom"] {
+		inset: auto auto 0 0;
+	}
+
+	.arrow[data-at="narrow"] {
+		display: block;
+	}
+
+	@container page (min-width: 66rem) {
+		.margin-note {
+			position: absolute;
+			top: var(--wide-top);
+			left: var(--wide-left);
+			width: var(--wide-width);
+			margin: 0;
+			font-size: 1.0625rem;
+		}
+
+		.text {
+			rotate: var(--wide-rotate);
+		}
+
+		.arrow[data-at="narrow"] {
+			display: none;
+		}
+
+		.arrow[data-at="wide"] {
+			display: block;
+		}
+	}
+
+	@media (min-width: 85rem) {
+		.margin-note[data-gutter] {
+			top: var(--gutter-top);
+			left: var(--gutter-left);
+			width: var(--gutter-width);
+		}
+
+		[data-gutter] .text {
+			rotate: var(--gutter-rotate);
+		}
+
+		[data-gutter] .arrow[data-at="wide"] {
+			display: none;
+		}
+
+		[data-gutter] .arrow[data-at="gutter"] {
+			display: block;
+		}
 	}
 </style>

@@ -93,7 +93,7 @@ const prepareTabs = (tree: Root) => {
 
 // A splash page's tagline, install command and action links sit in its hero, outside the content.
 const heroOf = (page: Root): ElementContent[] => {
-	const tagline = select(".hero .tagline", page);
+	const tagline = select(".hero .tagline > p", page);
 	const actions = selectAll(".hero .actions a", page);
 	const install = select(".install code", page);
 	return [
@@ -155,7 +155,11 @@ const toMarkdown = async (
 	prepareCodeBlocks(tree);
 	prepareTabs(tree);
 	linkToMarkdown(tree, site, new URL(pathname, site.home));
-	const processor = unified().use(rehypeRemark).use(remarkGfm).use(remarkStringify);
+	const processor = unified()
+		// A pen underline marks what a margin note is about, and the notes aren't in the copy.
+		.use(rehypeRemark, { handlers: { u: (state, node) => state.all(node) } })
+		.use(remarkGfm)
+		.use(remarkStringify);
 	return processor.stringify(await processor.run(tree));
 };
 
