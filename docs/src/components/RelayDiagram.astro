@@ -131,7 +131,7 @@ const message = "Your order has shipped";
 	@container (min-width: 36rem) {
 		.stops {
 			grid-template-columns: 1fr auto 1fr auto 1fr;
-			grid-template-areas: "from out sealed in to" ". . note . .";
+			grid-template-areas: "from out sealed in to" ". . note note note";
 			align-items: center;
 		}
 
@@ -143,6 +143,7 @@ const message = "Your order has shipped";
 		.stops > :global(.margin-note) {
 			grid-area: note;
 			justify-self: start;
+			margin-inline-start: 0;
 		}
 
 		.stop {

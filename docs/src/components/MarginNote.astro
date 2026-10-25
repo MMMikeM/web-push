@@ -20,7 +20,7 @@ type Below = {
 interface Props {
 	/** On pages 66rem and wider. */
 	wide: Beside;
-	/** In the left gutter, which only has room for a note in an 85rem viewport. */
+	/** In the left gutter, which only has room for a note in a 90rem viewport. */
 	gutter?: Beside;
 	narrow: Below;
 }
@@ -148,7 +148,7 @@ const arrows = Object.entries({ narrow: narrow.arrow, wide: wide.arrow, gutter: 
 		}
 	}
 
-	@media (min-width: 85rem) {
+	@media (min-width: 90rem) {
 		.margin-note[data-gutter] {
 			top: var(--gutter-top);
 			left: var(--gutter-left);
