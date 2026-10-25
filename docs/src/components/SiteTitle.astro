@@ -32,4 +32,12 @@ const [scope, name] = siteTitle.includes("/") ? siteTitle.split("/") : ["", site
 		color: var(--ink-muted);
 		font-weight: 400;
 	}
+
+	/* Leaves room for the search, GitHub and theme buttons beside it on a phone. */
+	@media (max-width: 49.99rem) {
+		.site-title {
+			gap: 0.5rem;
+			font-size: 0.9375rem;
+		}
+	}
 </style>

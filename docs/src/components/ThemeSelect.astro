@@ -1,7 +1,10 @@
 ---
 import Default from "@astrojs/starlight/components/ThemeSelect.astro";
 import RuntimeSelect from "./RuntimeSelect.astro";
+
+// The home page has no runtime-specific steps for the menu to switch.
+const splash = !Astro.locals.starlightRoute.hasSidebar;
 ---
 
-<RuntimeSelect />
+{!splash && <RuntimeSelect />}
 <Default />

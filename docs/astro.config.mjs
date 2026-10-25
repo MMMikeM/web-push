@@ -58,6 +58,7 @@ export default defineConfig({
 			routeMiddleware: "./src/routeData.ts",
 			// The header's runtime menu sits beside the theme switcher.
 			components: {
+				Header: "./src/components/Header.astro",
 				ThemeSelect: "./src/components/ThemeSelect.astro",
 				PageTitle: "./src/components/PageTitle.astro",
 				MarkdownContent: "./src/components/MarkdownContent.astro",
