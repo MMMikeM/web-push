@@ -13,6 +13,8 @@ export const collections = {
 				// A phrase of the hero title to highlight. The title itself stays plain
 				// text, because llms.txt prints it as it is.
 				heroHighlight: z.string().optional(),
+				// The hero's margin note, and the phrase of the tagline its arrow points at.
+				heroNote: z.object({ text: z.string(), target: z.string() }).optional(),
 			}),
 		}),
 	}),

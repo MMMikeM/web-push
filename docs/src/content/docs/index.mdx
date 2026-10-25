@@ -3,6 +3,9 @@ title: Web Push for Cloudflare Workers, Deno, Bun and Node
 description: Subscribe in the browser and send RFC 8291 encrypted push notifications from Cloudflare Workers, Deno, Bun or Node, with one zero-dependency package.
 template: splash
 heroHighlight: one package
+heroNote:
+  text: I did it three times first.
+  target: Written so you only have to do this once.
 hero:
   title: The whole Web Push flow, in one package.
   tagline: VAPID keys, a service worker, browser subscribe helpers and the server send. Zero dependencies, built on fetch and Web Crypto, so the same code runs unchanged on Cloudflare Workers, Deno, Bun and Node 22.12+. Written so you only have to do this once.
@@ -17,7 +20,9 @@ hero:
       variant: minimal
 ---
 
+import HighlightTarget from "../../components/HighlightTarget.astro";
 import MarginNote from "../../components/MarginNote.astro";
+import NoteTarget from "../../components/NoteTarget.astro";
 import PieceList from "../../components/PieceList.astro";
 import PushDemo from "../../components/PushDemo.astro";
 import RelayDiagram from "../../components/RelayDiagram.astro";
@@ -25,9 +30,17 @@ import Row from "../../components/Row.astro";
 
 ## 1. Try it
 
-<Row id="try-it">
+<Row id="try-it" noteFor="iphone" approach="above">
 
-This button subscribes your browser with the site's own VAPID key, then asks the Cloudflare Worker that serves these docs to send you one notification through this library. The Worker stores nothing.
+<NoteTarget for="iphone">This button</NoteTarget> subscribes your browser with
+the site's own VAPID key, then asks the Cloudflare Worker that serves these docs
+to send you one notification through this library. The Worker stores nothing.
+
+<MarginNote slot="note" for="iphone">
+	On an iPhone, add this site to your home screen first. Apple's rule, not mine.
+</MarginNote>
+
+</Row>
 
 <PushDemo>
 
@@ -41,17 +54,11 @@ await sendPushNotification(subscription, NOTIFICATION, vapid, {
 
 </PushDemo>
 
-<MarginNote slot="note">
-	On an iPhone, add this site to your home screen first. Apple's rule, not mine.
-</MarginNote>
-
-</Row>
-
 ## 2. The four pieces
 
-<Row>
+<Row noteFor="pieces" noteOffset="1.2rem">
 
-<PieceList section={2}>
+<PieceList section={2} noteFor="pieces">
 
 1. [`/vapid`](/reference/vapid/) Generate your VAPID key pair once, on the server or in the browser.
 2. [`sw.js`](/getting-started/#2-add-a-service-worker) A copy-paste service worker that shows the notification and handles the click.
@@ -60,7 +67,7 @@ await sendPushNotification(subscription, NOTIFICATION, vapid, {
 
 </PieceList>
 
-<MarginNote slot="note">
+<MarginNote slot="note" for="pieces">
 	Each one tree-shakes on its own. The browser half is about 1.3 kB, the server
 	half 3.6 kB, minified and gzipped.
 </MarginNote>
@@ -69,22 +76,22 @@ await sendPushNotification(subscription, NOTIFICATION, vapid, {
 
 ## 3. Runtimes
 
-<Row>
-
 If it has `fetch` and `crypto.subtle`, it works. No Node emulation, no polyfills, no compat layer.
 
-<div class="chips">
+<Row noteFor="runtimes" noteOffset="0.6rem">
 
-- Node 22.12+
-- Bun
-- Deno
-- Cloudflare Workers
-- Vercel Edge
-- Browsers
+<ul class="chips">
+	<li>Cloudflare Workers</li>
+	<li>Deno</li>
+	<li>Bun</li>
+	<li>Vercel Edge</li>
+	<li>Browsers</li>
+	<NoteTarget as="li" for="runtimes">
+		Node 22.12+
+	</NoteTarget>
+</ul>
 
-</div>
-
-<MarginNote slot="note">
+<MarginNote slot="note" for="runtimes">
 	Why 22.12? It's the first Node that can `require()` an ES module, so CommonJS
 	projects can load this package too.
 </MarginNote>
@@ -93,49 +100,51 @@ If it has `fetch` and `crypto.subtle`, it works. No Node emulation, no polyfills
 
 ## 4. Security considerations
 
-<Row>
+<Row noteFor="security">
 
-Payloads are encrypted with RFC 8291 `aes128gcm`, and every request is signed with RFC 8292 VAPID. The push service in the middle carries your message but can't read it.
+Payloads are encrypted with RFC 8291 `aes128gcm`, and every request is signed with RFC 8292 VAPID. The push service in the middle carries your message but <NoteTarget for="security">can't read it</NoteTarget>.
 
-<RelayDiagram />
-
-<MarginNote slot="note">
+<MarginNote slot="note" for="security">
 	Push services return 201 even when the payload is broken, so you'd never know.
 	Hence the RFC's own test vector, pinned byte for byte.
 </MarginNote>
 
 </Row>
 
-<Row>
+<RelayDiagram />
 
-<mark>100% test coverage</mark>, and every release waits on conformance checks
-in Node, Deno, Bun and Workers. Every push to the repository also delivers a
-real notification through Chrome's and Firefox's push services.
+<Row noteFor="coverage" approach="above">
 
-<MarginNote slot="note">
+<HighlightTarget for="coverage">100% test coverage</HighlightTarget>, and every
+release waits on conformance checks in Node, Deno, Bun and Workers. Every push
+to the repository also delivers a real notification through Chrome's and
+Firefox's push services.
+
+<MarginNote slot="note" for="coverage">
 	The first release had no tests at all. This is the apology.
 </MarginNote>
 
 </Row>
 
-<Row>
+<Row noteFor="dependencies" approach="above">
 
-Zero dependencies.
+<NoteTarget for="dependencies">Zero dependencies</NoteTarget>, so installing it
+adds nothing else to your lockfile.
 
-<MarginNote slot="note">
+<MarginNote slot="note" for="dependencies">
 	On the build side: SHA-pinned Actions, npm provenance, and a seven-day wait
 	before new dev-dependency releases are installed.
 </MarginNote>
 
 </Row>
 
-## Appendix A. Coming from web-push
+## <NoteTarget for="appendix">Appendix A</NoteTarget>. Coming from web-push
 
-<Row>
+<Row noteFor="appendix" approach="below">
 
 The [migration guide](/guides/migrate-from-web-push/) maps `sendNotification`'s options to their equivalents here. [The comparison page](/compare/) covers where each library fits, including when to stay put.
 
-<MarginNote slot="note">
+<MarginNote slot="note" for="appendix">
 	RFC 8291 keeps its test vector in Appendix A too. Seemed polite.
 </MarginNote>
 

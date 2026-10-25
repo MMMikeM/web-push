@@ -4,7 +4,9 @@
 	--sl-main-pad: 0;
 }
 
+/* Margin-note arrows are positioned within it. */
 [data-has-hero] .sl-markdown-content {
+	position: relative;
 	font-size: 1.1875rem;
 }
 
@@ -22,23 +24,46 @@
 	margin-top: 1.75rem;
 }
 
-[data-has-hero] :is(.sl-markdown-content, .sl-markdown-content .main) > :is(p, ul) {
+[data-has-hero] :is(.sl-markdown-content, .sl-markdown-content .main) > :is(p, ul:not(.chips)) {
 	max-width: 36em;
 }
 
-.chips ul {
+.chips {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 0.625rem;
 	padding: 0;
 	list-style: none;
 	font-family: var(--__sl-font-mono);
-	font-size: var(--sl-text-base);
+	font-size: var(--sl-text-sm);
+}
+
+/* MDX puts a chip's text in a paragraph when it sits on lines of its own. */
+.chips li > p {
+	margin: 0;
 }
 
 .chips li {
 	margin: 0;
-	padding: 0.625rem 1rem;
+	padding: 0.625rem 0.75rem;
 	border: 1px solid var(--line);
 	border-radius: 8px;
+}
+
+/*
+ * Below a margin note, its arrow points at the start of the last line, so the
+ * chip that "Why 22.12?" is about starts a line of its own there. The ::after
+ * is the line break, ordered between the other chips and the last one.
+ */
+@container (max-width: 51.99rem) {
+	.chips::after {
+		content: "";
+		flex-basis: 100%;
+		order: 1;
+		margin-top: -0.625rem;
+	}
+
+	.chips li:last-child {
+		order: 2;
+	}
 }

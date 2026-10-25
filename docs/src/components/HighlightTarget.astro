@@ -1,0 +1,14 @@
+---
+import NoteTarget from "./NoteTarget.astro";
+
+interface Props {
+	/** The `for` of the margin note that points here. */
+	for: string;
+}
+
+// One attribute, not `<NoteTarget as="mark">`: the formatter moves a component
+// with two onto lines of its own, which splits the paragraph it starts.
+const { for: id } = Astro.props;
+---
+
+<NoteTarget as="mark" for={id}><slot /></NoteTarget>
