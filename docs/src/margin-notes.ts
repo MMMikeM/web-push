@@ -55,8 +55,8 @@ const rules = (id: string, at: number, placement: Placement): string => {
 	const note = `.margin-note[data-note="${id}"]`;
 	const box =
 		placement.mode === "beside"
-			? `position: absolute; left: ${placement.left}px; top: ${placement.top}px; width: ${placement.width}px; margin: 0; order: 0; font-size: 1.0625rem;`
-			: `position: relative; left: auto; top: auto; width: ${length(placement.width)}; margin: ${placement.space[0]}px 0 ${placement.space[1]}px ${length(placement.indent)}; order: ${placement.before ? -1 : 0}; font-size: 1rem;`;
+			? `position: absolute; left: ${placement.left}px; top: ${placement.top}px; width: ${placement.width}px; margin: 0; order: 0;`
+			: `position: relative; left: auto; top: auto; width: ${length(placement.width)}; margin: ${placement.space[0]}px 0 ${placement.space[1]}px ${length(placement.indent)}; order: ${placement.before ? -1 : 0};`;
 	const room =
 		placement.mode === "beside" && placement.room
 			? ` :has(> ${note}) { padding-bottom: ${placement.room}px; }`

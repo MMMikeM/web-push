@@ -117,7 +117,7 @@ const RUNTIMES = ["Node", "Bun", "Deno", "Cloudflare Workers", "Vercel Edge"];
 		border-radius: 0.5rem;
 		background-color: var(--sl-color-gray-6);
 		/* Below 16px, iOS zooms the page when the menu takes focus. */
-		font-size: var(--sl-text-base);
+		font-size: var(--text-base);
 		transition: border-color 0.15s ease;
 	}
 
@@ -156,7 +156,7 @@ const RUNTIMES = ["Node", "Bun", "Deno", "Cloudflare Workers", "Vercel Edge"];
 	.inline-control :global(.inline-caret) {
 		position: absolute;
 		inset-inline-end: 0.625rem;
-		font-size: 1rem;
+		font-size: var(--text-base);
 		color: var(--sl-color-gray-3);
 		pointer-events: none;
 	}

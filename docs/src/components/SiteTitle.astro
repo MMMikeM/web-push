@@ -18,7 +18,7 @@ const [scope, name] = siteTitle.includes("/") ? siteTitle.split("/") : ["", site
 		min-width: 0;
 		color: var(--ink);
 		font-family: var(--__sl-font-mono);
-		font-size: var(--sl-text-lg);
+		font-size: var(--text-lg);
 		font-weight: 500;
 		text-decoration: none;
 		white-space: nowrap;
@@ -37,7 +37,7 @@ const [scope, name] = siteTitle.includes("/") ? siteTitle.split("/") : ["", site
 	@media (max-width: 49.99rem) {
 		.site-title {
 			gap: 0.5rem;
-			font-size: 0.9375rem;
+			font-size: var(--text-sm);
 		}
 	}
 </style>

@@ -37,14 +37,14 @@ const { section } = Astro.props;
 		margin: 0;
 		padding-block: 0.25rem 1rem;
 		border-bottom: 1px solid var(--line);
-		line-height: 1.55;
+		line-height: var(--leading-body);
 	}
 
 	.pieces :global(li::before) {
 		content: var(--section) counter(piece);
 		color: var(--ink-muted);
 		font-family: var(--__sl-font-mono);
-		font-size: var(--sl-text-sm);
+		font-size: var(--text-sm);
 	}
 
 	.pieces :global(li > a) {
@@ -58,7 +58,7 @@ const { section } = Astro.props;
 		padding: 0;
 		background: none;
 		color: var(--ink);
-		font-size: var(--sl-text-base);
+		font-size: var(--text-base);
 	}
 
 	.pieces :global(li > span) {

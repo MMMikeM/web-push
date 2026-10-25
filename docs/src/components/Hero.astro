@@ -95,12 +95,12 @@ const published = new Date().toLocaleDateString("en-GB", { month: "long", year: 
 		display: flex;
 		flex-wrap: wrap;
 		justify-content: space-between;
-		gap: 0.5rem 2.5rem;
-		padding-top: 2.5rem;
+		gap: var(--space-2xs) var(--space-xl);
+		padding-top: var(--space-xl);
 		color: var(--ink-muted);
 		font-family: var(--__sl-font-mono);
-		font-size: var(--sl-text-sm);
-		line-height: 1.7;
+		font-size: var(--text-sm);
+		line-height: var(--leading-body);
 	}
 
 	.rfc-header p {
@@ -122,8 +122,8 @@ const published = new Date().toLocaleDateString("en-GB", { month: "long", year: 
 
 	@media (max-width: 39.99rem) {
 		.rfc-header {
-			padding-top: 1.25rem;
-			font-size: var(--sl-text-xs);
+			padding-top: var(--space-m);
+			font-size: var(--text-xs);
 		}
 
 		.rfc-header .wide-only {
@@ -141,18 +141,20 @@ const published = new Date().toLocaleDateString("en-GB", { month: "long", year: 
 		container: page / inline-size;
 	}
 
+	/* Spaced by what follows: the tagline and its note need room before the buttons. */
 	.hero {
 		display: grid;
-		gap: 1.75rem;
-		padding-block: 1.5rem 0.5rem;
+		padding-block: var(--space-l) var(--space-s);
+		--after-title: var(--space-m);
+		--after-tagline: var(--space-l);
 	}
 
 	h1 {
 		margin: 0;
 		color: var(--ink);
-		font-size: clamp(2.5rem, 6vw, 4.125rem);
+		font-size: var(--text-display);
 		font-weight: 600;
-		line-height: 1.08;
+		line-height: var(--leading-tight);
 	}
 
 	/*
@@ -169,9 +171,10 @@ const published = new Date().toLocaleDateString("en-GB", { month: "long", year: 
 		display: flex;
 		flex-direction: column;
 		max-width: 34em;
+		margin-top: var(--after-title);
 		color: var(--ink-muted);
-		font-size: var(--sl-text-xl);
-		line-height: 1.6;
+		font-size: var(--text-xl);
+		line-height: var(--leading-body);
 	}
 
 	.tagline p {
@@ -182,7 +185,8 @@ const published = new Date().toLocaleDateString("en-GB", { month: "long", year: 
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.75rem 1rem;
+		gap: var(--space-xs) var(--space-s);
+		margin-top: var(--after-tagline);
 	}
 
 	.actions :global(.sl-link-button) {
@@ -197,10 +201,11 @@ const published = new Date().toLocaleDateString("en-GB", { month: "long", year: 
 		gap: 0.25rem;
 		max-width: 100%;
 		box-sizing: border-box;
-		padding: 0.25rem 0.25rem 0.25rem 1.125rem;
+		margin-top: var(--space-m);
+		padding: var(--space-3xs) var(--space-3xs) var(--space-3xs) var(--space-s);
 		border: 1px solid var(--line);
 		border-radius: 8px;
-		font-size: var(--sl-text-sm);
+		font-size: var(--text-sm);
 	}
 
 	.install code {
@@ -233,7 +238,9 @@ const published = new Date().toLocaleDateString("en-GB", { month: "long", year: 
 
 	@container page (min-width: 52rem) {
 		.hero {
-			padding-block: 3.5rem 1.5rem;
+			padding-block: var(--space-xl) var(--space-l);
+			--after-title: var(--space-l);
+			--after-tagline: var(--space-xl);
 		}
 	}
 </style>
