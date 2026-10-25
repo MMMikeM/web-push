@@ -84,6 +84,21 @@ const published = new Date().toLocaleDateString("en-GB", { month: "long", year: 
 	</div>
 </div>
 
+<script is:inline>
+	// Deno's team joined Cloudflare in October 2026; the aside goes with the year.
+	// Added in the browser, so the built page and its Markdown copy keep the plain tagline.
+	if (Date.now() < Date.parse("2027-01-01T00:00:00Z")) {
+		const tagline = document.querySelector(".hero .tagline > p");
+		const text = [...(tagline?.childNodes ?? [])].find(
+			(node) => node.nodeType === Node.TEXT_NODE && node.textContent.includes("Deno"),
+		);
+		if (text) {
+			const at = text.textContent.indexOf("Deno") + "Deno".length;
+			text.textContent = `${text.textContent.slice(0, at)} (RIP)${text.textContent.slice(at)}`;
+		}
+	}
+</script>
+
 <script>
 	for (const button of document.querySelectorAll<HTMLButtonElement>("[data-copy]")) {
 		button.addEventListener("click", async () => {
