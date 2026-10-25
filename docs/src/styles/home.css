@@ -56,8 +56,9 @@
 	max-width: 36em;
 }
 
-/* An anchor for a margin note: a pen line under the words it's about. */
+/* An anchor for a margin note: a pen line under the words it's about, kept on one line. */
 [data-has-hero] u {
+	white-space: nowrap;
 	text-decoration: underline wavy var(--pen);
 	text-decoration-thickness: 1.5px;
 	text-underline-offset: 0.35em;
