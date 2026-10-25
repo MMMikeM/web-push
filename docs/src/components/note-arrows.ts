@@ -40,14 +40,15 @@ export const endPoint = (end: End, boxes: Box[]): Point => {
 	return [x + end.offset[0], y + end.offset[1]];
 };
 
+/** The most a curve bows, as a share of the distance between its ends, so a short one can't loop. */
+const MAX_BEND = 0.35;
+
 /** The point the curve bows towards: `bend` px off the middle of the line between its ends. */
 export const bendPoint = (from: Point, to: Point, bend: number): Point => {
 	const [dx, dy] = [to[0] - from[0], to[1] - from[1]];
 	const length = Math.hypot(dx, dy) || 1;
-	return [
-		(from[0] + to[0]) / 2 - (dy / length) * bend,
-		(from[1] + to[1]) / 2 + (dx / length) * bend,
-	];
+	const bow = Math.sign(bend) * Math.min(Math.abs(bend), length * MAX_BEND);
+	return [(from[0] + to[0]) / 2 - (dy / length) * bow, (from[1] + to[1]) / 2 + (dx / length) * bow];
 };
 
 /** Where an arrow's ends and bend fall, in viewport coordinates. */

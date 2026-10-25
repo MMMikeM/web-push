@@ -24,7 +24,8 @@ export type Beside = Across & Down & BesideBox;
 
 type BesideBox = {
 	mode: "beside";
-	width: number;
+	/** px, or a CSS length such as `24ch`, which keeps the same number of characters a line. */
+	width: number | string;
 	rotate: number;
 	/** Space kept below the block, for a note that hangs beneath it. */
 	room?: number;
@@ -38,7 +39,7 @@ export type Flow = {
 	indent: number | string;
 	/** Measures `indent` from the right edge instead, so the note keeps its gap there at any width. */
 	side?: "right";
-	/** px, or a CSS length such as `min(16rem, 70%)`. */
+	/** px, or a CSS length such as `24ch` or `min(16rem, 70%)`. */
 	width: number | string;
 	rotate: number;
 	/** Margin above and below, in px, to tuck the note against what's next to it. */
@@ -76,14 +77,18 @@ const besideBox = (placement: Beside) => {
 		placement.right === undefined ? `left: ${placement.left}px` : `right: ${placement.right}px`;
 	const down =
 		placement.bottom === undefined ? `top: ${placement.top}px` : `bottom: ${placement.bottom}px`;
-	return `position: absolute; inset: auto; ${across}; ${down}; width: ${placement.width}px; margin: 0; order: 0;`;
+	return `position: absolute; inset: auto; ${across}; ${down}; width: ${length(placement.width)}; margin: 0; order: 0;`;
 };
 
 const flowBox = (placement: Flow) => {
 	const [above, below] = placement.space;
 	const indent = length(placement.indent);
 	const [right, left] = placement.side === "right" ? [indent, "auto"] : ["0", indent];
-	return `position: relative; inset: auto; width: ${length(placement.width)}; margin: ${above}px ${right} ${below}px ${left}; order: ${placement.before ? -1 : 0};`;
+	const width = length(placement.width);
+	// A tilted note's corners rise and drop by half its width times the sine of
+	// the tilt; padding that much keeps them off the lines above and below.
+	const tilt = Math.abs(Math.sin((placement.rotate * Math.PI) / 180)) / 2;
+	return `position: relative; inset: auto; width: ${width}; margin: ${above}px ${right} ${below}px ${left}; padding-block: calc(${width} * ${tilt.toFixed(4)}); order: ${placement.before ? -1 : 0};`;
 };
 
 const rules = (id: string, at: number, placement: Placement): string => {
