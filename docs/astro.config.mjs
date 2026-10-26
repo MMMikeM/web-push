@@ -16,10 +16,11 @@ const noteTuner = await import("./src/integrations/note-tuner/index.ts").then(
 	() => undefined,
 );
 
+// Both cards show the same thing, so they share an alt; change it with them.
 const socialImage = {
 	url: `${site}/og.png`,
-	// The card's own text; re-render public/og.png when the home tagline changes.
-	alt: "@mmmike/web-push: The whole Web Push flow, from subscribing in the browser to sending from the server, in one zero-dependency package.",
+	squareUrl: `${site}/og-square.png`,
+	alt: "$ pnpm add @mmmike/web-push, then Packages: +1, with a handwritten note pointing at the +1: zero dependencies.",
 };
 
 export default defineConfig({
@@ -53,6 +54,11 @@ export default defineConfig({
 				{ tag: "meta", attrs: { property: "og:image", content: socialImage.url } },
 				{ tag: "meta", attrs: { property: "og:image:width", content: "1200" } },
 				{ tag: "meta", attrs: { property: "og:image:height", content: "630" } },
+				{ tag: "meta", attrs: { property: "og:image:alt", content: socialImage.alt } },
+				// Second, so a consumer that takes one image takes the wide card.
+				{ tag: "meta", attrs: { property: "og:image", content: socialImage.squareUrl } },
+				{ tag: "meta", attrs: { property: "og:image:width", content: "800" } },
+				{ tag: "meta", attrs: { property: "og:image:height", content: "800" } },
 				{ tag: "meta", attrs: { property: "og:image:alt", content: socialImage.alt } },
 				{ tag: "meta", attrs: { name: "twitter:image", content: socialImage.url } },
 				{ tag: "meta", attrs: { name: "twitter:image:alt", content: socialImage.alt } },
