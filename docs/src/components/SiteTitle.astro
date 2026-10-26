@@ -33,6 +33,12 @@ const [scope, name] = siteTitle.includes("/") ? siteTitle.split("/") : ["", site
 		font-weight: 400;
 	}
 
+	@media (prefers-reduced-motion: no-preference) {
+		.site-title:is(:hover, :focus-visible) :global(.mark) {
+			animation: vibrate 800ms linear;
+		}
+	}
+
 	/* Leaves room for the search, GitHub and theme buttons beside it on a phone. */
 	@media (max-width: 49.99rem) {
 		.site-title {

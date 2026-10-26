@@ -168,3 +168,51 @@ mark {
 	color: var(--pen);
 	text-decoration: underline;
 }
+
+/* The web-push mark buzzing in its own vibrate pattern, [200, 100, 200, 100, 200]: run it for 800ms, linear. */
+@keyframes vibrate {
+	0%,
+	25%,
+	37.5%,
+	62.5%,
+	75%,
+	100% {
+		translate: 0;
+		rotate: 0deg;
+	}
+
+	2.5%,
+	7.5%,
+	12.5%,
+	17.5%,
+	22.5%,
+	40%,
+	45%,
+	50%,
+	55%,
+	60%,
+	77.5%,
+	82.5%,
+	87.5%,
+	92.5%,
+	97.5% {
+		translate: -1.5px 0;
+		rotate: -3deg;
+	}
+
+	5%,
+	10%,
+	15%,
+	20%,
+	42.5%,
+	47.5%,
+	52.5%,
+	57.5%,
+	80%,
+	85%,
+	90%,
+	95% {
+		translate: 1.5px 0;
+		rotate: 3deg;
+	}
+}

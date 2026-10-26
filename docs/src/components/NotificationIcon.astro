@@ -5,4 +5,11 @@
 		flex: none;
 		border-radius: 10px;
 	}
+
+	/* Buzzes as its notification lands: the card goes from hidden to shown, which starts it. */
+	@media (prefers-reduced-motion: no-preference) {
+		.notification-icon {
+			animation: vibrate 800ms linear;
+		}
+	}
 </style>
