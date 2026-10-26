@@ -13,7 +13,7 @@ const githubUser = new URL(project.repositoryUrl).pathname.split("/")[1];
 				<span class="heading">Author’s Address</span>
 				<span>{project.author}</span>
 				<a href="https://thelazyweb.dev">thelazyweb.dev</a>
-				<span class="muted">GitHub: {githubUser}</span>
+				<a href={`https://github.com/${githubUser}`}>github.com/{githubUser}</a>
 			</p>
 			<p class="links">
 				<a href={project.licenseFileUrl}>{project.license} licence</a>
@@ -22,7 +22,6 @@ const githubUser = new URL(project.repositoryUrl).pathname.split("/")[1];
 				<a href={project.repositoryUrl}>GitHub</a>
 			</p>
 			<p class="page-foot" aria-hidden="true">
-				<span>{project.initialledAuthor}</span>
 				<span>Informational</span>
 				<span>[Page 1]</span>
 			</p>
@@ -97,10 +96,6 @@ const githubUser = new URL(project.repositoryUrl).pathname.split("/")[1];
 		font-weight: 500;
 	}
 
-	.muted {
-		color: var(--ink-muted);
-	}
-
 	.address a {
 		color: var(--pen);
 	}
@@ -113,7 +108,7 @@ const githubUser = new URL(project.repositoryUrl).pathname.split("/")[1];
 		padding-block: 0.625rem;
 	}
 
-	/* An RFC page's running footer: author, category, page. */
+	/* An RFC page's running footer, less the author the address above already names. */
 	.page-foot {
 		flex-basis: 100%;
 		justify-content: space-between;
