@@ -145,17 +145,37 @@
 			"indent": 8,
 			"width": "24ch",
 			"rotate": -12,
-			"space": [-30.5, 8],
+			"space": [-24, 8],
 			"arrow": {
 				"from": {
 					"side": "left",
-					"offset": [-16, 0]
+					"offset": [-16, -4]
 				},
 				"to": {
 					"side": "bottom",
-					"offset": [0, 16]
+					"offset": [-8, 24]
 				},
-				"bend": -25
+				"bend": -16
+			},
+			"before": true,
+			"side": "right"
+		},
+		"384": {
+			"mode": "flow",
+			"indent": 8,
+			"width": "24ch",
+			"rotate": -12,
+			"space": [-24, 8],
+			"arrow": {
+				"from": {
+					"side": "left",
+					"offset": [-16, -4]
+				},
+				"to": {
+					"side": "bottom",
+					"offset": [0, 24]
+				},
+				"bend": -16
 			},
 			"before": true,
 			"side": "right"
