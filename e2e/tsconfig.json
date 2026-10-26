@@ -15,5 +15,5 @@
 		"erasableSyntaxOnly": true,
 		"types": ["node"]
 	},
-	"include": ["conformance/**/*.ts", "browsers/**/*.ts", "worker-cost/**/*.ts"]
+	"include": ["conformance/**/*.ts", "browsers/**/*.ts", "worker-cost/**/*.ts", "contrast/**/*.ts"]
 }
