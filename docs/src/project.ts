@@ -15,6 +15,8 @@ export const project = {
 	licenseUrl: `https://spdx.org/licenses/${pkg.license}.html`,
 	licenseFileUrl: `${repositoryUrl}/blob/main/LICENSE`,
 	author: pkg.author,
+	/** As an RFC names its author: "M. Murray". */
+	initialledAuthor: pkg.author.replace(/^(\S)\S*\s+/, "$1. "),
 	repositoryUrl,
 	changelogUrl: `${repositoryUrl}/blob/main/CHANGELOG.md`,
 	npmUrl: `https://www.npmjs.com/package/${pkg.name}`,

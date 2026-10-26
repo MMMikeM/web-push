@@ -332,7 +332,7 @@ import Bell from "./NotificationIcon.astro";
 		container-type: inline-size;
 		display: flex;
 		flex-direction: column;
-		gap: 1.5rem;
+		gap: var(--space-m);
 	}
 
 	/* The margin note in its slot is positioned within it on wide pages. */
@@ -352,11 +352,12 @@ import Bell from "./NotificationIcon.astro";
 	[data-send] {
 		display: inline-flex;
 		align-items: center;
+		justify-content: center;
 		gap: 0.625rem;
-		min-height: 2.75rem;
+		min-height: var(--tap-target);
 		padding: 0.875rem 1.5rem;
 		border: 1px solid var(--button);
-		border-radius: 8px;
+		border-radius: var(--radius-control);
 		background-color: var(--button);
 		color: var(--button-text);
 		font: inherit;
@@ -369,6 +370,14 @@ import Bell from "./NotificationIcon.astro";
 	/* Both labels share one cell, so the button keeps its width when it changes. */
 	.labels {
 		display: grid;
+		text-align: start;
+	}
+
+	/* Keeps the label on one line in a 360px phone's column. */
+	@media (max-width: 39.99rem) {
+		[data-send] {
+			padding-inline: var(--space-s);
+		}
 	}
 
 	.labels > * {
@@ -386,8 +395,8 @@ import Bell from "./NotificationIcon.astro";
 	}
 
 	button:focus-visible {
-		outline: 2px solid var(--sl-color-text-accent);
-		outline-offset: 2px;
+		outline: var(--focus-ring);
+		outline-offset: var(--focus-ring-offset);
 	}
 
 	.output {
@@ -404,11 +413,11 @@ import Bell from "./NotificationIcon.astro";
 	.status {
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: var(--space-s);
 		box-sizing: border-box;
 		padding: 1.125rem;
 		border: 1.5px dashed var(--line-strong);
-		border-radius: 14px;
+		border-radius: var(--radius-panel);
 	}
 
 	.steps {
@@ -424,14 +433,19 @@ import Bell from "./NotificationIcon.astro";
 
 	.steps li {
 		display: flex;
+		align-items: center;
 		gap: 0.625rem;
 		margin: 0;
 	}
 
 	.steps li::before {
-		content: "○";
-		width: 1ch;
-		color: var(--line-strong);
+		content: "";
+		flex: none;
+		width: 1em;
+		height: 1em;
+		background: var(--line-strong);
+		mask: var(--step-icon) center / contain no-repeat;
+		--step-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='6.5'/%3E%3C/svg%3E");
 	}
 
 	.steps [data-state] {
@@ -439,24 +453,24 @@ import Bell from "./NotificationIcon.astro";
 	}
 
 	.steps [data-state="active"]::before {
-		content: "●";
-		color: var(--pen);
+		background: var(--pen);
+		--step-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='5' fill='black'/%3E%3C/svg%3E");
 	}
 
 	.steps [data-state="done"]::before {
-		content: "✓";
-		color: var(--pen);
+		background: var(--pen);
+		--step-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");
 	}
 
 	.steps [data-state="failed"]::before {
-		content: "×";
-		color: var(--ink);
+		background: var(--ink);
+		--step-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 7l10 10M17 7L7 17'/%3E%3C/svg%3E");
 	}
 
 	/* The five seconds before the Worker sends: time to switch away and see a real notification. */
 	.countdown {
 		display: grid;
-		gap: 0.5rem;
+		gap: var(--space-2xs);
 		justify-items: start;
 	}
 
@@ -490,6 +504,11 @@ import Bell from "./NotificationIcon.astro";
 			animation: step-pulse 1s ease-in-out infinite alternate;
 		}
 
+		/* Ticked off as the step finishes, left to right like the pen that drew it. */
+		.steps [data-state="done"]::before {
+			animation: tick-drawn 0.3s cubic-bezier(0.45, 0, 0.6, 0.95) both;
+		}
+
 		.seconds {
 			animation: second-pop 300ms ease-out;
 		}
@@ -508,6 +527,12 @@ import Bell from "./NotificationIcon.astro";
 	@keyframes drain {
 		to {
 			transform: scaleX(0);
+		}
+	}
+
+	@keyframes tick-drawn {
+		from {
+			clip-path: inset(0 100% 0 0);
 		}
 	}
 
@@ -560,7 +585,7 @@ import Bell from "./NotificationIcon.astro";
 		gap: 0.875rem;
 		padding: 1rem 1.125rem;
 		border: 1px solid var(--line);
-		border-radius: 14px;
+		border-radius: var(--radius-panel);
 		background-color: var(--notif-bg);
 		font-family: var(--__sl-font-mono);
 	}
@@ -573,7 +598,7 @@ import Bell from "./NotificationIcon.astro";
 		display: flex;
 		flex: 1;
 		flex-direction: column;
-		gap: 0.25rem;
+		gap: var(--space-3xs);
 		min-width: 0;
 	}
 
@@ -584,7 +609,7 @@ import Bell from "./NotificationIcon.astro";
 	.meta {
 		display: flex;
 		justify-content: space-between;
-		gap: 0.75rem;
+		gap: var(--space-xs);
 		color: var(--ink-muted);
 		font-size: var(--text-xs);
 	}
@@ -602,8 +627,8 @@ import Bell from "./NotificationIcon.astro";
 
 	.toast {
 		position: fixed;
-		inset-block-end: 1.5rem;
-		inset-inline-end: 1.5rem;
+		inset-block-end: var(--space-m);
+		inset-inline-end: var(--space-m);
 		z-index: 100;
 		width: min(28rem, calc(100vw - 2rem));
 		box-sizing: border-box;
@@ -631,8 +656,8 @@ import Bell from "./NotificationIcon.astro";
 
 	@media (max-width: 30rem) {
 		.toast {
-			inset-inline: 1rem;
-			inset-block-end: 1rem;
+			inset-inline: var(--space-s);
+			inset-block-end: var(--space-s);
 			width: auto;
 		}
 	}

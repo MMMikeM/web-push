@@ -37,7 +37,7 @@ const message = "Your order has shipped";
 	.stops {
 		display: grid;
 		grid-template-areas: "from" "out" "sealed" "in" "to" "note";
-		gap: 0.75rem;
+		gap: var(--space-xs);
 		justify-items: center;
 	}
 
@@ -70,12 +70,12 @@ const message = "Your order has shipped";
 	.stop {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: var(--space-xs);
 		width: 100%;
 		box-sizing: border-box;
 		padding: 1rem 1.125rem;
 		border: 1px solid var(--line);
-		border-radius: 12px;
+		border-radius: var(--radius-panel);
 	}
 
 	.sealed {

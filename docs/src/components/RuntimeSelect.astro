@@ -114,7 +114,7 @@ const RUNTIMES = ["Node", "Bun", "Deno", "Cloudflare Workers", "Vercel Edge"];
 		gap: 0.375rem;
 		padding-inline: 0.75rem 2rem;
 		border: 1px solid var(--sl-color-gray-5);
-		border-radius: 0.5rem;
+		border-radius: var(--radius-control);
 		background-color: var(--sl-color-gray-6);
 		/* Below 16px, iOS zooms the page when the menu takes focus. */
 		font-size: var(--text-base);
@@ -126,8 +126,8 @@ const RUNTIMES = ["Node", "Bun", "Deno", "Cloudflare Workers", "Vercel Edge"];
 	}
 
 	.inline-control:has(select:focus-visible) {
-		outline: 2px solid var(--sl-color-text-accent);
-		outline-offset: 2px;
+		outline: var(--focus-ring);
+		outline-offset: var(--focus-ring-offset);
 	}
 
 	.inline-label {
@@ -137,7 +137,7 @@ const RUNTIMES = ["Node", "Bun", "Deno", "Cloudflare Workers", "Vercel Edge"];
 	.inline-control select {
 		/* Size to the chosen runtime rather than the longest; others fall back to that. */
 		field-sizing: content;
-		min-height: 2.75rem;
+		min-height: var(--tap-target);
 		padding-block: 0;
 		border: 0;
 		outline: none;

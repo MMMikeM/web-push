@@ -21,6 +21,11 @@ const githubUser = new URL(project.repositoryUrl).pathname.split("/")[1];
 				<a href={project.changelogUrl}>Changelog</a>
 				<a href={project.repositoryUrl}>GitHub</a>
 			</p>
+			<p class="page-foot" aria-hidden="true">
+				<span>{project.initialledAuthor}</span>
+				<span>Informational</span>
+				<span>[Page 1]</span>
+			</p>
 		</div>
 	) : (
 		<>
@@ -44,7 +49,7 @@ const githubUser = new URL(project.repositoryUrl).pathname.split("/")[1];
 		flex-wrap: wrap;
 		justify-content: center;
 		gap: 0.25rem 0.5rem;
-		margin-top: 2rem;
+		margin-top: var(--space-l);
 		font-size: var(--text-xs);
 		color: var(--sl-color-gray-3);
 	}
@@ -64,8 +69,8 @@ const githubUser = new URL(project.repositoryUrl).pathname.split("/")[1];
 		flex-wrap: wrap;
 		justify-content: space-between;
 		align-items: flex-start;
-		gap: 2rem;
-		margin-top: 4rem;
+		gap: var(--space-l);
+		margin-top: var(--space-2xl);
 		padding-block: 3.5rem;
 		border-top: 1px solid;
 		border-image: linear-gradient(var(--line), var(--line)) 1 / 1px 0 0 / 0 100vmax;
@@ -87,7 +92,7 @@ const githubUser = new URL(project.repositoryUrl).pathname.split("/")[1];
 	}
 
 	.heading {
-		margin-bottom: 0.5rem;
+		margin-bottom: var(--space-2xs);
 		font-size: var(--text-base);
 		font-weight: 500;
 	}
@@ -106,5 +111,13 @@ const githubUser = new URL(project.repositoryUrl).pathname.split("/")[1];
 
 	.links a {
 		padding-block: 0.625rem;
+	}
+
+	/* An RFC page's running footer: author, category, page. */
+	.page-foot {
+		flex-basis: 100%;
+		justify-content: space-between;
+		gap: var(--space-s);
+		color: var(--ink-muted);
 	}
 </style>

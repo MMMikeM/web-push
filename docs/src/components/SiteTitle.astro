@@ -16,6 +16,7 @@ const [scope, name] = siteTitle.includes("/") ? siteTitle.split("/") : ["", site
 		align-items: center;
 		gap: 0.625rem;
 		min-width: 0;
+		min-height: var(--tap-target);
 		color: var(--ink);
 		font-family: var(--__sl-font-mono);
 		font-size: var(--text-lg);
@@ -42,7 +43,7 @@ const [scope, name] = siteTitle.includes("/") ? siteTitle.split("/") : ["", site
 	/* Leaves room for the search, GitHub and theme buttons beside it on a phone. */
 	@media (max-width: 49.99rem) {
 		.site-title {
-			gap: 0.5rem;
+			gap: var(--space-2xs);
 			font-size: var(--text-sm);
 		}
 	}

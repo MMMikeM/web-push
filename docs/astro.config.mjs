@@ -52,7 +52,7 @@ export default defineConfig({
 			expressiveCode: {
 				themes: ["material-theme-palenight"],
 				styleOverrides: {
-					borderRadius: "12px",
+					borderRadius: "var(--radius-panel)",
 					uiFontFamily: "var(--__sl-font-mono)",
 					frames: { frameBoxShadowCssValue: "none" },
 				},

@@ -25,24 +25,24 @@ const splash = !Astro.locals.starlightRoute.hasSidebar;
 
 		.splash :global(site-search button[data-open-modal]) {
 			justify-content: center;
-			width: 2.75rem;
-			height: 2.75rem;
+			width: var(--tap-target);
+			height: var(--tap-target);
 		}
 
 		.splash :global(.social-icons a) {
 			color: var(--sl-color-gray-1);
 			justify-content: center;
 			align-items: center;
-			width: 2.75rem;
-			height: 2.75rem;
+			width: var(--tap-target);
+			height: var(--tap-target);
 			margin: 0;
 			padding: 0;
 		}
 
 		/* Only the icon shows; the menu still opens on the current choice. */
 		.splash :global(starlight-theme-select label) {
-			width: 2.75rem;
-			height: 2.75rem;
+			width: var(--tap-target);
+			height: var(--tap-target);
 			justify-content: center;
 		}
 
