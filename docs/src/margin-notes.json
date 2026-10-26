@@ -185,17 +185,17 @@
 			"indent": 14,
 			"width": "50%",
 			"rotate": -12,
-			"space": [-91.8, 14],
+			"space": [-91.3, 14],
 			"arrow": {
 				"from": {
 					"side": "left",
-					"offset": [-19, 18]
+					"offset": [-15.5, 25]
 				},
 				"to": {
 					"side": "bottom",
-					"offset": [0, 8]
+					"offset": [15.5, 17.5]
 				},
-				"bend": -52
+				"bend": -52.6
 			},
 			"before": true,
 			"side": "right"
@@ -478,8 +478,8 @@
 	"deps": {
 		"0": {
 			"mode": "flow",
-			"indent": 4,
-			"width": "36ch",
+			"indent": "4px",
+			"width": "calc(100% - 8px)",
 			"rotate": 0,
 			"space": [36, 0],
 			"arrow": {
@@ -495,21 +495,21 @@
 			}
 		},
 		"608": {
-			"mode": "beside",
-			"left": 483,
-			"top": 64.4,
-			"width": "25ch",
-			"rotate": -6,
+			"mode": "flow",
+			"indent": "4px",
+			"width": "calc(100% - 64px)",
+			"rotate": 0,
+			"space": [36, 0],
 			"arrow": {
 				"from": {
-					"side": "top",
-					"offset": [-48, 0]
+					"side": "right",
+					"offset": [2, -8]
 				},
 				"to": {
 					"side": "bottom",
-					"offset": [0, 8]
+					"offset": [1, 14]
 				},
-				"bend": 8
+				"bend": 19
 			}
 		},
 		"768": {
