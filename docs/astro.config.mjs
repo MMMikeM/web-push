@@ -25,8 +25,15 @@ const socialImage = {
 
 export default defineConfig({
 	site,
-	// The tutorial imports examples/app's files, which sit outside this project.
-	vite: { server: { fs: { allow: [".."] } } },
+	vite: {
+		server: {
+			// The tutorial imports examples/app's files, which sit outside this project.
+			fs: { allow: [".."] },
+			// The demo's route lives in the Worker, which `astro dev` doesn't run, so the
+			// dev server hands it to the deployed one, as if the request came from there.
+			proxy: { "/demo": { target: site, changeOrigin: true, headers: { origin: site } } },
+		},
+	},
 	integrations: [
 		starlight({
 			title: "@mmmike/web-push",
