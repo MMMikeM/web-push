@@ -15,7 +15,7 @@
 				},
 				"bend": -31
 			},
-			"right": 15.6,
+			"right": 16,
 			"bottom": -54.6
 		},
 		"384": {
@@ -142,10 +142,10 @@
 	"pieces": {
 		"0": {
 			"mode": "flow",
-			"indent": 126.6,
+			"indent": 8,
 			"width": "24ch",
 			"rotate": -12,
-			"space": [-32, 8],
+			"space": [-30.5, 8],
 			"arrow": {
 				"from": {
 					"side": "left",
@@ -157,7 +157,8 @@
 				},
 				"bend": -25
 			},
-			"before": true
+			"before": true,
+			"side": "right"
 		},
 		"608": {
 			"mode": "flow",
@@ -219,10 +220,10 @@
 	"node": {
 		"0": {
 			"mode": "flow",
-			"indent": 166.4,
-			"width": "10rem",
+			"indent": 8,
+			"width": "19ch",
 			"rotate": -5,
-			"space": [-35.8, 16],
+			"space": [-24, 16],
 			"before": true,
 			"arrow": {
 				"from": {
@@ -234,7 +235,8 @@
 					"offset": [12, -24]
 				},
 				"bend": 27
-			}
+			},
+			"side": "right"
 		},
 		"384": {
 			"mode": "flow",
@@ -411,7 +413,7 @@
 		"0": {
 			"mode": "flow",
 			"indent": 4.7,
-			"width": "min(13.5rem, calc(100% - 8.5rem))",
+			"width": "23ch",
 			"rotate": -8,
 			"space": [-24, 24],
 			"before": true,
@@ -457,19 +459,19 @@
 		"0": {
 			"mode": "flow",
 			"indent": 4,
-			"width": "min(17rem, 75%)",
-			"rotate": -1.5,
-			"space": [28, 0],
+			"width": "36ch",
+			"rotate": 0,
+			"space": [36, 0],
 			"arrow": {
 				"from": {
 					"side": "top",
-					"offset": [37, -1]
+					"offset": [32, -4]
 				},
 				"to": {
 					"side": "bottom",
-					"offset": [0, 8]
+					"offset": [-4, 12]
 				},
-				"bend": 8
+				"bend": 4
 			}
 		},
 		"608": {
